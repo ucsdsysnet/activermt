@@ -49,7 +49,7 @@ class Controller(threading.Thread):
             7   : 1,
             8   : 1
         }
-        self.OPCODES = json.loads(open('./opcodes.json').read(), encoding='utf-8')
+        self.OPCODES = json.loads(open('../../config/opcodes.json').read(), encoding='utf-8')
         self.OPS_MEMACCESS = [
             "MEM_READ",
             "MEM_WRITE",

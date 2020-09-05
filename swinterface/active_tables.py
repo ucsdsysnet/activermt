@@ -28,7 +28,7 @@ with open(mapping_file, 'r') as f:
     f.close()
 
 NUM_STEPS = 11
-OPCODES = json.loads(open('./opcodes.json').read(), encoding='utf-8')
+OPCODES = json.loads(open('../config/opcodes.json').read(), encoding='utf-8')
 """FIDS = {
     1   : 'unrestricted',
     2   : 'partial',
@@ -76,7 +76,8 @@ ACTIONS = {
         'COUNTER_RMW'       : "counter_%d_rmw",
         #'COUNTER_MINREAD'   : "lru_minread_%d",
         #'UPDATE_LRUTGT'     : "update_lru_tgt_%d",
-        'MEM_RST'           : "memory_%d_reset"
+        'MEM_RST'           : "memory_%d_reset",
+        'HASHMAR'           : "hashmar_%d"
     },
     'independent'   : {
         'RETURN'        : "complete",
@@ -93,9 +94,7 @@ ACTIONS = {
         #'HASH5TUPLE'    : "hash5tuple",
         #'HASHID'        : "hash_id",
         'DROP'          : "drop",
-        'GOTO_AUX'      : "goto_aux",
-        'HASH4K'        : "hashmar_4096",
-        'HASH8K'        : "hashmar_8192"
+        'GOTO_AUX'      : "goto_aux"
     }, 
     'branch'        : {
         'CJUMP'         : "jump_%d",
