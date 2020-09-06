@@ -37,6 +37,7 @@ header pktgen_ts_t          ts;
 header active_state_t       as;
 header active_program_t     ap[11];
 
+//@pragma pa_atomic egress meta.mirror_sess
 metadata metadata_t         meta;
 
 ////////////////// [INGRESS] //////////////////

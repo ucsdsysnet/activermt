@@ -6,3 +6,4 @@ pcaps/
 eval/
 
 *.pcap
+*.pyc

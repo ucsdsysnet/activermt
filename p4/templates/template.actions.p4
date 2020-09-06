@@ -52,3 +52,7 @@ field_list_calculation mar_list_hash_# {
 action hashmar_#() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_#, 8192);
 }
+
+action mbr_equals_#() {
+    bit_xor(meta.mbr, meta.mbr, ap[?].arg);
+}

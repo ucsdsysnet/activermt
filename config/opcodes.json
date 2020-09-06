@@ -47,5 +47,8 @@
     "LRU_PURGE"         : 46,
     "GOTO_AUX"          : 47,
     "MEM_RST"           : 48,
-    "HASHMAR"           : 49
+    "HASHMAR"           : 49,
+    "MIN"               : 50,
+    "MBR_EQUALS_ARG"    : 51,
+    "MBR_EQUALS_MBR2"   : 52
 }

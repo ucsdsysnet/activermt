@@ -53,6 +53,10 @@ action hashmar_1() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_1, 8192);
 }
 
+action mbr_equals_1() {
+    bit_xor(meta.mbr, meta.mbr, ap[0].arg);
+}
+
 action mar_load_2() {
     modify_field(meta.mar, ap[1].arg);
 }
@@ -106,6 +110,10 @@ field_list_calculation mar_list_hash_2 {
 
 action hashmar_2() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_2, 8192);
+}
+
+action mbr_equals_2() {
+    bit_xor(meta.mbr, meta.mbr, ap[1].arg);
 }
 
 action mar_load_3() {
@@ -163,6 +171,10 @@ action hashmar_3() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_3, 8192);
 }
 
+action mbr_equals_3() {
+    bit_xor(meta.mbr, meta.mbr, ap[2].arg);
+}
+
 action mar_load_4() {
     modify_field(meta.mar, ap[3].arg);
 }
@@ -216,6 +228,10 @@ field_list_calculation mar_list_hash_4 {
 
 action hashmar_4() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_4, 8192);
+}
+
+action mbr_equals_4() {
+    bit_xor(meta.mbr, meta.mbr, ap[3].arg);
 }
 
 action mar_load_5() {
@@ -273,6 +289,10 @@ action hashmar_5() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_5, 8192);
 }
 
+action mbr_equals_5() {
+    bit_xor(meta.mbr, meta.mbr, ap[4].arg);
+}
+
 action mar_load_6() {
     modify_field(meta.mar, ap[5].arg);
 }
@@ -326,6 +346,10 @@ field_list_calculation mar_list_hash_6 {
 
 action hashmar_6() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_6, 8192);
+}
+
+action mbr_equals_6() {
+    bit_xor(meta.mbr, meta.mbr, ap[5].arg);
 }
 
 action mar_load_7() {
@@ -383,6 +407,10 @@ action hashmar_7() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_7, 8192);
 }
 
+action mbr_equals_7() {
+    bit_xor(meta.mbr, meta.mbr, ap[6].arg);
+}
+
 action mar_load_8() {
     modify_field(meta.mar, ap[7].arg);
 }
@@ -436,6 +464,10 @@ field_list_calculation mar_list_hash_8 {
 
 action hashmar_8() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_8, 8192);
+}
+
+action mbr_equals_8() {
+    bit_xor(meta.mbr, meta.mbr, ap[7].arg);
 }
 
 action mar_load_9() {
@@ -493,6 +525,10 @@ action hashmar_9() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_9, 8192);
 }
 
+action mbr_equals_9() {
+    bit_xor(meta.mbr, meta.mbr, ap[8].arg);
+}
+
 action mar_load_10() {
     modify_field(meta.mar, ap[9].arg);
 }
@@ -548,6 +584,10 @@ action hashmar_10() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_10, 8192);
 }
 
+action mbr_equals_10() {
+    bit_xor(meta.mbr, meta.mbr, ap[9].arg);
+}
+
 action mar_load_11() {
     modify_field(meta.mar, ap[10].arg);
 }
@@ -601,4 +641,8 @@ field_list_calculation mar_list_hash_11 {
 
 action hashmar_11() {
     modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_11, 8192);
+}
+
+action mbr_equals_11() {
+    bit_xor(meta.mbr, meta.mbr, ap[10].arg);
 }

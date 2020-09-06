@@ -50,7 +50,7 @@ action unmark_processed_packet() {
 }
 
 action enable_execution() {
-    bit_and(meta.disabled, meta.disabled, 126);
+    bit_and(meta.disabled, meta.disabled, 2);
 }
 
 action return_to_sender() {
@@ -66,21 +66,9 @@ action memfault() {
     return_to_sender();
 }
 
-action hash5tuple() {
-    modify_field_with_hash_based_offset(meta.mar, 0, l4_5tuple_hash, 16);
-}
-
-action hash_id() {
-    modify_field_with_hash_based_offset(meta.mar, 0, id_list_hash, 65536);
-}
-
 action set_port(mirror_id) {
     modify_field(meta.rtsid, mirror_id);
     modify_field(as.flag_rts, 1);
-}
-
-action get_random_port() {
-    modify_field(meta.mbr, 0, 3);
 }
 
 action goto_aux() {
@@ -89,4 +77,38 @@ action goto_aux() {
 
 action min_mbr_mbr2() {
     min(meta.mbr, meta.mbr, meta.mbr2);
+}
+
+action mbr_equals_mbr2() {
+    bit_xor(meta.mbr, meta.mbr, meta.mbr2);
+}
+
+action hash_generic() {
+    modify_field_with_hash_based_offset(meta.mar, 0, generic_hash, 65536);
+}
+
+/*action hash_5tuple() {
+    modify_field_with_hash_based_offset(meta.mar, 0, l4_5tuple_hash, 65536);
+}*/
+
+action load_hashlist_ipv4src() {
+    modify_field(meta.hashblock_1, ipv4.srcAddr, 0xFFFF);
+    modify_field_with_shift(meta.hashblock_2, ipv4.srcAddr, 16, 0xFFFF);
+}
+
+action load_hashlist_ipv4dst() {
+    modify_field(meta.hashblock_3, ipv4.dstAddr, 0xFFFF);
+    modify_field_with_shift(meta.hashblock_4, ipv4.dstAddr, 16, 0xFFFF);
+}
+
+action load_hashlist_ipv4proto() {
+    modify_field(meta.hashblock_5, ipv4.protocol);
+}
+
+action load_hashlist_udpsrcport() {
+    modify_field(meta.hashblock_6, udp.srcPort);
+}
+
+action load_hashlist_udpdstport() {
+    modify_field(meta.hashblock_7, udp.dstPort);
 }

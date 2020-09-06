@@ -27,17 +27,7 @@ field_list mar_list {
     meta.mbr;
 }
 
-field_list id_list {
-    as.id;
-}
-
-field_list_calculation id_list_hash {
-    input           { id_list; }
-    algorithm       : identity;
-    output_width    : 16;
-}
-
-field_list l4_5tuple_list {
+/*field_list l4_5tuple_list {
     ipv4.protocol;
     ipv4.srcAddr;
     ipv4.dstAddr;
@@ -47,12 +37,11 @@ field_list l4_5tuple_list {
 
 field_list_calculation l4_5tuple_hash {
     input           { l4_5tuple_list; }
-    algorithm       : identity;
+    algorithm       : posix;
     output_width    : 16;
-}
+}*/
 
 field_list cycle_metadata {
-    meta.lru_target;
     meta.rtsid;
     meta.pc;
     meta.loop;
@@ -70,4 +59,20 @@ field_list cycle_metadata {
     meta.burnt_udp;
     meta.rts;
     meta.cycles;
+}
+
+field_list generic_hashlist {
+    meta.hashblock_1;
+    meta.hashblock_2;
+    meta.hashblock_3;
+    meta.hashblock_4;
+    meta.hashblock_5;
+    meta.hashblock_6;
+    meta.hashblock_7;
+}
+
+field_list_calculation generic_hash {
+    input           { generic_hashlist; }
+    algorithm       : crc16;
+    output_width    : 16;
 }

@@ -65,39 +65,44 @@ header_type active_state_t {
 
 header_type active_program_t {
     fields {
-        flags   : 8;
+        flags   : 4;
+        goto    : 4;
         opcode  : 8;
         arg     : 16;
-        goto    : 8;
     }
 }
 
 header_type metadata_t {
     fields {
-        pc          : 8;
-        quota_start : 8;
-        quota_end   : 8; 
-        loop        : 8;
+        loop        : 1;
         duplicate   : 1;
-        mar         : 16;
-        base        : 16;
-        mbr         : 16;
-        mbr2        : 16;
-        mar_base    : 16;
-        disabled    : 8;
-        mirror_type : 1;
-        mirror_sess : 10;
         complete    : 1;
-        rtsid       : 16;
-        lru_target  : 4;
         skipped     : 1;
-        burnt_ipv4  : 16;
-        burnt_udp   : 16;
         rts         : 1;
-        color       : 4;
         digest      : 1;
         reset       : 1;
         alloc_init  : 1;
+        disabled    : 2;
+        color       : 3;
+        quota_start : 4;
+        quota_end   : 4; 
+        pc          : 4;
         cycles      : 8;
+        rtsid       : 16;
+        mar         : 16;
+        mbr         : 16;
+        mbr2        : 16;
+        burnt_ipv4  : 16;
+        burnt_udp   : 16;
+        hashblock_1 : 16;
+        hashblock_2 : 16;
+        hashblock_3 : 16;
+        hashblock_4 : 16;
+        hashblock_5 : 16;
+        hashblock_6 : 16;
+        hashblock_7 : 16;
+        mirror_type : 1;
+        mirror_id   : 10;
+        mirror_sess : 10;
     }
 }

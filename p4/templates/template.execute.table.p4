@@ -27,12 +27,16 @@ table execute_# {
         enable_execution;
         return_to_sender;
         memfault;
-        //hash5tuple;
         set_port;
-        get_random_port;
-        //hash_id;
         goto_aux;
         min_mbr_mbr2;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_#;
         mar_load_#;
@@ -40,14 +44,15 @@ table execute_# {
         mbr2_load_#;
         mbr_add_#;
         mar_add_#;
-        mbr_subtract_#;
-        bit_and_mbr_mar_#;
+        //mbr_subtract_#;
+        //bit_and_mbr_mar_#;
         #memory
         memory_#_reset;
         jump_#;
         attempt_rejoin_#;
-        mar_equals_#;
+        //mar_equals_#;
         bit_and_mbr_#;
         counter_#_rmw;
+        mbr_equals_#;
     }
 }
