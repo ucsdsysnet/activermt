@@ -5,7 +5,7 @@ sys.path.insert(1, os.getcwd())
 
 from tests.ptf_base import *
 
-class TestCacheReadRequest(PrototypeTestBase):
+"""class TestCacheReadRequest(PrototypeTestBase):
     def runTest(self):
         sync = prototype_register_flags_t(read_hw_sync=1)
         obj = self.client.register_read_heap_1(self.sess_hdl, self.dev_tgt, 1, sync)[0]
@@ -14,10 +14,10 @@ class TestCacheReadRequest(PrototypeTestBase):
             Ether()/
             IP(src="10.0.0.1", dst="10.0.0.2")/
             UDP(sport=9877, dport=9876, chksum=0)/
-            ActiveState(fid=10, flags=0x0040)/
+            ActiveState(fid=10, flags=0x0040, acc2=8193)/
             
             # [PASS 1] - check key, load value, update access count
-            # using mem stages 5,8,11
+            # using mem stages 5,8,10
             # address calculation
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/
             ActiveProgram(opcode=self.OPCODES['HASHMBR'])/
@@ -30,8 +30,8 @@ class TestCacheReadRequest(PrototypeTestBase):
             ActiveProgram(opcode=self.OPCODES['CJUMP'], goto=2)/
             ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # load the value
             ActiveProgram(opcode=self.OPCODES['ACC_LOAD'])/
-            ActiveProgram(opcode=self.OPCODES['RTS'])/
-            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'], goto=2)/ # increment access counter
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # increment access counter
+            ActiveProgram(opcode=self.OPCODES['RTS'], goto=2)/
             # conditionally return if as.flag_onepass = 1
 
             # [PASS 2-4] - perform count-min-sketch for frequency
@@ -91,28 +91,88 @@ class TestCacheReadRequest(PrototypeTestBase):
         verify_packet_prefix(self, pkt_exp, 0, 54)
 
         #data = self.client.register_read_heap_3(self.sess_hdl, self.dev_tgt, 1, sync)
-        #self.client.register_write_heap_3(self.sess_hdl, self.dev_tgt, 1, data)
+        #self.client.register_write_heap_3(self.sess_hdl, self.dev_tgt, 1, data)"""
 
-"""class TestCacheReadResponse(PrototypeTestBase):
+class TestCacheReadResponse(PrototypeTestBase):
     def runTest(self):
         pkt_send = (
             Ether()/
             IP(dst="10.0.0.2")/
             UDP(sport=9877, dport=9876)/
-            ActiveState(fid=1)/
-            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/
-            ActiveProgram(opcode=self.OPCODES['HASHMAR'])/
-            ActiveProgram(opcode=self.OPCODES['MIN'])/
-            ActiveProgram(opcode=self.OPCODES['MBR_EQUALS_MBR2'])/ # if the current count is lower
-            ActiveProgram(opcode=self.OPCODES['CJUMP'], goto=3)/
+            ActiveState(fid=10)/
+
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2413)/ # random location
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['COPY_MAR_MBR'])/ # stores the address of current min
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # writes the address of current min
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR_MAR'])/ # restores address
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
             ActiveProgram(opcode=self.OPCODES['COPY_MBR2_MBR'])/
-            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write new min value
-            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/
-            ActiveProgram(opcode=self.OPCODES['HASHMAR'])/
-            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'], goto=3)/ # write new min index
-            ActiveProgram(opcode=self.OPCODES['RTS'], goto=2)/
+
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=3422)/ # random location
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
+            ActiveProgram(opcode=self.OPCODES['REVMIN'])/
+
+            ActiveProgram(opcode=self.OPCODES['MBR_EQUALS_MBR2'])/ # if the current count is lower
+            ActiveProgram(opcode=self.OPCODES['CJUMP'], goto=2)/
+            ActiveProgram(opcode=self.OPCODES['COPY_MAR_MBR'])/
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # writes new address of min
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR_MAR'], goto=2)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=3525)/ # random location
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
+            ActiveProgram(opcode=self.OPCODES['REVMIN'])/
+
+            ActiveProgram(opcode=self.OPCODES['MBR_EQUALS_MBR2'])/ # if the current count is lower
+            ActiveProgram(opcode=self.OPCODES['CJUMPI'], goto=2)/ # load the min from memory if not
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # reads address of min
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR_MAR'], goto=2)/ # mar now has address of min
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/ # key of hot item
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write hot key
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=1234)/
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write hot value
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2)/ # load the threshold value for hot item
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write threshold freq so that it isn't subject to lfu again
             ActiveProgram(opcode=self.OPCODES['RETURN'])/
             
             ActiveProgram()/
             ActiveProgram(opcode=self.OPCODES['EOF'])
-        )"""
+        )

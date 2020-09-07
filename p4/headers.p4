@@ -51,7 +51,7 @@ header_type active_state_t {
         flag_ack        : 1;
         flag_done       : 1;
         flag_mfault     : 1;
-        flag_onepass    : 1;
+        flag_chain      : 1;
         flag_reqalloc   : 1;
         flag_allocated  : 1;
         padding         : 4;
@@ -80,7 +80,7 @@ header_type metadata_t {
         skipped     : 1;
         rts         : 1;
         digest      : 1;
-        reset       : 1;
+        chain       : 1;
         alloc_init  : 1;
         disabled    : 2;
         color       : 3;

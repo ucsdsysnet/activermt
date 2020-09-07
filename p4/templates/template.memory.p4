@@ -31,7 +31,7 @@ blackbox stateful_alu heap_#_write {
     update_hi_1_predicate   : condition_lo;
     update_hi_1_value       : meta.mbr;
     output_predicate        : condition_lo or condition_hi;
-    output_value            : 1;
+    output_value            : 0;
     output_dst              : meta.disabled;
 }
 
@@ -55,36 +55,22 @@ action memory_#_reset() {
 
 blackbox stateful_alu count_#_rmw {
     reg                     : heap_#;
-    /*condition_lo            : meta.reset == 0;
-    update_lo_1_predicate   : condition_lo;
-    update_lo_1_value       : register_lo + 1;
-    update_lo_2_predicate   : not condition_lo;
-    update_lo_2_value       : 0;*/
+    
+    condition_hi            : meta.mbr == 0;
+
     update_lo_1_predicate   : true;
-    update_lo_1_value       : register_lo + 1;
-    update_hi_1_predicate   : true;
-    update_hi_1_value       : register_hi;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_value       : register_hi + 1;
+    update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;
+
     output_predicate        : true;
     output_dst              : meta.mbr;
-    output_value            : register_lo;
+    output_value            : alu_hi;
 }
 
 action counter_#_rmw() {
     count_#_rmw.execute_stateful_alu(meta.mar);
 }
-
-/*blackbox stateful_alu count_minread_# {
-    reg                     : heap_#;
-    condition_hi            : register_lo < meta.mbr;
-    update_lo_1_predicate   : true;
-    update_lo_1_value       : register_lo;
-    update_hi_1_predicate   : condition_hi;
-    update_hi_1_value       : 1;
-    output_predicate        : condition_hi;
-    output_dst              : meta.mbr;
-    output_value            : register_lo;
-}
-
-action lru_minread_#() {
-    count_minread_#.execute_stateful_alu_from_hash(heap_index);
-}*/

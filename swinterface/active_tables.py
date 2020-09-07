@@ -97,7 +97,9 @@ class ActiveP4TableUpdater:
             'GOTO_AUX'          : "goto_aux",
             'REVMIN'            : "min_mbr2_mbr",
             'MIN'               : "min_mbr_mbr2",
-            'MARK_PACKET'       : "mark_packet"
+            'MARK_PACKET'       : "mark_packet",
+            'COPY_MAR_MBR'      : "copy_mbr_mar",
+            'COPY_MBR_MAR'      : "copy_mar_mbr"
         }
         self.OPS_BRANCHING = {
             'CJUMP'         : "jump_%d",

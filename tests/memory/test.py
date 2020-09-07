@@ -5,7 +5,45 @@ sys.path.insert(1, os.getcwd())
 
 from tests.ptf_base import *
 
-class TestChaining(PrototypeTestBase):
+"""class TestCounter(PrototypeTestBase):
+    def runTest(self):
+        sync = prototype_register_flags_t(read_hw_sync=1)
+        index = 0x22
+        pkt = (
+            Ether()/
+            IP(src="10.0.0.1", dst="10.0.0.2")/
+            UDP(sport=9877, dport=9876)/
+            ActiveState(fid=10)/
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=index)/
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # mbr is > 0, expecting increment
+            ActiveProgram(opcode=self.OPCODES['RETURN'])/
+            ActiveProgram()/
+            ActiveProgram(opcode=self.OPCODES['EOF'])
+        )
+        pktExp = copy.deepcopy(pkt)
+        send_packet(self, 0, pkt)
+        verify_packet_prefix(self, pktExp, 4, 14)
+        obj = self.client.register_read_heap_3(self.sess_hdl, self.dev_tgt, index, sync)[0]
+        self.assertEquals(obj.f0, 1)
+        pkt = (
+            Ether()/
+            IP(src="10.0.0.1", dst="10.0.0.2")/
+            UDP(sport=9877, dport=9876)/
+            ActiveState(fid=10)/
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=index)/
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # mbr is > 0, expecting increment
+            ActiveProgram(opcode=self.OPCODES['RETURN'])/
+            ActiveProgram()/
+            ActiveProgram(opcode=self.OPCODES['EOF'])
+        )
+        send_packet(self, 0, pkt)
+        verify_packet_prefix(self, pktExp, 4, 14)
+        obj = self.client.register_read_heap_3(self.sess_hdl, self.dev_tgt, index, sync)[0]
+        self.assertEquals(obj.f0, 0)"""
+
+"""class TestChaining(PrototypeTestBase):
     def runTest(self):
         sync = active_generated_register_flags_t(read_hw_sync=1)
         self.client.register_reset_all_heap_3(self.sess_hdl, self.dev_tgt)
@@ -240,4 +278,4 @@ class TestMemoryFault(PrototypeTestBase):
         del pktExp[IP].src
         del pktExp[IP].dst
         pktExp[ActiveState].flags = 0x0080
-        verify_packet(self, pktExp, 0)
+        verify_packet(self, pktExp, 0)"""

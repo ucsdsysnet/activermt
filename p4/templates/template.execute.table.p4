@@ -39,6 +39,8 @@ table execute_# {
         load_hashlist_udpsrcport;
         load_hashlist_udpdstport;
         load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_#;
         mar_load_#;

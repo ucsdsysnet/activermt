@@ -38,7 +38,7 @@ action bit_and_mar_1() {
 field_list_calculation mar_list_hash_1 {
     input           { mar_list; }
     algorithm       : crc_16_en_13757;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_1() {
@@ -101,7 +101,7 @@ action bit_and_mar_2() {
 field_list_calculation mar_list_hash_2 {
     input           { mar_list; }
     algorithm       : crc_16_dds_110;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_2() {
@@ -164,7 +164,7 @@ action bit_and_mar_3() {
 field_list_calculation mar_list_hash_3 {
     input           { mar_list; }
     algorithm       : crc_16_dect;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_3() {
@@ -227,7 +227,7 @@ action bit_and_mar_4() {
 field_list_calculation mar_list_hash_4 {
     input           { mar_list; }
     algorithm       : crc_16_dnp;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_4() {
@@ -290,7 +290,7 @@ action bit_and_mar_5() {
 field_list_calculation mar_list_hash_5 {
     input           { mar_list; }
     algorithm       : crc_16_genibus;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_5() {
@@ -353,7 +353,7 @@ action bit_and_mar_6() {
 field_list_calculation mar_list_hash_6 {
     input           { mar_list; }
     algorithm       : crc_16_maxim;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_6() {
@@ -416,7 +416,7 @@ action bit_and_mar_7() {
 field_list_calculation mar_list_hash_7 {
     input           { mar_list; }
     algorithm       : crc_16_riello;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_7() {
@@ -479,7 +479,7 @@ action bit_and_mar_8() {
 field_list_calculation mar_list_hash_8 {
     input           { mar_list; }
     algorithm       : crc_16_usb;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_8() {
@@ -542,7 +542,7 @@ action bit_and_mar_9() {
 field_list_calculation mar_list_hash_9 {
     input           { mar_list; }
     algorithm       : crc_16_teledisk;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_9() {
@@ -605,7 +605,7 @@ action bit_and_mar_10() {
 field_list_calculation mar_list_hash_10 {
     input           { mar_list; }
     algorithm       : crc_16_mcrf4xx;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_10() {
@@ -668,7 +668,7 @@ action bit_and_mar_11() {
 field_list_calculation mar_list_hash_11 {
     input           { mar_list; }
     algorithm       : crc_16_t10_dif;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_11() {

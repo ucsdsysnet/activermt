@@ -128,4 +128,14 @@ action load_hashlist_5tuple() {
     modify_field(meta.hashblock_7, udp.dstPort);
 }
 
-//action get_random_number() {}
+action copy_mar_mbr() {
+    modify_field(meta.mar, meta.mbr);
+}
+
+action copy_mbr_mar() {
+    modify_field(meta.mbr, meta.mar);
+}
+
+/*action get_random_number() {
+    modify_field_rng_uniform(meta.mbr, 0, 65535);
+}*/

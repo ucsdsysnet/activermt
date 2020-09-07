@@ -38,7 +38,7 @@ action bit_and_mar_#() {
 field_list_calculation mar_list_hash_# {
     input           { mar_list; }
     algorithm       : crc_16_$;
-    output_width    : 13;
+    output_width    : 16;
 }
 
 action hashmar_#() {
