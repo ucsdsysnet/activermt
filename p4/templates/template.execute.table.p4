@@ -13,14 +13,14 @@ table execute_# {
 // ==== GENERIC ACTIONS ==== //  
         skip;
         complete;
+        cancel_complete;
         loop_init;
         loop_end;
         acc_load;
         acc2_load;
         copy_mbr2_mbr;
         copy_mbr_mbr2;
-        mark_processed_packet;
-        unmark_processed_packet;
+        mark_packet;
         drop;
         cancel_drop;
         duplicate;
@@ -30,6 +30,7 @@ table execute_# {
         set_port;
         goto_aux;
         min_mbr_mbr2;
+        min_mbr2_mbr;
         mbr_equals_mbr2;
         hash_generic;
         load_hashlist_ipv4src;
@@ -37,6 +38,7 @@ table execute_# {
         load_hashlist_ipv4proto;
         load_hashlist_udpsrcport;
         load_hashlist_udpdstport;
+        load_hashlist_5tuple;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_#;
         mar_load_#;
@@ -52,6 +54,7 @@ table execute_# {
         attempt_rejoin_#;
         //mar_equals_#;
         bit_and_mbr_#;
+        bit_and_mar_#;
         counter_#_rmw;
         mbr_equals_#;
     }

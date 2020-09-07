@@ -43,28 +43,28 @@ parser init_program {
     }
 }
 
-@pragma force_shift ingress 192
-@pragma force_shift egress 192
+@pragma force_shift ingress 128
+@pragma force_shift egress 128
 parser skip_block {
     return attempt_resume;
 }
 
 parser attempt_resume {
-    return select(current(0, 8)) {
+    return select(current(0, 4)) {
         0x03    : continue_parsing;
         default : skip_block;
     }
 }
 
 parser continue_parsing {
-    return select(current(0, 8)) {
+    return select(current(0, 4)) {
         0x01    : skip_instruction;
         default : parse_active_program;
     }
 }
 
-@pragma force_shift ingress 48
-@pragma force_shift egress 48
+@pragma force_shift ingress 32
+@pragma force_shift egress 32
 parser skip_instruction {
     return continue_parsing;
 }
@@ -72,7 +72,7 @@ parser skip_instruction {
 parser parse_active_program {
     extract(ap[next]);
     return select(latest.opcode) {
-        0x08    : ingress;
+        0x01    : ingress;
         default : parse_active_program;
     }
 }

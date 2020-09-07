@@ -46,12 +46,12 @@ header_type active_state_t {
         flag_igclone    : 1;
         flag_bypasseg   : 1;
         flag_rts        : 1;
-        flag_gc         : 1;
+        flag_marked     : 1;
         flag_aux        : 1;
         flag_ack        : 1;
         flag_done       : 1;
         flag_mfault     : 1;
-        flag_resetfreq  : 1;
+        flag_onepass    : 1;
         flag_reqalloc   : 1;
         flag_allocated  : 1;
         padding         : 4;

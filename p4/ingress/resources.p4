@@ -12,4 +12,4 @@ table resources {
         set_quota;
         passthru;
     }
-}
+} 

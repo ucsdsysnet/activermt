@@ -25,6 +25,11 @@ action complete() {
     modify_field(as.flag_done, 1);
 }
 
+action cancel_complete() {
+    modify_field(meta.complete, 0);
+    modify_field(as.flag_done, 0);
+}
+
 action copy_mbr2_mbr() {
     modify_field(meta.mbr, meta.mbr2);
 }
@@ -41,12 +46,8 @@ action acc2_load() {
     modify_field(as.acc2, meta.mbr);
 }
 
-action mark_processed_packet() {
-    modify_field(as.flag_redirect, 1);
-}
-
-action unmark_processed_packet() {
-    modify_field(as.flag_redirect, 0);
+action mark_packet() {
+    modify_field(as.flag_marked, 1);
 }
 
 action enable_execution() {
@@ -77,6 +78,10 @@ action goto_aux() {
 
 action min_mbr_mbr2() {
     min(meta.mbr, meta.mbr, meta.mbr2);
+}
+
+action min_mbr2_mbr() {
+    min(meta.mbr2, meta.mbr, meta.mbr2);
 }
 
 action mbr_equals_mbr2() {
@@ -112,3 +117,15 @@ action load_hashlist_udpsrcport() {
 action load_hashlist_udpdstport() {
     modify_field(meta.hashblock_7, udp.dstPort);
 }
+
+action load_hashlist_5tuple() {
+    modify_field(meta.hashblock_1, ipv4.srcAddr, 0xFFFF);
+    modify_field_with_shift(meta.hashblock_2, ipv4.srcAddr, 16, 0xFFFF);
+    modify_field(meta.hashblock_3, ipv4.dstAddr, 0xFFFF);
+    modify_field_with_shift(meta.hashblock_4, ipv4.dstAddr, 16, 0xFFFF);
+    modify_field(meta.hashblock_5, ipv4.protocol);
+    modify_field(meta.hashblock_6, udp.srcPort);
+    modify_field(meta.hashblock_7, udp.dstPort);
+}
+
+//action get_random_number() {}

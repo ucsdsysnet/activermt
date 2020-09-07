@@ -27,10 +27,9 @@ class ActiveState(Packet):
 class ActiveProgram(Packet):
     name = "ActiveProgram"
     fields_desc = [
-        ByteField("flags", 0),
+        ByteField("goto", 0), # also has flags
         ByteField("opcode", 0),
-        ShortField("arg", 0),
-        ByteField("goto", 0)
+        ShortField("arg", 0)
     ]
 
 class SkipBlock(Packet):
@@ -47,7 +46,10 @@ class PrototypeTestBase(pd_base_tests.ThriftInterfaceDataPlane):
     def __init__(self):
         pd_base_tests.ThriftInterfaceDataPlane.__init__(self, ["prototype"])
         self.dpmap = {}
-        self.OPCODES = json.loads(open('config/opcodes.json').read(), encoding='utf-8')
+        self.OPCODES = {}
+        opcodeList = open('config/opcodes.csv').read().strip().splitlines()
+        for id in range(0, len(opcodeList)):
+            self.OPCODES[ opcodeList[id] ] = id + 1
 
     def read_maps(self):
         with open('/tmp/dp_mappings_identity.csv', 'r') as f:

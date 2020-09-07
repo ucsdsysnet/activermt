@@ -149,8 +149,23 @@ class TestSLB(PrototypeTestBase):
             IP(src="10.0.0.1", dst="10.0.0.2")/
             UDP(sport=9877, dport=9876, chksum=0)/
             ActiveState(fid=1)/
-            ActiveProgram(opcode=self.OPCODES[''])/
+            ActiveProgram(opcode=self.OPCODES['LOAD_5TUPLE'])/
+            ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8192)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/ # get address of conntable
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/
+            ActiveProgram(opcode=self.OPCODES['SET_PORT'])/ # just forward if already present in table
+            ActiveProgram(opcode=self.OPCODES['CRET'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/
+            ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=16)/ # choose one server from DIP pool
+            # add mbr to mar
             
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # mbr now has the port of the conn
+            ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8192)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # store port in conntable
             ActiveProgram(opcode=self.OPCODES['RETURN'])/
             ActiveProgram()/
             ActiveProgram(opcode=self.OPCODES['EOF'])
