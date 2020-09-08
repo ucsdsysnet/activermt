@@ -3,10 +3,10 @@ register heap_# {
     instance_count  : 65536;
 }
 
-counter hit_# {
+/*counter hit_# {
     type            : packets;
     instance_count  : 65536;
-}
+}*/
 
 blackbox stateful_alu heap_#_read {
     reg                 : heap_#;
@@ -40,7 +40,7 @@ action memory_#_write() {
     //count(hit_#, meta.mar);
 }
 
-blackbox stateful_alu heap_#_reset {
+/*blackbox stateful_alu heap_#_reset {
     reg                     : heap_#;
     condition_lo            : register_lo == meta.mar;
     update_lo_1_predicate   : condition_lo;
@@ -51,7 +51,7 @@ blackbox stateful_alu heap_#_reset {
 
 action memory_#_reset() {
     heap_#_reset.execute_stateful_alu(meta.mar);
-}
+}*/
 
 blackbox stateful_alu count_#_rmw {
     reg                     : heap_#;
@@ -73,4 +73,22 @@ blackbox stateful_alu count_#_rmw {
 
 action counter_#_rmw() {
     count_#_rmw.execute_stateful_alu(meta.mar);
+}
+
+blackbox stateful_alu heap_#_sub {
+    reg                     : heap_#;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : register_lo;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi - meta.mbr;
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action memory_#_sub() {
+    heap_#_sub.execute_stateful_alu(meta.mar);
 }

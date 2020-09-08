@@ -20,6 +20,7 @@ class ActiveP4TableUpdater:
         self.DISABLED_HARD      = 2
         self.NUM_STEPS          = 11
         self.MAX_FIDS           = 4
+        self.MAX_CYCLES         = 32
 
         self.CBS_KBITS          = 5
         self.PIR_CBPS           = 5
@@ -68,7 +69,7 @@ class ActiveP4TableUpdater:
             'MEM_READ'          : "memory_%d_read",
             'MEM_WRITE'         : "memory_%d_write",
             'COUNTER_RMW'       : "counter_%d_rmw",
-            'MEM_RST'           : "memory_%d_reset"
+            'MEM_SUB'           : "memory_%d_sub"
         }
         self.OPS_DEFAULT = {
             # stagewise
@@ -162,7 +163,7 @@ class ActiveP4TableUpdater:
             p4_pd.set_quota_action_spec_t(
                 self.QUOTAS_HORZ[fid][0], 
                 self.QUOTAS_HORZ[fid][1], 
-                5 # number of cycles
+                self.MAX_CYCLES
             ),
             p4_pd.bytes_meter_spec_t(self.CIR_KBPS, self.CBS_KBITS, self.PIR_CBPS, self.PBS_KBITS, False)
         )
@@ -333,14 +334,6 @@ opcodeLocation = '../config/opcodes.csv'
 
 updater = ActiveP4TableUpdater()
 
-updater.loadOpcodes(opcodeLocation)
-updater.addFIDs()
-updater.mapActions()
-
-updater.addProceedTableEntries()
-updater.addDefaultOps()
-updater.addBranchingOps()
-
 mirror_maps = {
     1   : 4,
     2   : 8,
@@ -349,6 +342,14 @@ mirror_maps = {
 }
 
 updater.createMirrorSessions(mirror_maps)
+
+updater.loadOpcodes(opcodeLocation)
+updater.addFIDs()
+updater.mapActions()
+
+updater.addProceedTableEntries()
+updater.addDefaultOps()
+updater.addBranchingOps()
 
 ip_dsts = {
     "10.0.0.1"      : 0, 

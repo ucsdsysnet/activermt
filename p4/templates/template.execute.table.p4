@@ -51,7 +51,7 @@ table execute_# {
         //mbr_subtract_#;
         //bit_and_mbr_mar_#;
         #memory
-        memory_#_reset;
+        //memory_#_reset;
         jump_#;
         attempt_rejoin_#;
         //mar_equals_#;
@@ -59,5 +59,6 @@ table execute_# {
         bit_and_mar_#;
         counter_#_rmw;
         mbr_equals_#;
+        memory_#_sub;
     }
 }

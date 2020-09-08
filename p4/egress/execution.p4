@@ -52,7 +52,7 @@ table execute_1 {
         //bit_and_mbr_mar_1;
         memory_1_read;
 		memory_1_write;
-        memory_1_reset;
+        //memory_1_reset;
         jump_1;
         attempt_rejoin_1;
         //mar_equals_1;
@@ -60,6 +60,7 @@ table execute_1 {
         bit_and_mar_1;
         counter_1_rmw;
         mbr_equals_1;
+        memory_1_sub;
     }
 }
 
@@ -117,7 +118,7 @@ table execute_2 {
         //bit_and_mbr_mar_2;
         memory_2_read;
 		memory_2_write;
-        memory_2_reset;
+        //memory_2_reset;
         jump_2;
         attempt_rejoin_2;
         //mar_equals_2;
@@ -125,6 +126,7 @@ table execute_2 {
         bit_and_mar_2;
         counter_2_rmw;
         mbr_equals_2;
+        memory_2_sub;
     }
 }
 
@@ -182,7 +184,7 @@ table execute_3 {
         //bit_and_mbr_mar_3;
         memory_3_read;
 		memory_3_write;
-        memory_3_reset;
+        //memory_3_reset;
         jump_3;
         attempt_rejoin_3;
         //mar_equals_3;
@@ -190,6 +192,7 @@ table execute_3 {
         bit_and_mar_3;
         counter_3_rmw;
         mbr_equals_3;
+        memory_3_sub;
     }
 }
 
@@ -247,7 +250,7 @@ table execute_4 {
         //bit_and_mbr_mar_4;
         memory_4_read;
 		memory_4_write;
-        memory_4_reset;
+        //memory_4_reset;
         jump_4;
         attempt_rejoin_4;
         //mar_equals_4;
@@ -255,6 +258,7 @@ table execute_4 {
         bit_and_mar_4;
         counter_4_rmw;
         mbr_equals_4;
+        memory_4_sub;
     }
 }
 
@@ -312,7 +316,7 @@ table execute_5 {
         //bit_and_mbr_mar_5;
         memory_5_read;
 		memory_5_write;
-        memory_5_reset;
+        //memory_5_reset;
         jump_5;
         attempt_rejoin_5;
         //mar_equals_5;
@@ -320,6 +324,7 @@ table execute_5 {
         bit_and_mar_5;
         counter_5_rmw;
         mbr_equals_5;
+        memory_5_sub;
     }
 }
 
@@ -377,7 +382,7 @@ table execute_6 {
         //bit_and_mbr_mar_6;
         memory_6_read;
 		memory_6_write;
-        memory_6_reset;
+        //memory_6_reset;
         jump_6;
         attempt_rejoin_6;
         //mar_equals_6;
@@ -385,6 +390,7 @@ table execute_6 {
         bit_and_mar_6;
         counter_6_rmw;
         mbr_equals_6;
+        memory_6_sub;
     }
 }
 
@@ -442,7 +448,7 @@ table execute_7 {
         //bit_and_mbr_mar_7;
         memory_7_read;
 		memory_7_write;
-        memory_7_reset;
+        //memory_7_reset;
         jump_7;
         attempt_rejoin_7;
         //mar_equals_7;
@@ -450,6 +456,7 @@ table execute_7 {
         bit_and_mar_7;
         counter_7_rmw;
         mbr_equals_7;
+        memory_7_sub;
     }
 }
 
@@ -507,7 +514,7 @@ table execute_8 {
         //bit_and_mbr_mar_8;
         memory_8_read;
 		memory_8_write;
-        memory_8_reset;
+        //memory_8_reset;
         jump_8;
         attempt_rejoin_8;
         //mar_equals_8;
@@ -515,6 +522,7 @@ table execute_8 {
         bit_and_mar_8;
         counter_8_rmw;
         mbr_equals_8;
+        memory_8_sub;
     }
 }
 
@@ -572,7 +580,7 @@ table execute_9 {
         //bit_and_mbr_mar_9;
         memory_9_read;
 		memory_9_write;
-        memory_9_reset;
+        //memory_9_reset;
         jump_9;
         attempt_rejoin_9;
         //mar_equals_9;
@@ -580,6 +588,7 @@ table execute_9 {
         bit_and_mar_9;
         counter_9_rmw;
         mbr_equals_9;
+        memory_9_sub;
     }
 }
 
@@ -637,7 +646,7 @@ table execute_10 {
         //bit_and_mbr_mar_10;
         memory_10_read;
 		memory_10_write;
-        memory_10_reset;
+        //memory_10_reset;
         jump_10;
         attempt_rejoin_10;
         //mar_equals_10;
@@ -645,6 +654,7 @@ table execute_10 {
         bit_and_mar_10;
         counter_10_rmw;
         mbr_equals_10;
+        memory_10_sub;
     }
 }
 
@@ -702,7 +712,7 @@ table execute_11 {
         //bit_and_mbr_mar_11;
         memory_11_read;
 		memory_11_write;
-        memory_11_reset;
+        //memory_11_reset;
         jump_11;
         attempt_rejoin_11;
         //mar_equals_11;
@@ -710,5 +720,6 @@ table execute_11 {
         bit_and_mar_11;
         counter_11_rmw;
         mbr_equals_11;
+        memory_11_sub;
     }
 }
