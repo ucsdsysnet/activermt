@@ -100,7 +100,8 @@ class ActiveP4TableUpdater:
             'MIN'               : "min_mbr_mbr2",
             'MARK_PACKET'       : "mark_packet",
             'COPY_MAR_MBR'      : "copy_mbr_mar",
-            'COPY_MBR_MAR'      : "copy_mar_mbr"
+            'COPY_MBR_MAR'      : "copy_mar_mbr",
+            'MBR_EQUALS_MBR2'   : "mbr_equals_mbr2"
         }
         self.OPS_BRANCHING = {
             'CJUMP'         : "jump_%d",
@@ -291,13 +292,16 @@ class ActiveP4TableUpdater:
             )
     
     def addMemoryOpEntry(self, op, fid, isDisabled=0, mbrStart=0, mbrEnd=65535):
-        memStart = self.QUOTAS_VERT[fid][0]
-        memEnd = self.QUOTAS_VERT[fid][1]
-        if memStart > 0:
-            self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled, mbrStart, mbrEnd, memStart=0, memEnd=memStart-1)
-        if memEnd < 65535:
-            self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled, mbrStart, mbrEnd, memStart=memEnd+1, memEnd=65535)
-        self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled, mbrStart, mbrEnd, memStart=memStart, memEnd=memEnd)
+        if isDisabled == self.ENABLED:
+            memStart = self.QUOTAS_VERT[fid][0]
+            memEnd = self.QUOTAS_VERT[fid][1]
+            if memStart > 0:
+                self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled=isDisabled, mbrStart=mbrStart, mbrEnd=mbrEnd, memStart=0, memEnd=memStart-1)
+            if memEnd < 65535:
+                self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled=isDisabled, mbrStart=mbrStart, mbrEnd=mbrEnd, memStart=memEnd+1, memEnd=65535)
+            self.addExecuteTableEntry(fid, self.OPS_MEMACCESS[op], self.OPCODES[op], isDisabled=isDisabled, mbrStart=mbrStart, mbrEnd=mbrEnd, memStart=memStart, memEnd=memEnd)
+        else:
+            self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], isDisabled)
 
     def addMemoryOperations(self, fid):
         for op in self.OPS_MEMACCESS:
@@ -316,7 +320,7 @@ class ActiveP4TableUpdater:
         for op in self.OPS_DEFAULT:
             for fid in self.FIDS:
                 self.addExecuteTableEntry(fid, self.OPS_DEFAULT[op], self.OPCODES[op])
-                self.addExecuteTableEntry(fid, self.ACTION_SKIP, self.OPCODES[op], isDisabled=self.DISABLED_HARD)
+                self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], isDisabled=self.DISABLED_HARD)
 
     def addBranchingOps(self):
         for fid in self.FIDS:

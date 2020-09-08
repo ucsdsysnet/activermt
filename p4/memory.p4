@@ -22,7 +22,7 @@ action memory_1_read() {
     //count(hit_1, meta.mar);
 }
 
-blackbox stateful_alu heap_1_write {
+/*blackbox stateful_alu heap_1_write {
     reg                     : heap_1;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -33,6 +33,17 @@ blackbox stateful_alu heap_1_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_1_write {
+    
+    reg                     : heap_1;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_1_write() {
@@ -56,15 +67,15 @@ action memory_1_reset() {
 blackbox stateful_alu count_1_rmw {
     reg                     : heap_1;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -117,7 +128,7 @@ action memory_2_read() {
     //count(hit_2, meta.mar);
 }
 
-blackbox stateful_alu heap_2_write {
+/*blackbox stateful_alu heap_2_write {
     reg                     : heap_2;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -128,6 +139,17 @@ blackbox stateful_alu heap_2_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_2_write {
+    
+    reg                     : heap_2;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_2_write() {
@@ -151,15 +173,15 @@ action memory_2_reset() {
 blackbox stateful_alu count_2_rmw {
     reg                     : heap_2;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -212,7 +234,7 @@ action memory_3_read() {
     //count(hit_3, meta.mar);
 }
 
-blackbox stateful_alu heap_3_write {
+/*blackbox stateful_alu heap_3_write {
     reg                     : heap_3;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -223,6 +245,17 @@ blackbox stateful_alu heap_3_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_3_write {
+    
+    reg                     : heap_3;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_3_write() {
@@ -246,15 +279,15 @@ action memory_3_reset() {
 blackbox stateful_alu count_3_rmw {
     reg                     : heap_3;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -307,7 +340,7 @@ action memory_4_read() {
     //count(hit_4, meta.mar);
 }
 
-blackbox stateful_alu heap_4_write {
+/*blackbox stateful_alu heap_4_write {
     reg                     : heap_4;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -318,6 +351,17 @@ blackbox stateful_alu heap_4_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_4_write {
+    
+    reg                     : heap_4;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_4_write() {
@@ -341,15 +385,15 @@ action memory_4_reset() {
 blackbox stateful_alu count_4_rmw {
     reg                     : heap_4;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -402,7 +446,7 @@ action memory_5_read() {
     //count(hit_5, meta.mar);
 }
 
-blackbox stateful_alu heap_5_write {
+/*blackbox stateful_alu heap_5_write {
     reg                     : heap_5;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -413,6 +457,17 @@ blackbox stateful_alu heap_5_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_5_write {
+    
+    reg                     : heap_5;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_5_write() {
@@ -436,15 +491,15 @@ action memory_5_reset() {
 blackbox stateful_alu count_5_rmw {
     reg                     : heap_5;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -497,7 +552,7 @@ action memory_6_read() {
     //count(hit_6, meta.mar);
 }
 
-blackbox stateful_alu heap_6_write {
+/*blackbox stateful_alu heap_6_write {
     reg                     : heap_6;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -508,6 +563,17 @@ blackbox stateful_alu heap_6_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_6_write {
+    
+    reg                     : heap_6;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_6_write() {
@@ -531,15 +597,15 @@ action memory_6_reset() {
 blackbox stateful_alu count_6_rmw {
     reg                     : heap_6;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -592,7 +658,7 @@ action memory_7_read() {
     //count(hit_7, meta.mar);
 }
 
-blackbox stateful_alu heap_7_write {
+/*blackbox stateful_alu heap_7_write {
     reg                     : heap_7;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -603,6 +669,17 @@ blackbox stateful_alu heap_7_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_7_write {
+    
+    reg                     : heap_7;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_7_write() {
@@ -626,15 +703,15 @@ action memory_7_reset() {
 blackbox stateful_alu count_7_rmw {
     reg                     : heap_7;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -687,7 +764,7 @@ action memory_8_read() {
     //count(hit_8, meta.mar);
 }
 
-blackbox stateful_alu heap_8_write {
+/*blackbox stateful_alu heap_8_write {
     reg                     : heap_8;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -698,6 +775,17 @@ blackbox stateful_alu heap_8_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_8_write {
+    
+    reg                     : heap_8;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_8_write() {
@@ -721,15 +809,15 @@ action memory_8_reset() {
 blackbox stateful_alu count_8_rmw {
     reg                     : heap_8;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -782,7 +870,7 @@ action memory_9_read() {
     //count(hit_9, meta.mar);
 }
 
-blackbox stateful_alu heap_9_write {
+/*blackbox stateful_alu heap_9_write {
     reg                     : heap_9;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -793,6 +881,17 @@ blackbox stateful_alu heap_9_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_9_write {
+    
+    reg                     : heap_9;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_9_write() {
@@ -816,15 +915,15 @@ action memory_9_reset() {
 blackbox stateful_alu count_9_rmw {
     reg                     : heap_9;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -877,7 +976,7 @@ action memory_10_read() {
     //count(hit_10, meta.mar);
 }
 
-blackbox stateful_alu heap_10_write {
+/*blackbox stateful_alu heap_10_write {
     reg                     : heap_10;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -888,6 +987,17 @@ blackbox stateful_alu heap_10_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_10_write {
+    
+    reg                     : heap_10;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_10_write() {
@@ -911,15 +1021,15 @@ action memory_10_reset() {
 blackbox stateful_alu count_10_rmw {
     reg                     : heap_10;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;
@@ -972,7 +1082,7 @@ action memory_11_read() {
     //count(hit_11, meta.mar);
 }
 
-blackbox stateful_alu heap_11_write {
+/*blackbox stateful_alu heap_11_write {
     reg                     : heap_11;
     condition_lo            : register_lo == 0;
     condition_hi            : register_lo == meta.mar;
@@ -983,6 +1093,17 @@ blackbox stateful_alu heap_11_write {
     output_predicate        : condition_lo or condition_hi;
     output_value            : 0;
     output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_11_write {
+    
+    reg                     : heap_11;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
 }
 
 action memory_11_write() {
@@ -1006,15 +1127,15 @@ action memory_11_reset() {
 blackbox stateful_alu count_11_rmw {
     reg                     : heap_11;
     
-    condition_hi            : meta.mbr == 0;
+    //condition_hi            : meta.mbr == 0;
 
     update_lo_1_predicate   : true;
     update_lo_1_value       : meta.mar;
 
-    update_hi_1_predicate   : not condition_hi;
+    update_hi_1_predicate   : true;
     update_hi_1_value       : register_hi + 1;
-    update_hi_2_predicate   : condition_hi;
-    update_hi_2_value       : register_hi - 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
 
     output_predicate        : true;
     output_dst              : meta.mbr;

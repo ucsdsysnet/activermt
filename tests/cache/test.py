@@ -96,13 +96,31 @@ from tests.ptf_base import *
         verify_packet_prefix(self, pkt_exp, 0, 1)
         send_packet(self, 0, pkt_send)
         verify_packet_prefix(self, pkt_exp, 0, 54)
-
-        #data = self.client.register_read_heap_3(self.sess_hdl, self.dev_tgt, 1, sync)
-        #self.client.register_write_heap_3(self.sess_hdl, self.dev_tgt, 1, data)
 """
 
-"""class TestCacheReadResponse(PrototypeTestBase):
+class TestCacheReadResponse(PrototypeTestBase):
     def runTest(self):
+        
+        sync = prototype_register_flags_t(read_hw_sync=1)
+        obj = self.client.register_read_heap_1(self.sess_hdl, self.dev_tgt, 1, sync)[0]
+
+        #self.client.register_reset_all_heap_10(self.sess_hdl, self.dev_tgt)
+        #self.client.register_reset_all_heap_5(self.sess_hdl, self.dev_tgt)
+        #self.client.register_reset_all_heap_8(self.sess_hdl, self.dev_tgt)
+        #self.client.register_reset_all_heap_7(self.sess_hdl, self.dev_tgt)
+
+        obj.f1 = 2413
+        obj.f0 = 3
+        self.client.register_write_heap_10(self.sess_hdl, self.dev_tgt, 2413, obj)
+
+        obj.f1 = 3422
+        obj.f0 = 2
+        self.client.register_write_heap_10(self.sess_hdl, self.dev_tgt, 3422, obj)
+
+        obj.f1 = 3525
+        obj.f0 = 4
+        self.client.register_write_heap_10(self.sess_hdl, self.dev_tgt, 3525, obj)
+
         pkt_send = (
             Ether()/
             IP(dst="10.0.0.2")/
@@ -111,7 +129,7 @@ from tests.ptf_base import *
 
             # [ LFU + Write + Update Count ]
 
-            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2413)/ # random location
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=2413)/ # random location
             ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             ActiveProgram(opcode=self.OPCODES['COPY_MAR_MBR'])/ # stores the address of current min
@@ -119,11 +137,11 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # writes the address of current min
             ActiveProgram(opcode=self.OPCODES['COPY_MBR_MAR'])/ # restores address
-            ActiveProgram(opcode=self.OPCODES['NOP'])/
-            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
-            ActiveProgram(opcode=self.OPCODES['COPY_MBR2_MBR'])/
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # location of counter
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR_MBR2'])/
 
-            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=3422)/ # random location
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=3422)/ # random location
             ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
@@ -131,8 +149,8 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
-            ActiveProgram(opcode=self.OPCODES['NOP'])/
-            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # location of counter
             ActiveProgram(opcode=self.OPCODES['REVMIN'])/
 
             ActiveProgram(opcode=self.OPCODES['MBR_EQUALS_MBR2'])/ # if the current count is lower
@@ -147,7 +165,7 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
 
-            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=3525)/ # random location
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=3525)/ # random location
             ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/ 
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
@@ -155,8 +173,8 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
-            ActiveProgram(opcode=self.OPCODES['NOP'])/
-            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/ # location of counter
+            ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # location of counter
             ActiveProgram(opcode=self.OPCODES['REVMIN'])/
 
             ActiveProgram(opcode=self.OPCODES['MBR_EQUALS_MBR2'])/ # if the current count is lower
@@ -183,7 +201,27 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write threshold freq so that it isn't subject to lfu again
             ActiveProgram(opcode=self.OPCODES['NOP'])/
 
-            # [ Update Frequency ]
+            
+            
+            ActiveProgram(opcode=self.OPCODES['RETURN'])/
+            ActiveProgram()/
+            ActiveProgram(opcode=self.OPCODES['EOF'])
+        )
+
+        pkt_exp = copy.deepcopy(pkt_send)
+        send_packet(self, 0, pkt_send)
+        verify_packet_prefix(self, pkt_exp, 4, 1)
+
+        data = self.client.register_read_heap_7(self.sess_hdl, self.dev_tgt, 1, sync)[0]
+        self.assertEquals(data.f0, 3422)
+
+        data = self.client.register_read_heap_5(self.sess_hdl, self.dev_tgt, 3422, sync)[0]
+        self.assertEquals(data.f0, 8193)
+
+        data = self.client.register_read_heap_8(self.sess_hdl, self.dev_tgt, 3422, sync)[0]
+        self.assertEquals(data.f0, 1234)
+
+"""# [ Update Frequency ]
 
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/
             ActiveProgram(opcode=self.OPCODES['HASHMBR'])/
@@ -219,7 +257,19 @@ from tests.ptf_base import *
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2)/
-            ActiveProgram(opcode=self.OPCODES['MEM_SUB'])/ # iter 4
+            ActiveProgram(opcode=self.OPCODES['MEM_SUB'])/ # iter 4"""
+
+"""class TestCacheDecaying(PrototypeTestBase):
+    def runTest(self):
+        pkt_send = (
+            Ether()/
+            IP(src="10.0.0.1", dst="10.0.0.2")/
+            UDP(sport=9877, dport=9876, chksum=0)/
+            ActiveState(fid=10)/
+            
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=1)/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             
             ActiveProgram(opcode=self.OPCODES['RETURN'])/
             ActiveProgram()/
