@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 
 sys.path.insert(1, os.getcwd())
 
@@ -98,7 +99,7 @@ from tests.ptf_base import *
         verify_packet_prefix(self, pkt_exp, 0, 54)
 """
 
-class TestCacheReadResponse(PrototypeTestBase):
+"""class TestCacheReadResponse(PrototypeTestBase):
     def runTest(self):
         
         sync = prototype_register_flags_t(read_hw_sync=1)
@@ -120,6 +121,8 @@ class TestCacheReadResponse(PrototypeTestBase):
         obj.f1 = 3525
         obj.f0 = 4
         self.client.register_write_heap_10(self.sess_hdl, self.dev_tgt, 3525, obj)
+
+        sleep(1)
 
         pkt_send = (
             Ether()/
@@ -200,8 +203,6 @@ class TestCacheReadResponse(PrototypeTestBase):
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2)/ # load the threshold value for hot item
             ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # write threshold freq so that it isn't subject to lfu again
             ActiveProgram(opcode=self.OPCODES['NOP'])/
-
-            
             
             ActiveProgram(opcode=self.OPCODES['RETURN'])/
             ActiveProgram()/
@@ -219,9 +220,41 @@ class TestCacheReadResponse(PrototypeTestBase):
         self.assertEquals(data.f0, 8193)
 
         data = self.client.register_read_heap_8(self.sess_hdl, self.dev_tgt, 3422, sync)[0]
-        self.assertEquals(data.f0, 1234)
+        self.assertEquals(data.f0, 1234)"""
 
-"""# [ Update Frequency ]
+"""class TestFrequencyUpdate(PrototypeTestBase):
+    def runTest(self):
+
+        sync = prototype_register_flags_t(read_hw_sync=1)
+        obj = self.client.register_read_heap_1(self.sess_hdl, self.dev_tgt, 1, sync)[0]
+
+        addr = 0x22
+        obj.f1 = addr
+        obj.f0 = 2
+        self.client.register_write_heap_6(self.sess_hdl, self.dev_tgt, addr, obj)
+
+        addr = 0x100E
+        obj.f1 = addr
+        obj.f0 = 3
+        self.client.register_write_heap_2(self.sess_hdl, self.dev_tgt, addr, obj)
+
+        addr = 0x1437
+        obj.f1 = addr
+        obj.f0 = 4
+        self.client.register_write_heap_9(self.sess_hdl, self.dev_tgt, addr, obj)
+
+        addr = 0x1176
+        obj.f1 = addr
+        obj.f0 = 5
+        self.client.register_write_heap_11(self.sess_hdl, self.dev_tgt, addr, obj)
+
+        sleep(1)
+
+        pkt_send = (
+            Ether()/
+            IP(dst="10.0.0.2")/
+            UDP(sport=9877, dport=9876)/
+            ActiveState(fid=10)/
 
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=8193)/
             ActiveProgram(opcode=self.OPCODES['HASHMBR'])/
@@ -257,7 +290,16 @@ class TestCacheReadResponse(PrototypeTestBase):
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['MBR_LOAD'], arg=2)/
-            ActiveProgram(opcode=self.OPCODES['MEM_SUB'])/ # iter 4"""
+            ActiveProgram(opcode=self.OPCODES['MEM_SUB'])/ # iter 4
+
+            ActiveProgram(opcode=self.OPCODES['RETURN'])/
+            ActiveProgram()/
+            ActiveProgram(opcode=self.OPCODES['EOF'])
+        )
+
+        pkt_exp = copy.deepcopy(pkt_send)
+        send_packet(self, 0, pkt_send)
+        verify_packet_prefix(self, pkt_exp, 4, 1)"""
 
 """class TestCacheDecaying(PrototypeTestBase):
     def runTest(self):
