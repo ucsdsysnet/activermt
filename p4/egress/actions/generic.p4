@@ -136,6 +136,14 @@ action copy_mbr_mar() {
     modify_field(meta.mbr, meta.mar);
 }
 
+action bit_and_mar_mbr() {
+    bit_and(meta.mar, meta.mar, meta.mbr);
+}
+
+action mar_add_mbr() {
+    add_to_field(meta.mar, meta.mbr);
+}
+
 /*action get_random_number() {
     modify_field_rng_uniform(meta.mbr, 0, 65535);
 }*/

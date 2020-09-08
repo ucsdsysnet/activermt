@@ -41,6 +41,8 @@ table execute_1 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_1;
         mar_load_1;
@@ -107,6 +109,8 @@ table execute_2 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_2;
         mar_load_2;
@@ -173,6 +177,8 @@ table execute_3 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_3;
         mar_load_3;
@@ -239,6 +245,8 @@ table execute_4 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_4;
         mar_load_4;
@@ -305,6 +313,8 @@ table execute_5 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_5;
         mar_load_5;
@@ -371,6 +381,8 @@ table execute_6 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_6;
         mar_load_6;
@@ -437,6 +449,8 @@ table execute_7 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_7;
         mar_load_7;
@@ -503,6 +517,8 @@ table execute_8 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_8;
         mar_load_8;
@@ -569,6 +585,8 @@ table execute_9 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_9;
         mar_load_9;
@@ -635,6 +653,8 @@ table execute_10 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_10;
         mar_load_10;
@@ -701,6 +721,8 @@ table execute_11 {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_11;
         mar_load_11;

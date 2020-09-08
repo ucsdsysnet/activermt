@@ -101,13 +101,18 @@ class ActiveP4TableUpdater:
             'MARK_PACKET'       : "mark_packet",
             'COPY_MAR_MBR'      : "copy_mbr_mar",
             'COPY_MBR_MAR'      : "copy_mar_mbr",
-            'MBR_EQUALS_MBR2'   : "mbr_equals_mbr2"
+            'MBR_EQUALS_MBR2'   : "mbr_equals_mbr2",
+            'BIT_AND_MAR_MBR'   : "bit_and_mar_mbr",
+            'MAR_ADD_MBR'       : "mar_add_mbr",
+            'LOAD_5TUPLE'       : "load_hashlist_5tuple",
+            'HASH_GENERIC'      : "hash_generic"
         }
         self.OPS_BRANCHING = {
             'CJUMP'         : "jump_%d",
             'CJUMPI'        : "jump_%d",
             'DO'            : "jump_%d",
-            'WHILE'         : "loop_end"
+            'WHILE'         : "loop_end",
+            'CRET'          : "complete"
         }
 
     def createMirrorSessions(self, mirror_maps):
@@ -325,7 +330,7 @@ class ActiveP4TableUpdater:
     def addBranchingOps(self):
         for fid in self.FIDS:
             for op in self.OPS_BRANCHING:
-                if op == 'CJUMP':
+                if op == 'CJUMP' or op == 'CRET':
                     self.addExecuteTableEntry(fid, self.OPS_BRANCHING[op], self.OPCODES[op], mbrStart=1)
                     self.addExecuteTableEntry(fid, self.ACTION_SKIP, self.OPCODES[op], mbrEnd=0)
                 else:

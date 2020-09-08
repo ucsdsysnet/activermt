@@ -41,6 +41,8 @@ table execute_# {
         load_hashlist_5tuple;
         copy_mar_mbr;
         copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_#;
         mar_load_#;

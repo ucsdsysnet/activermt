@@ -301,6 +301,33 @@ from tests.ptf_base import *
         send_packet(self, 0, pkt_send)
         verify_packet_prefix(self, pkt_exp, 4, 1)"""
 
+class TestBloom(PrototypeTestBase):
+    def runTest(self):
+
+        sync = prototype_register_flags_t(read_hw_sync=1)
+        obj = self.client.register_read_heap_4(self.sess_hdl, self.dev_tgt, 1, sync)[0]
+
+        pkt_send = (
+            Ether()/
+            IP(dst="10.0.0.2")/
+            UDP(sport=9877, dport=9876)/
+            ActiveState(fid=10)/
+
+            ActiveProgram(opcode=self.OPCODES['MAR_LOAD'], arg=8193)/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
+            ActiveProgram(opcode=self.OPCODES['COUNTER_RMW'])/
+            ActiveProgram(opcode=self.OPCODES['CRET'])/
+            
+            ActiveProgram(opcode=self.OPCODES['RETURN'])/
+            ActiveProgram()/
+            ActiveProgram(opcode=self.OPCODES['EOF'])
+        )
+
+        pkt_exp = copy.deepcopy(pkt_send)
+        send_packet(self, 0, pkt_send)
+        verify_packet_prefix(self, pkt_exp, 4, 1)
+
 """class TestCacheDecaying(PrototypeTestBase):
     def runTest(self):
         pkt_send = (

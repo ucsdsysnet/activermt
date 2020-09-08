@@ -142,31 +142,53 @@ from tests.ptf_base import *
         send_packet(self, 0, pkt)
         verify_packet_prefix(self, pktExp, 0, 14)"""
 
-class TestSLB(PrototypeTestBase):
+class TestConnLookup(PrototypeTestBase):
     def runTest(self):
+
+        sync = prototype_register_flags_t(read_hw_sync=1)
+        obj = self.client.register_read_heap_1(self.sess_hdl, self.dev_tgt, 0, sync)[0]
+
+        addr = 0x01
+        obj.f1 = addr
+        obj.f0 = 2
+        #self.client.register_write_heap_6(self.sess_hdl, self.dev_tgt, addr, obj)
+
         pkt = (
             Ether()/
             IP(src="10.0.0.1", dst="10.0.0.2")/
             UDP(sport=9877, dport=9876, chksum=0)/
-            ActiveState(fid=1)/
+            ActiveState(fid=10)/
+
             ActiveProgram(opcode=self.OPCODES['LOAD_5TUPLE'])/
             ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
-            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8192)/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/ # get address of conntable
             ActiveProgram(opcode=self.OPCODES['MEM_READ'])/
             ActiveProgram(opcode=self.OPCODES['SET_PORT'])/ # just forward if already present in table
             ActiveProgram(opcode=self.OPCODES['CRET'])/
-            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # get base location of DIP pool
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR_MBR2'])/
+            ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # get size of DIP pool
             ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
-            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=16)/ # choose one server from DIP pool
-            # add mbr to mar
-            
+
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR_MBR'])/
+            ActiveProgram(opcode=self.OPCODES['COPY_MBR2_MBR'])/ 
+            ActiveProgram(opcode=self.OPCODES['MAR_ADD_MBR'])/ # choose one server from DIP pool
             ActiveProgram(opcode=self.OPCODES['MEM_READ'])/ # mbr now has the port of the conn
+            ActiveProgram()/
+
+            ActiveProgram(opcode=self.OPCODES['NOP'])/
             ActiveProgram(opcode=self.OPCODES['HASH_GENERIC'])/
-            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8192)/
+            ActiveProgram(opcode=self.OPCODES['BIT_AND_MAR'], arg=8191)/
             ActiveProgram(opcode=self.OPCODES['MAR_ADD'], arg=0)/
             ActiveProgram(opcode=self.OPCODES['MEM_WRITE'])/ # store port in conntable
+            ActiveProgram(opcode=self.OPCODES['SET_PORT'])/
             ActiveProgram(opcode=self.OPCODES['RETURN'])/
+
             ActiveProgram()/
             ActiveProgram(opcode=self.OPCODES['EOF'])
         )
+
+        pkt_exp = copy.deepcopy(pkt)
+        send_packet(self, 0, pkt)
+        verify_packet_prefix(self, pkt_exp, 4, 14)
