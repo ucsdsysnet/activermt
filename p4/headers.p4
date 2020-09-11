@@ -89,6 +89,7 @@ header_type metadata_t {
         pc          : 4;
         cycles      : 8;
         rtsid       : 16;
+        fwdid       : 16;
         mar         : 16;
         mbr         : 16;
         mbr2        : 16;

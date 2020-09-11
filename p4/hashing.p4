@@ -43,6 +43,7 @@ field_list_calculation l4_5tuple_hash {
 
 field_list cycle_metadata {
     meta.rtsid;
+    meta.fwdid;
     meta.pc;
     meta.loop;
     meta.disabled;

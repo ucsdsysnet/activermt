@@ -301,7 +301,7 @@ from tests.ptf_base import *
         send_packet(self, 0, pkt_send)
         verify_packet_prefix(self, pkt_exp, 4, 1)"""
 
-class TestBloom(PrototypeTestBase):
+"""class TestBloom(PrototypeTestBase):
     def runTest(self):
 
         sync = prototype_register_flags_t(read_hw_sync=1)
@@ -326,7 +326,7 @@ class TestBloom(PrototypeTestBase):
 
         pkt_exp = copy.deepcopy(pkt_send)
         send_packet(self, 0, pkt_send)
-        verify_packet_prefix(self, pkt_exp, 4, 1)
+        verify_packet_prefix(self, pkt_exp, 4, 1)"""
 
 """class TestCacheDecaying(PrototypeTestBase):
     def runTest(self):

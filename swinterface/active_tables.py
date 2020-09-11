@@ -141,7 +141,7 @@ class ActiveP4TableUpdater:
                 egr_port=self.dpmap[0], egr_port_v=True,
                 max_pkt_len=16384))
 
-    def addForwardTableEntry(self, addr, port, pfx=32, flagAux=0, flagAck=0, flagRedirect=0):
+    def addForwardTableEntry(self, addr, port, mirror_spec, pfx=32, flagAux=0, flagAck=0, flagRedirect=0):
         p4_pd.forward_table_add_with_setegr(
             p4_pd.forward_match_spec_t(
                 flagAux,
@@ -150,7 +150,7 @@ class ActiveP4TableUpdater:
                 ipv4Addr_to_i32(addr), 
                 pfx
             ),
-            p4_pd.setegr_action_spec_t(self.dpmap[port])
+            p4_pd.setegr_action_spec_t(self.dpmap[port], mirror_spec)
         )
 
     def addBackwardTableEntry(self, addr, port):
@@ -174,7 +174,7 @@ class ActiveP4TableUpdater:
             p4_pd.bytes_meter_spec_t(self.CIR_KBPS, self.CBS_KBITS, self.PIR_CBPS, self.PBS_KBITS, False)
         )
 
-    def addProgressTableEntry(self, action, mirrorPort=None, skipped=0, complete=0, duplicate=0, flagRts=0, flagAux=0):
+    def addProgressTableEntry(self, action, skipped=0, complete=0, duplicate=0, flagRts=0, flagAux=0):
         cmd = '''p4_pd.progress_table_add_with_%s(
             p4_pd.progress_match_spec_t(
                 as_flag_rts=%d,
@@ -185,15 +185,14 @@ class ActiveP4TableUpdater:
                 meta_cycles_start=1,
                 meta_cycles_end=hex_to_byte(0xFF)
             ), 
-            1%s
+            1
         )''' % (
             action, 
             flagRts,
             flagAux, 
             skipped, 
             complete, 
-            duplicate,  
-            ',p4_pd.%s_action_spec_t(%d)' % (action, mirrorPort) if mirrorPort is not None else ''
+            duplicate
         )
         exec(cmd)
 
@@ -386,20 +385,20 @@ for fid in updater.FIDS:
     updater.addExecuteTableEntry(fid, updater.ACTION_SKIP, updater.OPCODES['MARK_IF'], mbrStart=1)
 
 for dst in ip_dsts:
-    updater.addForwardTableEntry(dst, ip_dsts[dst])
-    updater.addForwardTableEntry(dst, ip_dsts[dst], flagAck=1)
-    updater.addForwardTableEntry(dst, ip_dsts[dst], flagAux=1)
+    updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst])
+    updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAck=1)
+    updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAux=1)
     updater.addBackwardTableEntry(dst, mirror_ids[dst])
-updater.addForwardTableEntry('0.0.0.0', 8, flagRedirect=1)
+updater.addForwardTableEntry('0.0.0.0', 8, 2, flagRedirect=1)
 
-updater.addProgressTableEntry('cycle', mirrorPort=5)
-updater.addProgressTableEntry('cycle_clone', mirrorPort=5, duplicate=1)
-updater.addProgressTableEntry('cycle', mirrorPort=5, flagRts=1)
-updater.addProgressTableEntry('cycle_clone', mirrorPort=5, flagRts=1, duplicate=1)
-updater.addProgressTableEntry('cycle', mirrorPort=5, flagAux=1)
-updater.addProgressTableEntry('cycle_clone', mirrorPort=5, flagAux=1, duplicate=1)
-updater.addProgressTableEntry('cycle_aux', mirrorPort=5, skipped=1)
-updater.addProgressTableEntry('cycle_clone_aux', mirrorPort=5, skipped=1, duplicate=1)
+updater.addProgressTableEntry('cycle')
+updater.addProgressTableEntry('cycle_clone', duplicate=1)
+updater.addProgressTableEntry('cycle', flagRts=1)
+updater.addProgressTableEntry('cycle_clone', flagRts=1, duplicate=1)
+updater.addProgressTableEntry('cycle', flagAux=1)
+updater.addProgressTableEntry('cycle_clone', flagAux=1, duplicate=1)
+updater.addProgressTableEntry('cycle_aux', skipped=1)
+updater.addProgressTableEntry('cycle_clone_aux', skipped=1, duplicate=1)
 updater.addProgressTableEntry('cycle_redirect', flagRts=1, complete=1)
 
 updater.addControlTableEntries()

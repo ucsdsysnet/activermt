@@ -11,19 +11,53 @@
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
+#define KVSTORE_SIZE	65536
+#define MAX_CODELEN		1280
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
+
+#define FLAG_MARKED(x)	(x & 0x0800) >> 11
+#define FLAG_MEMFAULT(x) 
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
 		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 	},
 };
+
+typedef struct {
+	uint32_t padding_0;
+	uint16_t padding_1;
+	uint64_t timestamp;
+	uint16_t magic;
+} __attribute__((__packed__)) tstamp_t;
+
+typedef struct {
+	uint16_t	flags;
+	uint16_t	fid;
+	uint16_t	acc;
+	uint16_t	acc2;
+	uint16_t	id;
+	uint16_t	freq;
+} __attribute__((__packed__)) pg_active_initial_hdr;
+
+typedef struct {
+	uint8_t		flags_label;
+	uint8_t		opcode;
+	uint16_t	args;
+} __attribute__((__packed__)) pg_active_instruction_hdr;
+
+uint16_t kv_store[KVSTORE_SIZE];
+uint16_t bytecode_cacheread_response[MAX_CODELEN][3];
+uint16_t codelen_cacheread_response;
+uint16_t caching_frequency_threshold;
+uint16_t memaddr_base, memaddr_pagemask;
 
 /* basicfwd.c: Basic DPDK skeleton forwarding example. */
 
@@ -122,6 +156,61 @@ sleep_ns(uint64_t duration_ns)
 	}
 }
 
+static inline void
+active_add_instruction(pg_active_instruction_hdr *instr, uint8_t label, uint8_t opcode, uint16_t args)
+{
+	instr->flags_label = label;
+	instr->opcode = opcode;
+	instr->args = rte_bswap16(args);
+}
+
+static inline void
+active_program_insert(pg_active_instruction_hdr *instr, uint16_t bytecode[][3], uint16_t codelen)
+{
+	uint16_t i;
+	for(i = 0; i < codelen; i++) {
+		active_add_instruction(instr, bytecode[i][0], bytecode[i][1], bytecode[i][2]);
+		instr++;
+	}
+}
+
+static inline void
+customize_cacheread_response(pg_active_instruction_hdr *instr, uint16_t key, uint16_t value, uint16_t freq)
+{
+	uint16_t i;
+	uint16_t bytecode[MAX_CODELEN][3];
+	for(i = 0; i < codelen_cacheread_response; i++) {
+		bytecode[i][0] = bytecode_cacheread_response[i][0];
+		bytecode[i][1] = bytecode_cacheread_response[i][1];
+		bytecode[i][2] = bytecode_cacheread_response[i][2];
+	}
+	bytecode[0][2] = key;
+	bytecode[2][2] = memaddr_pagemask;
+	bytecode[3][2] = memaddr_base;
+	bytecode[7][2] = freq;
+	bytecode[13][2] = key;
+	bytecode[16][2] = value;
+	bytecode[19][2] = freq;
+	active_program_insert(instr, bytecode, codelen_cacheread_response);
+}
+
+static inline void
+read_active_program(uint16_t bytecode[][3], uint16_t *codelen, char *src_file)
+{
+	uint16_t flags_goto, opcode, arg;
+	FILE* fptr = fopen(src_file, "r");
+	*codelen = 0;
+	if(fptr != NULL) {
+		while(fscanf(fptr, "%hd,%hd,%hd", &flags_goto, &opcode, &arg) != EOF && *codelen < MAX_CODELEN) {
+			bytecode[*codelen][0] = flags_goto;
+			bytecode[*codelen][1] = opcode;
+			bytecode[*codelen][2] = arg;
+			(*codelen)++;
+		}
+		fclose(fptr);
+	}
+}
+
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
@@ -157,9 +246,16 @@ lcore_main(void)
 			/* Get burst of RX packets, from first port of pair. */
 			struct rte_mbuf *bufs[BURST_SIZE];
 			struct rte_ipv4_hdr	*ipv4_hdr;
+			pg_active_initial_hdr *activep4_hdr;
+			pg_active_instruction_hdr *instr;
+
 			rte_be32_t tmp_addr;
+			uint8_t	hasflag_marked;
+			uint16_t fid, key, value, flags, freq;
+
 			int i;
 			char *p;
+
 			const uint16_t nb_rx = rte_eth_rx_burst(port, 0,
 					bufs, BURST_SIZE);
 
@@ -169,11 +265,38 @@ lcore_main(void)
 			for(i = 0; i < nb_rx; i++) {
 				p = rte_pktmbuf_mtod(bufs[i], char *);
 				p += sizeof(struct rte_ether_hdr);
+
+				// swap src,dst IPs
 				ipv4_hdr = (struct rte_ipv4_hdr*) p;
 				tmp_addr = ipv4_hdr->src_addr;
 				ipv4_hdr->src_addr = ipv4_hdr->dst_addr;
 				ipv4_hdr->dst_addr = tmp_addr;
-				//sleep_ns(300);
+				
+				p += sizeof(struct rte_ipv4_hdr);
+				p += sizeof(struct rte_udp_hdr);
+				p += sizeof(tstamp_t);
+
+				// serve request
+				activep4_hdr = (pg_active_initial_hdr*) p;
+				flags = rte_bswap16(activep4_hdr->flags);
+				fid = rte_bswap16(activep4_hdr->fid);
+				hasflag_marked = FLAG_MARKED(flags);
+				if(fid != 10) continue;
+				
+				key = rte_bswap16(activep4_hdr->acc2);
+				freq = rte_bswap16(activep4_hdr->acc);
+				printf("[REQUEST] key=%hu\n", key);
+				value = kv_store[key];
+				activep4_hdr->acc = rte_bswap16(value);
+				if(hasflag_marked == 1) {
+					// insert active program
+					printf("hot item freq=%hu\n", freq);
+					activep4_hdr->flags = 0;
+					//bufs[i]->data_len = 28 + codelen_cacheread_response * 4;
+					//bufs[i]->pkt_len = 42 + bufs[i]->data_len;
+					instr = (pg_active_instruction_hdr*) ((char*) activep4_hdr + sizeof(pg_active_initial_hdr));
+					customize_cacheread_response(instr, key, value, freq);
+				}
 			}
 
 			/* Send burst of TX packets, to second port of pair. */
@@ -200,6 +323,14 @@ main(int argc, char *argv[])
 	struct rte_mempool *mbuf_pool;
 	unsigned nb_ports;
 	uint16_t portid;
+	uint32_t key;
+	char filename[100];
+
+	for(key = 0; key < KVSTORE_SIZE; key++) kv_store[key] = KVSTORE_SIZE - key - 1;
+	strcpy(filename, "cache_read_response.csv");
+	read_active_program(bytecode_cacheread_response, &codelen_cacheread_response, filename);
+	memaddr_base = 0;
+	memaddr_pagemask = 0x000F;
 
 	/* Initialize the Environment Abstraction Layer (EAL). */
 	int ret = rte_eal_init(argc, argv);

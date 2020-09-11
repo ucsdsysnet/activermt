@@ -1,6 +1,7 @@
-action setegr(port) {
+action setegr(port, fwdid) {
     modify_field(ig_intr_md_for_tm.ucast_egress_port, port);
     modify_field(as.flag_aux, 0);
+    modify_field(meta.fwdid, fwdid);
 }
 
 action setrts(mirror_id) {

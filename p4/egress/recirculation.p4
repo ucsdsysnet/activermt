@@ -10,27 +10,27 @@ action set_mirror(dst) {
     add_to_field(ipv4.identification, 1000);
 }
 
-action cycle_aux(dst) {
-    set_mirror(dst);
+action cycle_aux() {
+    set_mirror(meta.fwdid);
     reset_aux();
     modify_field(eg_intr_md_for_oport.drop_ctl, 1);
     subtract_from_field(ipv4.ttl, 1);
 }
 
-action cycle_clone_aux(dst) {
-    set_mirror(dst);
+action cycle_clone_aux() {
+    set_mirror(meta.fwdid);
     reset_aux();
     subtract_from_field(ipv4.ttl, 1);
 }
 
-action cycle(dst) {
-    set_mirror(dst);
+action cycle() {
+    set_mirror(meta.fwdid);
     modify_field(eg_intr_md_for_oport.drop_ctl, 1);
     subtract_from_field(ipv4.ttl, 1);
 }
 
-action cycle_clone(dst) {
-    set_mirror(dst);
+action cycle_clone() {
+    set_mirror(meta.fwdid);
     subtract_from_field(ipv4.ttl, 1);
 }
 
