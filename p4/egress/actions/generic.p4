@@ -1,10 +1,14 @@
 action skip() {}
 
-action drop() {
+action drop_ig() {
+    drop();
+}
+
+action drop_eg() {
     modify_field(eg_intr_md_for_oport.drop_ctl, 1);
 } 
 
-action cancel_drop() {
+action cancel_drop_eg() {
     bit_and(eg_intr_md_for_oport.drop_ctl, eg_intr_md_for_oport.drop_ctl, 6);
 }
 
@@ -46,6 +50,10 @@ action acc2_load() {
     modify_field(as.acc2, meta.mbr);
 }
 
+action acc_to_mbr() {
+    modify_field(meta.mbr, as.acc);
+}
+
 action mark_packet() {
     modify_field(as.flag_marked, 1);
 }
@@ -54,16 +62,31 @@ action enable_execution() {
     bit_and(meta.disabled, meta.disabled, 2);
 }
 
-action return_to_sender() {
+/*action swap_addr() {
     swap(ipv4.srcAddr, ipv4.dstAddr);
     swap(ethernet.srcAddr, ethernet.dstAddr);
-    add_to_field(udp.len, 6);
+}*/
+
+action rts_addr() {
+    modify_field(ipv4.dstAddr, ipv4.srcAddr);
+    modify_field(ethernet.dstAddr, ethernet.srcAddr);
+}
+
+action return_to_sender() {
+    //swap(ipv4.srcAddr, ipv4.dstAddr);
+    //swap(ethernet.srcAddr, ethernet.dstAddr);
+    modify_field(ipv4.dstAddr, ipv4.srcAddr);
+    modify_field(ethernet.dstAddr, ethernet.srcAddr);
+    add_to_field(udp.len, 4);
     modify_field(as.flag_rts, 1);
     modify_field(meta.rts, 1);
+    modify_field(meta.fwdid, meta.rtsid);
 }
 
 action memfault() {
     modify_field(as.flag_mfault, 1);
+    modify_field(as.acc, meta.mar);
+    complete();
     return_to_sender();
 }
 
@@ -90,6 +113,10 @@ action mbr_equals_mbr2() {
 
 action hash_generic() {
     modify_field_with_hash_based_offset(meta.mar, 0, generic_hash, 65536);
+}
+
+action hash_acc2() {
+    modify_field_with_hash_based_offset(meta.mar, 0, acc2_list_hash, 65536);
 }
 
 /*action hash_5tuple() {
@@ -144,6 +171,6 @@ action mar_add_mbr() {
     add_to_field(meta.mar, meta.mbr);
 }
 
-/*action get_random_number() {
-    modify_field_rng_uniform(meta.mbr, 0, 65535);
-}*/
+action set_port_ig() {
+    modify_field(ig_intr_md_for_tm.ucast_egress_port, meta.mbr);
+}

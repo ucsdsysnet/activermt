@@ -1,13 +1,11 @@
 table execute_# {
     reads {
         ap[?].opcode        : exact;
-        meta.complete       : exact;
-        meta.disabled       : range;
-        meta.mbr            : range;
-        meta.quota_start    : range;
-        meta.quota_end      : range;
-        meta.mar            : range;
         as.fid              : exact;
+        meta.complete       : exact;
+        meta.disabled       : exact;
+        meta.mbr            : range;
+        meta.mar            : range;
     }
     actions {
 // ==== GENERIC ACTIONS ==== //  
@@ -21,11 +19,13 @@ table execute_# {
         copy_mbr2_mbr;
         copy_mbr_mbr2;
         mark_packet;
-        drop;
-        cancel_drop;
+        drop_eg;
+        cancel_drop_eg;
         duplicate;
         enable_execution;
         return_to_sender;
+        //swap_addr;
+        rts_addr;
         memfault;
         set_port;
         goto_aux;
@@ -43,6 +43,8 @@ table execute_# {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
 // ==== STAGE SPECIFIC ACTIONS ==== //        
         hashmar_#;
         mar_load_#;
@@ -52,15 +54,24 @@ table execute_# {
         mar_add_#;
         //mbr_subtract_#;
         //bit_and_mbr_mar_#;
-        #memory
-        //memory_#_reset;
         jump_#;
         attempt_rejoin_#;
         //mar_equals_#;
         bit_and_mbr_#;
         bit_and_mar_#;
-        counter_#_rmw;
         mbr_equals_#;
+        counter_#_rmw;
+        memory_#_read;
+        memory_#_write;
         memory_#_sub;
+    }
+}
+
+table precache_# {
+    reads {
+        as.flag_precache    : exact;
+    }
+    actions {
+        write_prog_#;
     }
 }

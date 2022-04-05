@@ -1,51 +1,47 @@
-register bloom_meter {
-    width           : 8;
-    instance_count  : 65536;
+counter active_traffic {
+    type            : packets_and_bytes;
+    instance_count  : 256;
 }
 
-blackbox stateful_alu bloom_meter_filter {
-    reg                     : bloom_meter;
-    condition_lo            : register_lo == 0;
-    update_lo_1_predicate   : condition_lo;
-    update_lo_1_value       : 1;
-    output_predicate        : condition_lo;
-    output_dst              : meta.digest;
-    output_value            : 1;
+action count_active_traffic() {
+    count(active_traffic, as.fid);
 }
 
-action dofilter_meter() {
-    bloom_meter_filter.execute_stateful_alu(as.fid);
-}
-
-table filter_meter {
-    reads {
-        meta.color          : exact;
-    }
+table active_traffic_counter {
     actions {
-        dofilter_meter;
+        count_active_traffic;
     }
+    default_action : count_active_traffic;
 }
 
-meter function_meter {
-    type            : bytes;
-    direct          : resources;
-    result          : meta.color;
+counter generic_traffic {
+    type            : packets_and_bytes;
+    instance_count  : 1;
 }
 
-field_list meter_params {
-    as.fid;
-    meta.color;
+action count_generic_traffic() {
+    count(generic_traffic, 0);
 }
 
-action report() {
-    generate_digest(0, meter_params);
-}
-
-table monitor {
-    reads {
-        meta.digest : exact;
-    }
+table generic_traffic_monitor {
     actions {
-        report;
+        count_generic_traffic;
     }
+    default_action : count_generic_traffic;
+}
+
+counter ig_traffic {
+    type            : packets_and_bytes;
+    instance_count  : 1;
+}
+
+action count_traffic_ig() {
+    count(ig_traffic, 0);
+}
+
+table ig_traffic_counter {
+    actions {
+        count_traffic_ig;
+    }
+    default_action : count_traffic_ig;
 }

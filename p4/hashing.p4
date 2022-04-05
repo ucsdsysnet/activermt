@@ -27,6 +27,16 @@ field_list mar_list {
     meta.mbr;
 }
 
+field_list acc2_list {
+    as.acc2;
+}
+
+field_list_calculation acc2_list_hash {
+    input           { acc2_list; }
+    algorithm       : crc_16_dnp;
+    output_width    : 16;
+}
+
 /*field_list l4_5tuple_list {
     ipv4.protocol;
     ipv4.srcAddr;

@@ -8,6 +8,7 @@ action set_mirror(dst) {
     modify_field(meta.mirror_sess, dst);
     clone_egress_pkt_to_egress(dst, cycle_metadata);
     add_to_field(ipv4.identification, 1000);
+    count(recirc, 0);
 }
 
 action cycle_aux() {
@@ -64,7 +65,7 @@ action update_lengths() {
 }
 
 action update_burnt() {
-    subtract_from_field(meta.burnt_ipv4, 6);
+    subtract_from_field(meta.burnt_ipv4, 4);
     modify_field(meta.rts, 0);
 }
 

@@ -103,3 +103,42 @@ blackbox stateful_alu heap_#_sub {
 action memory_#_sub() {
     heap_#_sub.execute_stateful_alu(meta.mar);
 }
+
+/*table memaccess_# {
+    reads {
+        ap[?].opcode        : exact;
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+    }
+    actions {
+        counter_#_rmw;
+        memory_#_read;
+        memory_#_write;
+        memory_#_sub;
+    }
+}*/
+
+register prog_# {
+    width           : 16;
+    instance_count  : 256;
+}
+
+blackbox stateful_alu prog_#_write {
+    
+    reg                     : prog_#;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : ap[?].opcode;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : ap[?].goto;
+}
+
+action write_prog_#() {
+    prog_#_write.execute_stateful_alu(as.fid);
+}

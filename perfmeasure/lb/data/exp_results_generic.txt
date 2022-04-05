@@ -1,0 +1,27 @@
+[control plane MR] STATS: 55015 flows initiated, 20395 flows dropped, 3739252 datagrams sent.
+[no MR] STATS: 55474 flows initiated, 29071 flows dropped, 3727187 datagrams sent.
+[gc 1-stage] STATS: 51530 flows initiated, 0 flows dropped, 3485434 datagrams sent.
+
+[gc s1 100f] STATS: 122575 flows initiated, 15645 flows dropped, 8137946 datagrams sent.
+[gc s1 1000f] STATS: 133536 flows initiated, 30887 flows dropped, 8761474 datagrams sent.
+[gc s1 5000f] STATS: 214737 flows initiated, 51111 flows dropped, 13705441 datagrams sent.
+
+[ctrl gc 100f] STATS: 124456 flows initiated, 42464 flows dropped, 8107936 datagrams sent.
+
+<gc 1 stage>
+[100] STATS: 100000 flows initiated, 13745 flows dropped, 6499755 datagrams sent, 9588650980 bytes sent.
+[1000] STATS: 100000 flows initiated, 23153 flows dropped, 6572909 datagrams sent, 9816745830 bytes sent.
+[5000] STATS: 100000 flows initiated, 30248 flows dropped, 6093760 datagrams sent, 9540190614 bytes sent.
+
+<gc 2 stage>
+[100] STATS: 100000 flows initiated, 1988 flows dropped, 6676580 datagrams sent, 9850513314 bytes sent.
+[1000] STATS: 100000 flows initiated, 6167 flows dropped, 6325294 datagrams sent, 9466940548 bytes sent.
+[5000] STATS: 100000 flows initiated, 16029 flows dropped, 6284617 datagrams sent, 9806086406 bytes sent.
+
+<gc 3 stage>
+[100] STATS: 100000 flows initiated, 161 flows dropped, 6473535 datagrams sent, 9575157442 bytes sent.
+[1000] STATS: 100000 flows initiated, 1051 flows dropped, 6476207 datagrams sent, 9733653784 bytes sent.
+[5000] STATS: 100000 flows initiated, 6567 flows dropped, 6124188 datagrams sent, 9588021688 bytes sent.
+
+<ctrl 1 stage>
+[100] STATS: 100000 flows initiated, 23130 flows dropped, 6604407 datagrams sent, 9750250504 bytes sent.

@@ -41,36 +41,90 @@ metadata metadata_t         meta;
 
 ////////////////// [INGRESS] //////////////////
 
+action preload_mbr() {
+    modify_field(meta.mbr, as.acc2);
+}
+
+table preload {
+    reads {
+        as.flag_exceeded    : exact;
+    }
+    actions {
+        preload_mbr;
+    }
+}
+
 control ingress {
-    /*apply(checkgc) {
-        miss {
-            apply(resources);
-            apply(forward);
-            apply(backward);
-            apply(check_completion);
+    apply(ig_traffic_counter);
+    if(valid(as)) {
+        apply(preload);
+        apply(check_completion) {
+            miss {
+                apply(preplimit);
+                apply(resources) {
+                    hit {
+                        if(as.flag_usecache == 1) {
+    #precacheig
+                        } else {
+    #igtables                        
+                        }
+                    }
+                }
+            }
         }
+        /*apply(check_alloc_status);
+        apply(memalloc) {
+            miss {
+                apply(getalloc);
+            }
+        }*/
+        apply(getalloc);
+        apply(getbw);
+        apply(fwdparams);
+        apply(backward);
+    } else {
+        apply(forward);
     }
-    apply(measure_freq);
-    apply(filter);*/
-    apply(check_alloc_status);
-    apply(memalloc) {
-        miss {
-            apply(getalloc);
-        }
-    }
-    apply(resources);
-    apply(filter_meter);
-    apply(monitor);
-    apply(forward);
-    apply(backward);
-    apply(check_completion);
 }
 
 /////////////////// [EGRESS] //////////////////
 
+counter recirc {
+    type            : packets;
+    instance_count  : 1;
+}
+
+action loopback() {
+    modify_field(meta.mirror_type, 1);
+    modify_field(meta.mirror_sess, meta.fwdid);
+    clone_egress_pkt_to_egress(meta.fwdid, cycle_metadata);
+    modify_field(eg_intr_md_for_oport.drop_ctl, 1);
+    subtract_from_field(ipv4.ttl, 1);
+    count(recirc, 0);
+}
+
+table bwgen {
+    reads {
+        ipv4.ttl    : range;
+    }
+    actions {
+        loopback;
+    }
+}
+
 control egress {
-    #tables
-    apply(cycleupdate);
-    apply(progress);
-    apply(lenupdate);
+    apply(generic_traffic_monitor);
+    if(valid(as)) {
+        apply(active_traffic_counter);
+        if(as.flag_usecache == 1) {
+    #precacheeg
+        } else {
+    #tables        
+        }
+        apply(cycleupdate);
+        apply(progress);
+        apply(lenupdate);
+    } else {
+        apply(bwgen);
+    }
 }

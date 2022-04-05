@@ -51,10 +51,12 @@ header_type active_state_t {
         flag_ack        : 1;
         flag_done       : 1;
         flag_mfault     : 1;
-        flag_chain      : 1;
+        flag_exceeded   : 1;
         flag_reqalloc   : 1;
         flag_allocated  : 1;
-        padding         : 4;
+        flag_precache   : 1;
+        flag_usecache   : 1;
+        padding         : 2;
         fid             : 16;
         acc             : 16;
         acc2            : 16;

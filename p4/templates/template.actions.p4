@@ -42,7 +42,7 @@ field_list_calculation mar_list_hash_# {
 }
 
 action hashmar_#() {
-    modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_#, 8192);
+    modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_#, 65536);
 }
 
 action mbr_equals_#() {

@@ -1,4 +1,4 @@
-register bloom_alloc {
+/*register bloom_alloc {
     width           : 8;
     instance_count  : 65536;
 }
@@ -46,14 +46,14 @@ table memalloc {
     actions {
         request_allocation;
     }
-}
+}*/
 
 action return_allocation(alloc_id, memstart, memend) {
     modify_field(as.id, alloc_id);
     modify_field(as.acc, memstart);
     modify_field(as.acc2, memend);
     modify_field(as.flag_allocated, 1);
-    return_to_sender();
+    rts_addr();
     bypass_egress();
 }
 
@@ -64,5 +64,19 @@ table getalloc {
     }
     actions {
         return_allocation;
+    }
+}
+
+action return_curr_bw(bw) {
+    modify_field(as.freq, bw);
+}
+
+table getbw {
+    reads {
+        as.fid              : exact;
+        as.flag_reqalloc    : exact;
+    }
+    actions {
+        return_curr_bw;
     }
 }
