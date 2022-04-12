@@ -36,14 +36,18 @@ class ActiveP4RedisClient:
         self.REDIS_HOST = "127.0.0.1"
         self.REDIS_PORT = 6379
         self.fid = 1
+        self.mask = 0xFFFF
+        self.offset = 0x0
         self.activesrc = {
             'READ'  : {
-                'file'  : 'cache_read_req.csv',
-                'code'  : None
+                'file'  : [ 'cacheread.apo', 'cacheread.args.csv' ],
+                'code'  : None,
+                'args'  : {}
             },
             'WRITE' : {
-                'file'  : 'cache_write.csv',
-                'code'  : None
+                'file'  : [ 'cachewrite.apo', 'cachewrite.args.csv' ],
+                'code'  : None,
+                'args'  : {}
             }
         }
         self.th = None
@@ -113,22 +117,33 @@ class ActiveP4RedisClient:
         if program not in self.activesrc:
             return None
         if self.activesrc[program]['code'] == None:
-            with open(self.activesrc[program]['file']) as f:
-                code = f.read().splitlines()
-                self.activesrc[program]['code'] = []
-                for c in code:
-                    self.activesrc[program]['code'].append([ int(x) for x in c.split(",") ])
+            with open(self.activesrc[program]['file'][0]) as f:
+                self.activesrc[program]['code'] = bytes(f.read(), 'utf-8')
+                f.close()
+            with open(self.activesrc[program]['file'][1]) as f:
+                args = f.read().strip().splitlines()
+                for a in args:
+                    arg = a.split(',')
+                    self.activesrc[program]['args'][arg[0]] = int(arg[1])
                 f.close()
         activecode = copy.deepcopy(self.activesrc[program]['code'])
         for a in args:
-            activecode[a[0]][2] = a[1]
-        pktbytes = bytes(ActiveIH(fid=self.fid))
-        for i in range(0, len(activecode)):
-            pktbytes = pktbytes + bytes(ActiveInstruction(goto=activecode[i][0], opcode=activecode[i][1], arg=activecode[i][2]))
+            arg = a[0]
+            val = a[1]
+            if arg in self.activesrc[program]['args']:
+                idx = self.activesrc[program]['args'][arg]
+                activecode[idx * 4 + 2] = bytes(chr(val >> 8))
+                activecode[idx * 4 + 3] = bytes(chr(val))
+        pktbytes = bytes(ActiveIH(fid=self.fid)) + activecode
         return pktbytes
 
     def set(self, key, value):
-        args = ()
+        args = [
+            ('KEY', key),
+            ('VALUE', value),
+            ('MASK', self.mask),
+            ('OFFSET', self.offset)
+        ]
         pktbytes = self.buildActiveProgram('WRITE', args) + self.buildCommand("set", key, value)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.HOST, self.PORT))
@@ -138,7 +153,11 @@ class ActiveP4RedisClient:
             return self.parseResponse(data)
 
     def get(self, key):
-        args = ()
+        args = [
+            ('KEY', key),
+            ('MASK', self.mask),
+            ('OFFSET', self.offset)
+        ]
         pktbytes = self.buildActiveProgram('READ', args) + self.buildCommand("get", key)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.HOST, self.PORT))
@@ -159,7 +178,7 @@ if len(sys.argv) > 1 and sys.argv[1] == 'proxy':
     print("proxy mode")
     client.bgProxy()
 else:
-    #result = client.set("key1", "value1")
-    #print(result)
+    result = client.set("key1", "value1")
+    print(result)
     result = client.get("key1")
     print(result)
