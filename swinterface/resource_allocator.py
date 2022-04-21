@@ -26,12 +26,14 @@ for stage in range(0, NUM_STEPS):
 OPS_MEMACCESS = [
     "MEM_READ",
     "MEM_WRITE",
-    "MEM_RST"
+    "COUNTER_RMW",
+    "MEM_SUB"
 ]
 ACTIONS = {
     'MEM_READ'          : "memory_%d_read",
     'MEM_WRITE'         : "memory_%d_write",
-    'MEM_RST'           : "memory_%d_reset"
+    'COUNTER_RMW'       : "counter_%d_rmw",
+    'MEM_SUB'           : "memory_%d_sub"
 }
 
 def addExecuteTableEntry(stageId, action, opcode, isDisabled, mbrStart, mbrEnd, port=-1):
@@ -123,8 +125,8 @@ for i in range(0, NUM_ITER):
     measurements.append(str(elapsed))
     conn_mgr.complete_operations()
 
-with open('measurements_memtables_single.csv', 'w') as out:
+"""with open('measurements_memtables_single.csv', 'w') as out:
     out.write("\n".join(measurements))
-    out.close()
+    out.close()"""
 
 print "DONE!"

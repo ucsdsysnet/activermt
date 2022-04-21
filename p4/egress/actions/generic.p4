@@ -1,5 +1,9 @@
 action skip() {}
 
+action clean_ih() {
+    remove_header(as);
+}
+
 action drop_ig() {
     drop();
 }

@@ -11,6 +11,7 @@ table execute_# {
 // ==== GENERIC ACTIONS ==== //  
         skip;
         complete;
+        clean_ih;
         cancel_complete;
         loop_init;
         loop_end;

@@ -18,7 +18,8 @@ class ActiveP4TableUpdater:
         self.ENABLED            = 0
         self.DISABLED_SOFT      = 1
         self.DISABLED_HARD      = 2
-        self.NUM_STEPS          = 11
+        self.NUM_STEPS          = 17
+        self.EG_START           = 7
         self.MAX_FIDS           = 4
         self.MAX_CYCLES         = 32
 
@@ -39,11 +40,13 @@ class ActiveP4TableUpdater:
         self.ACTION_REJOIN      = 'attempt_rejoin_%d'
         self.ACTION_RESUME      = 'enable_execution'
 
+        self.entries            = []
+
         self.loadPortMappings()
 
     def loadPortMappings(self):
         mapping_file = os.environ['OPERA_MAPPING_PATH'] if 'OPERA_MAPPING_PATH' in os.environ else '/tmp/dp_mappings_identity.csv'
-        print "using mapping file: %s" % mapping_file
+        print("using mapping file: %s" % mapping_file)
         with open(mapping_file, 'r') as f:
             lines = f.read().strip().splitlines()
             for l in lines:
@@ -94,7 +97,8 @@ class ActiveP4TableUpdater:
             'DUPLICATE'         : "duplicate",
             'ENABLE_EXEC'       : "enable_execution",
             'RTS'               : "return_to_sender",
-            'DROP'              : "drop",
+            'DROPIG'            : "drop_ig",
+            'DROPEG'            : "drop_eg",
             'GOTO_AUX'          : "goto_aux",
             'REVMIN'            : "min_mbr2_mbr",
             'MIN'               : "min_mbr_mbr2",
@@ -105,14 +109,20 @@ class ActiveP4TableUpdater:
             'BIT_AND_MAR_MBR'   : "bit_and_mar_mbr",
             'MAR_ADD_MBR'       : "mar_add_mbr",
             'LOAD_5TUPLE'       : "load_hashlist_5tuple",
-            'HASH_GENERIC'      : "hash_generic"
+            'HASH_GENERIC'      : "hash_generic",
+            'HASHACC2'          : "hash_acc2",
+            'LOAD_FROM_ACC'     : "acc_to_mbr",
+            'RTSI'              : "rts_addr"
         }
+        self.EG_ONLY = [ self.OPCODES[x] for x in [ 'LOAD_5TUPLE', 'HASH_GENERIC', 'DROPEG', 'RTS', 'SET_PORT', 'DUPLICATE' ] ]
+        self.IG_ONLY = [ self.OPCODES[x] for x in [ 'DROPIG', 'RTSI', 'HASHACC2' ] ]
         self.OPS_BRANCHING = {
             'CJUMP'         : "jump_%d",
             'CJUMPI'        : "jump_%d",
             'DO'            : "jump_%d",
             'WHILE'         : "loop_end",
-            'CRET'          : "complete"
+            'CRET'          : "complete",
+            'CRTSI'         : "rts_addr" 
         }
 
     def createMirrorSessions(self, mirror_maps):
@@ -144,37 +154,53 @@ class ActiveP4TableUpdater:
     def addForwardTableEntry(self, addr, port, mirror_spec, pfx=32, flagAux=0, flagAck=0, flagRedirect=0):
         p4_pd.forward_table_add_with_setegr(
             p4_pd.forward_match_spec_t(
+                ipv4Addr_to_i32(addr), 
+                pfx
+            ),
+            p4_pd.setegr_action_spec_t(self.dpmap[port], mirror_spec)
+        )
+        p4_pd.fwdparams_table_add_with_setcycleparams(
+            p4_pd.fwdparams_match_spec_t(
                 flagAux,
                 flagAck,
                 flagRedirect,
                 ipv4Addr_to_i32(addr), 
                 pfx
             ),
-            p4_pd.setegr_action_spec_t(self.dpmap[port], mirror_spec)
+            p4_pd.setcycleparams_action_spec_t(self.dpmap[port], mirror_spec)
         )
 
-    def addBackwardTableEntry(self, addr, port):
+    def addBackwardTableEntry(self, addr, port, pfx=32):
         p4_pd.backward_table_add_with_setrts(
             p4_pd.backward_match_spec_t(
-                ipv4Addr_to_i32(addr)
+                ipv4Addr_to_i32(addr),
+                pfx
             ),
             p4_pd.setrts_action_spec_t(port)
         )
 
-    def addResourcesTableEntry(self, fid):
+    def addResourcesTableEntry(self, fid=10, stageStart=1, stageEnd=11, cycles=1, freqStart=0, freqEnd=65535):
+        p4_pd.preplimit_table_add_with_seed(
+            p4_pd.preplimit_match_spec_t(
+                as_fid=fid
+            )
+        )
         p4_pd.resources_table_add_with_set_quota(
             p4_pd.resources_match_spec_t(
-                as_fid=fid
+                as_fid=fid,
+                as_freq_start=hex_to_i16(freqStart),
+                as_freq_end=hex_to_i16(freqEnd)
             ),
+            1,
             p4_pd.set_quota_action_spec_t(
-                self.QUOTAS_HORZ[fid][0], 
-                self.QUOTAS_HORZ[fid][1], 
-                self.MAX_CYCLES
-            ),
-            p4_pd.bytes_meter_spec_t(self.CIR_KBPS, self.CBS_KBITS, self.PIR_CBPS, self.PBS_KBITS, False)
+                stageStart, 
+                stageEnd, 
+                cycles
+            )
         )
+        print("added resource quota")
 
-    def addProgressTableEntry(self, action, skipped=0, complete=0, duplicate=0, flagRts=0, flagAux=0):
+    def addProgressTableEntry(self, action, skipped=0, complete=0, duplicate=0, flagRts=0, flagAux=0, minCycles=1):
         cmd = '''p4_pd.progress_table_add_with_%s(
             p4_pd.progress_match_spec_t(
                 as_flag_rts=%d,
@@ -182,7 +208,7 @@ class ActiveP4TableUpdater:
                 meta_skipped=%d, 
                 meta_complete=%d, 
                 meta_duplicate=%d,
-                meta_cycles_start=1,
+                meta_cycles_start=%d,
                 meta_cycles_end=hex_to_byte(0xFF)
             ), 
             1
@@ -192,30 +218,15 @@ class ActiveP4TableUpdater:
             flagAux, 
             skipped, 
             complete, 
-            duplicate
+            duplicate,
+            minCycles
         )
         exec(cmd)
 
-    def addControlTableEntries(self, enableTrafficMonitor=False, enableResourceAllocator=False):
+    def addControlTableEntries(self, enableTrafficMonitor=False, enableResourceAllocator=True):
         p4_pd.check_completion_table_add_with_passthru(
             p4_pd.check_completion_match_spec_t(
                 1
-            )
-        )
-        if enableTrafficMonitor:
-            p4_pd.filter_meter_table_add_with_dofilter_meter(
-                p4_pd.filter_meter_match_spec_t(
-                    meta_color=2
-                )
-            )
-            p4_pd.filter_meter_table_add_with_dofilter_meter(
-                p4_pd.filter_meter_match_spec_t(
-                    meta_color=3
-                )
-            )
-        p4_pd.monitor_table_add_with_report(
-            p4_pd.monitor_match_spec_t(
-                meta_digest=1
             )
         )
         p4_pd.lenupdate_table_add_with_update_lengths(
@@ -230,33 +241,15 @@ class ActiveP4TableUpdater:
                 meta_complete=1
             )
         )
-        p4_pd.resources_set_default_action_passthru(
-            p4_pd.bytes_meter_spec_t(self.CIR_KBPS, self.CBS_KBITS, self.PIR_CBPS, self.PBS_KBITS, False)
-        )
+        p4_pd.resources_set_default_action_passthru()
         p4_pd.cycleupdate_set_default_action_update_cycles()
-        p4_pd.check_alloc_status_table_add_with_dofilter_alloc(
-            p4_pd.check_alloc_status_match_spec_t(
-                as_flag_reqalloc=1
+        p4_pd.preload_table_add_with_preload_mbr(
+            p4_pd.preload_match_spec_t(
+                as_flag_exceeded=1
             )
         )
-        if enableResourceAllocator:
-            p4_pd.memalloc_table_add_with_request_allocation(
-                p4_pd.memalloc_match_spec_t(
-                    as_flag_reqalloc=1,
-                    meta_alloc_init=1
-                )
-            )
 
-    def addExecuteTableEntry(self, fid, action, opcode, isDisabled=0, mbrStart=0, mbrEnd=65535, port=-1, memStart = 0, memEnd = 65535):
-        if isDisabled == self.ENABLED:
-            disabledStart = 0
-            disabledEnd = 0
-        elif isDisabled == self.DISABLED_SOFT:
-            disabledStart = 1
-            disabledEnd = 1
-        else:
-            disabledStart = 2
-            disabledEnd = 3       
+    def addExecuteTableEntry(self, fid, action, opcode, isDisabled=0, mbrStart=0, mbrEnd=65535, port=-1, memStart = 0, memEnd = 65535):    
         mbrStart = 'hex_to_i16(0x%x)' % mbrStart
         mbrEnd = 'hex_to_i16(0x%x)' % mbrEnd
         memStart = 'hex_to_i16(0x%x)' % memStart
@@ -264,36 +257,36 @@ class ActiveP4TableUpdater:
         actionSpec = (', p4_pd.set_port_action_spec_t(%d)' % port) if port >= 0 else ''
         cmd = '''p4_pd.execute_%d_table_add_with_%s(
             p4_pd.execute_%d_match_spec_t(
-                ap_%d__opcode=%d, 
-                meta_disabled_start=%d, 
-                meta_disabled_end=%d, 
+                ap_%d__opcode=%d,
+                as_fid=%d, 
+                meta_complete=0,
+                meta_disabled=%d, 
                 meta_mbr_start=%s,
                 meta_mbr_end=%s, 
-                meta_quota_start_start=%d, 
-                meta_quota_start_end=%d, 
-                meta_quota_end_start=%d, 
-                meta_quota_end_end=%d, 
-                meta_complete=0,
                 meta_mar_start=%s,
-                meta_mar_end=%s,
-                as_fid=%d
+                meta_mar_end=%s
             ), 
             1%s
         )'''
-        for stageId in range(1, self.NUM_STEPS + 1):
+        for i in range(1, self.NUM_STEPS + 1):
+            stageId = i
             action_stage = (action % stageId) if ('%d' in action) else action
+            if opcode in self.EG_ONLY and i < self.EG_START:
+                continue
+            elif opcode in self.IG_ONLY and i >= self.EG_START:
+                continue
             exec(cmd % (
                     stageId, action_stage, 
                     stageId, 
-                    stageId - 1, opcode, 
-                    disabledStart, disabledEnd, 
-                    mbrStart, mbrEnd, 
-                    1, stageId, stageId, 11,
-                    memStart, memEnd,
+                    (stageId - 1 if i < 7 else i - 7), opcode, 
                     fid,
+                    isDisabled,
+                    mbrStart, mbrEnd, 
+                    memStart, memEnd,
                     actionSpec
                 )
             )
+            self.entries.append("EXECUTE:%d: %s,%d,%d,%d,%s,%s,%s,%s,%d" % (stageId, action, fid, opcode, isDisabled, mbrStart, mbrEnd, memStart, memEnd, port))
     
     def addMemoryOpEntry(self, op, fid, isDisabled=0, mbrStart=0, mbrEnd=65535):
         if isDisabled == self.ENABLED:
@@ -316,6 +309,7 @@ class ActiveP4TableUpdater:
         for stageId in range(1, self.NUM_STEPS + 1):
             exec('''p4_pd.proceed_%d_table_add_with_step_%d(
                 p4_pd.proceed_%d_match_spec_t(
+                    meta_complete=0,
                     meta_loop=0
                 )
             )''' % (stageId, stageId, stageId))
@@ -326,10 +320,19 @@ class ActiveP4TableUpdater:
                 self.addExecuteTableEntry(fid, self.OPS_DEFAULT[op], self.OPCODES[op])
                 self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], isDisabled=self.DISABLED_HARD)
 
+    def addDisabledOps(self):
+        for fid in range(1, self.MAX_FIDS + 1):
+            for op in self.OPS_MEMACCESS:
+                self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], self.DISABLED_HARD)
+            for op in self.OPS_DEFAULT:
+                self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], self.DISABLED_HARD)
+            for op in self.OPS_BRANCHING:
+                self.addExecuteTableEntry(fid, self.ACTION_REJOIN, self.OPCODES[op], self.DISABLED_HARD)
+
     def addBranchingOps(self):
         for fid in self.FIDS:
             for op in self.OPS_BRANCHING:
-                if op == 'CJUMP' or op == 'CRET':
+                if op == 'CJUMP' or op == 'CRET' or op == 'CJUMPI':
                     self.addExecuteTableEntry(fid, self.OPS_BRANCHING[op], self.OPCODES[op], mbrStart=1)
                     self.addExecuteTableEntry(fid, self.ACTION_SKIP, self.OPCODES[op], mbrEnd=0)
                 else:
@@ -342,12 +345,19 @@ opcodeLocation = '../config/opcodes.csv'
 
 updater = ActiveP4TableUpdater()
 
-mirror_maps = {
+"""mirror_maps = {
     1   : 4,
     2   : 8,
     3   : 12,
     4   : 16
-}
+}"""
+
+mirror_maps = {}
+NUM_SERVERS = 4
+DEFAULT_MAP_LOCAL = 4
+DEFAULT_MAP_HW = 0
+for i in range(0, NUM_SERVERS):
+    mirror_maps[i + 1] = DEFAULT_MAP_HW
 
 updater.createMirrorSessions(mirror_maps)
 
@@ -358,18 +368,19 @@ updater.mapActions()
 updater.addProceedTableEntries()
 updater.addDefaultOps()
 updater.addBranchingOps()
+updater.addDisabledOps()
 
 ip_dsts = {
     "10.0.0.1"      : 0, 
     "10.0.0.2"      : 4,
-    "192.168.0.1"   : 4,
-    "192.168.1.1"   : 0
+    "192.168.0.1"   : 0,
+    "192.168.1.1"   : 4
 }
 mirror_ids = {
     "10.0.0.1"      : 6, 
     "10.0.0.2"      : 5,
-    "192.168.0.1"   : 5, 
-    "192.168.1.1"   : 6
+    "192.168.0.1"   : 6, 
+    "192.168.1.1"   : 5
 }
 
 mirror_end = 0x5
@@ -386,29 +397,36 @@ for fid in updater.FIDS:
 
 for dst in ip_dsts:
     updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst])
-    updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAck=1)
-    updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAux=1)
+    #updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAck=1)
+    #updater.addForwardTableEntry(dst, ip_dsts[dst], mirror_ids[dst], flagAux=1)
     updater.addBackwardTableEntry(dst, mirror_ids[dst])
-updater.addForwardTableEntry('0.0.0.0', 8, 2, flagRedirect=1)
+#updater.addForwardTableEntry('0.0.0.0', 8, 2, flagRedirect=1)
+updater.addForwardTableEntry('10.1.0.0', 4, 5, pfx=16)
+updater.addBackwardTableEntry('10.1.0.0', 5, pfx=16)
 
 updater.addProgressTableEntry('cycle')
 updater.addProgressTableEntry('cycle_clone', duplicate=1)
-updater.addProgressTableEntry('cycle', flagRts=1)
+#updater.addProgressTableEntry('cycle', flagRts=1)
 updater.addProgressTableEntry('cycle_clone', flagRts=1, duplicate=1)
 updater.addProgressTableEntry('cycle', flagAux=1)
 updater.addProgressTableEntry('cycle_clone', flagAux=1, duplicate=1)
 updater.addProgressTableEntry('cycle_aux', skipped=1)
 updater.addProgressTableEntry('cycle_clone_aux', skipped=1, duplicate=1)
 updater.addProgressTableEntry('cycle_redirect', flagRts=1, complete=1)
+updater.addProgressTableEntry('cycle_redirect', flagRts=1)
 
 updater.addControlTableEntries()
 
-updater.addMemoryOperations(10)
-updater.addResourcesTableEntry(10)
+#updater.addMemoryOperations(10)
+#updater.addResourcesTableEntry(fid=10, cycles=10)
 
 conn_mgr.complete_operations()
 
-print "TABLE CONFIGURATION COMPLETE!"
+with open("table-entries.txt", "w") as out:
+    out.write("\n".join(updater.entries))
+    out.close()
+
+print("TABLE CONFIGURATION COMPLETE!")
 
 """for i in range(0, NUM_STEPS):
     stageId = i + 1

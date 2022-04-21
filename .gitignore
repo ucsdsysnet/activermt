@@ -8,3 +8,5 @@ eval/
 *.pcap
 *.pyc
 *.log
+
+bf_drivers*

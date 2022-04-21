@@ -33,9 +33,22 @@
 header ethernet_t           ethernet;
 header ipv4_t               ipv4;
 header udp_t                udp;
+header tcp_t                tcp;
 header pktgen_ts_t          ts;
 header active_state_t       as;
-header active_program_t     ap[8];
+
+header active_program_t     ap[14];
+
+header tcp_option_4B_t          tcpo_4b;
+header tcp_option_8B_t          tcpo_8b;
+header tcp_option_12B_t         tcpo_12b;
+header tcp_option_16B_t         tcpo_16b;
+header tcp_option_20B_t         tcpo_20b;
+header tcp_option_24B_t         tcpo_24b;
+header tcp_option_28B_t         tcpo_28b;
+header tcp_option_32B_t         tcpo_32b;
+header tcp_option_36B_t         tcpo_36b;
+header tcp_option_40B_t         tcpo_40b;
 
 metadata metadata_t         meta;
 
@@ -68,6 +81,8 @@ control ingress {
 						apply(cached_2);
 						apply(cached_3);
 						apply(cached_4);
+						apply(cached_5);
+						apply(cached_6);
                         } else {
     					apply(proceed_1);
 						apply(execute_1);
@@ -76,7 +91,11 @@ control ingress {
 						apply(proceed_3);
 						apply(execute_3);
 						apply(proceed_4);
-						apply(execute_4);                        
+						apply(execute_4);
+						apply(proceed_5);
+						apply(execute_5);
+						apply(proceed_6);
+						apply(execute_6);                        
                         }
                     }
                 }
@@ -127,19 +146,31 @@ control egress {
     if(valid(as)) {
         apply(active_traffic_counter);
         if(as.flag_usecache == 1) {
-    	apply(cached_5);
-		apply(cached_6);
-		apply(cached_7);
+    	apply(cached_7);
 		apply(cached_8);
+		apply(cached_9);
+		apply(cached_10);
+		apply(cached_11);
+		apply(cached_12);
+		apply(cached_13);
+		apply(cached_14);
         } else {
-    	apply(proceed_5);
-		apply(execute_5);
-		apply(proceed_6);
-		apply(execute_6);
-		apply(proceed_7);
+    	apply(proceed_7);
 		apply(execute_7);
 		apply(proceed_8);
-		apply(execute_8);        
+		apply(execute_8);
+		apply(proceed_9);
+		apply(execute_9);
+		apply(proceed_10);
+		apply(execute_10);
+		apply(proceed_11);
+		apply(execute_11);
+		apply(proceed_12);
+		apply(execute_12);
+		apply(proceed_13);
+		apply(execute_13);
+		apply(proceed_14);
+		apply(execute_14);        
         }
         apply(cycleupdate);
         apply(progress);

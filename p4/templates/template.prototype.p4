@@ -33,9 +33,22 @@
 header ethernet_t           ethernet;
 header ipv4_t               ipv4;
 header udp_t                udp;
+header tcp_t                tcp;
 header pktgen_ts_t          ts;
 header active_state_t       as;
+
 header active_program_t     ap[#numsteps];
+
+header tcp_option_4B_t          tcpo_4b;
+header tcp_option_8B_t          tcpo_8b;
+header tcp_option_12B_t         tcpo_12b;
+header tcp_option_16B_t         tcpo_16b;
+header tcp_option_20B_t         tcpo_20b;
+header tcp_option_24B_t         tcpo_24b;
+header tcp_option_28B_t         tcpo_28b;
+header tcp_option_32B_t         tcpo_32b;
+header tcp_option_36B_t         tcpo_36b;
+header tcp_option_40B_t         tcpo_40b;
 
 metadata metadata_t         meta;
 

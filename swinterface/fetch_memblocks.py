@@ -16,10 +16,15 @@ fetch = [
     p4_pd.register_range_read_heap_11
 ]
 
+#allowed = [1, 7, 8, 10]
+allowed = [5, 8, 10]
+
 start = time()
 data_heap = []
 headers = []
 for i in range(0, 11):
+    if (i + 1) not in allowed:
+        continue
     headers.append("S%d" % (i + 1))
     data_heap.append(fetch[i](0, MAX_ENTRIES, from_hw))
 conn_mgr.complete_operations()
@@ -33,8 +38,8 @@ print "\t".join(headers)
 
 for i in range(0, MAX_ENTRIES):
     row = []
-    for j in range(0, 11):
-        row.append(str(data_heap[j][4 * i + 1].f0))
+    for j in range(0, len(data_heap)):
+        row.append(str(i16_to_hex(data_heap[j][4 * i + 1].f0)))
     print "\t".join(row)
 
 print ""

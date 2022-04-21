@@ -9,6 +9,7 @@ from scapy.fields import *
 class ActiveIH(Packet):
     name = "ActiveIH"
     fields_desc = [
+        IntField("ACTIVEP4", 0x12345678),
         ShortField("flags", 0),
         ShortField("fid", 0),
         ShortField("acc", 0),
@@ -59,7 +60,7 @@ class ActiveP4RedisClient:
         while opcode != 0x1:
             opcode = data[idx]
             idx = idx + 4
-        return data[idx - 1:]
+        return (data[:idx - 1], data[idx - 1:])
 
     def runProxy(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -77,11 +78,11 @@ class ActiveP4RedisClient:
                                 break
                             # modify data from client
                             data = self.filterActiveProgram(data)
-                            t.sendall(data)
+                            t.sendall(data[1])
                             resp = t.recv(1024)
                             if not resp:
                                 break
-                            conn.sendall(resp)
+                            conn.sendall(data[0] + resp)
     
     def bgProxy(self):
         self.th = threading.Thread(target=self.runProxy)
@@ -150,7 +151,8 @@ class ActiveP4RedisClient:
             s.sendall(pktbytes)
             #s.sendall(self.buildCommand("set", key, value))
             data = s.recv(1024)
-            return self.parseResponse(data)
+            data = self.filterActiveProgram(data)
+            return self.parseResponse(data[1])
 
     def get(self, key):
         args = [
@@ -164,7 +166,8 @@ class ActiveP4RedisClient:
             s.sendall(pktbytes)
             #s.sendall(self.buildCommand("get", key))
             data = s.recv(1024)
-            return self.parseResponse(data)
+            data = self.filterActiveProgram(data)
+            return self.parseResponse(data[1])
 
 client = ActiveP4RedisClient()
 

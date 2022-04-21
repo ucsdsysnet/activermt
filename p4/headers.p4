@@ -32,6 +32,82 @@ header_type udp_t {
     }
 }
 
+header_type tcp_t {
+    fields {
+        srcPort     : 16;
+        dstPort     : 16;
+        seqNo       : 32;
+        ackNo       : 32;
+        dataOffset  : 4;
+        res         : 3;
+        ecn         : 3;
+        ctrl        : 6;
+        window      : 16;
+        checksum    : 16;
+        urgentPtr   : 16;
+    }
+}
+
+header_type tcp_option_4B_t {
+    fields {
+        option      : 32;
+    }
+}
+
+header_type tcp_option_8B_t {
+    fields {
+        option      : 64;
+    }
+}
+
+header_type tcp_option_12B_t {
+    fields {
+        option      : 96;
+    }
+}
+
+header_type tcp_option_16B_t {
+    fields {
+        option      : 128;
+    }
+}
+
+header_type tcp_option_20B_t {
+    fields {
+        option      : 160;
+    }
+}
+
+header_type tcp_option_24B_t {
+    fields {
+        option      : 192;
+    }
+}
+
+header_type tcp_option_28B_t {
+    fields {
+        option      : 224;
+    }
+}
+
+header_type tcp_option_32B_t {
+    fields {
+        option      : 256;
+    }
+}
+
+header_type tcp_option_36B_t {
+    fields {
+        option      : 288;
+    }
+}
+
+header_type tcp_option_40B_t {
+    fields {
+        option      : 320;
+    }
+}
+
 header_type pktgen_ts_t {
     fields {
         padding         : 48;
@@ -42,6 +118,7 @@ header_type pktgen_ts_t {
 
 header_type active_state_t {
     fields {
+        ACTIVEP4        : 32;
         flag_redirect   : 1;
         flag_igclone    : 1;
         flag_bypasseg   : 1;
@@ -58,6 +135,7 @@ header_type active_state_t {
         flag_usecache   : 1;
         padding         : 2;
         fid             : 16;
+        seq             : 32;
         acc             : 16;
         acc2            : 16;
         id              : 16;
@@ -81,7 +159,7 @@ header_type metadata_t {
         complete    : 1;
         skipped     : 1;
         rts         : 1;
-        digest      : 1;
+        eof         : 1;
         chain       : 1;
         alloc_init  : 1;
         disabled    : 2;
