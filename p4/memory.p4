@@ -2027,3 +2027,438 @@ blackbox stateful_alu prog_14_write {
 action write_prog_14() {
     prog_14_write.execute_stateful_alu(as.fid);
 }
+
+register heap_15 {
+    width           : 32;
+    instance_count  : 65536;
+}
+
+/*counter hit_15 {
+    type            : packets;
+    instance_count  : 65536;
+}*/
+
+blackbox stateful_alu heap_15_read {
+    reg                 : heap_15;
+    condition_lo        : register_lo == meta.mar;
+    condition_hi        : meta.mbr > 0;
+    output_predicate    : condition_lo or condition_hi;
+    output_dst          : meta.mbr;
+    output_value        : register_hi;
+}
+
+action memory_15_read() {
+    heap_15_read.execute_stateful_alu(meta.mar);
+    //count(hit_15, meta.mar);
+}
+
+/*blackbox stateful_alu heap_15_write {
+    reg                     : heap_15;
+    condition_lo            : register_lo == 0;
+    condition_hi            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : meta.mar;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : meta.mbr;
+    output_predicate        : condition_lo or condition_hi;
+    output_value            : 0;
+    output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_15_write {
+    
+    reg                     : heap_15;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
+}
+
+action memory_15_write() {
+    heap_15_write.execute_stateful_alu(meta.mar);
+    //count(hit_15, meta.mar);
+}
+
+/*blackbox stateful_alu heap_15_reset {
+    reg                     : heap_15;
+    condition_lo            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : 0;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : 0;
+}
+
+action memory_15_reset() {
+    heap_15_reset.execute_stateful_alu(meta.mar);
+}*/
+
+blackbox stateful_alu count_15_rmw {
+    reg                     : heap_15;
+    
+    //condition_hi            : meta.mbr == 0;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi + 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action counter_15_rmw() {
+    count_15_rmw.execute_stateful_alu(meta.mar);
+}
+
+blackbox stateful_alu heap_15_sub {
+    reg                     : heap_15;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : register_lo;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi - meta.mbr;
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action memory_15_sub() {
+    heap_15_sub.execute_stateful_alu(meta.mar);
+}
+
+/*table memaccess_15 {
+    reads {
+        ap[14].opcode        : exact;
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+    }
+    actions {
+        counter_15_rmw;
+        memory_15_read;
+        memory_15_write;
+        memory_15_sub;
+    }
+}*/
+
+register prog_15 {
+    width           : 16;
+    instance_count  : 256;
+}
+
+blackbox stateful_alu prog_15_write {
+    
+    reg                     : prog_15;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : ap[14].opcode;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : ap[14].goto;
+}
+
+action write_prog_15() {
+    prog_15_write.execute_stateful_alu(as.fid);
+}
+
+register heap_16 {
+    width           : 32;
+    instance_count  : 65536;
+}
+
+/*counter hit_16 {
+    type            : packets;
+    instance_count  : 65536;
+}*/
+
+blackbox stateful_alu heap_16_read {
+    reg                 : heap_16;
+    condition_lo        : register_lo == meta.mar;
+    condition_hi        : meta.mbr > 0;
+    output_predicate    : condition_lo or condition_hi;
+    output_dst          : meta.mbr;
+    output_value        : register_hi;
+}
+
+action memory_16_read() {
+    heap_16_read.execute_stateful_alu(meta.mar);
+    //count(hit_16, meta.mar);
+}
+
+/*blackbox stateful_alu heap_16_write {
+    reg                     : heap_16;
+    condition_lo            : register_lo == 0;
+    condition_hi            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : meta.mar;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : meta.mbr;
+    output_predicate        : condition_lo or condition_hi;
+    output_value            : 0;
+    output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_16_write {
+    
+    reg                     : heap_16;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
+}
+
+action memory_16_write() {
+    heap_16_write.execute_stateful_alu(meta.mar);
+    //count(hit_16, meta.mar);
+}
+
+/*blackbox stateful_alu heap_16_reset {
+    reg                     : heap_16;
+    condition_lo            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : 0;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : 0;
+}
+
+action memory_16_reset() {
+    heap_16_reset.execute_stateful_alu(meta.mar);
+}*/
+
+blackbox stateful_alu count_16_rmw {
+    reg                     : heap_16;
+    
+    //condition_hi            : meta.mbr == 0;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi + 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action counter_16_rmw() {
+    count_16_rmw.execute_stateful_alu(meta.mar);
+}
+
+blackbox stateful_alu heap_16_sub {
+    reg                     : heap_16;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : register_lo;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi - meta.mbr;
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action memory_16_sub() {
+    heap_16_sub.execute_stateful_alu(meta.mar);
+}
+
+/*table memaccess_16 {
+    reads {
+        ap[15].opcode        : exact;
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+    }
+    actions {
+        counter_16_rmw;
+        memory_16_read;
+        memory_16_write;
+        memory_16_sub;
+    }
+}*/
+
+register prog_16 {
+    width           : 16;
+    instance_count  : 256;
+}
+
+blackbox stateful_alu prog_16_write {
+    
+    reg                     : prog_16;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : ap[15].opcode;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : ap[15].goto;
+}
+
+action write_prog_16() {
+    prog_16_write.execute_stateful_alu(as.fid);
+}
+
+register heap_17 {
+    width           : 32;
+    instance_count  : 65536;
+}
+
+/*counter hit_17 {
+    type            : packets;
+    instance_count  : 65536;
+}*/
+
+blackbox stateful_alu heap_17_read {
+    reg                 : heap_17;
+    condition_lo        : register_lo == meta.mar;
+    condition_hi        : meta.mbr > 0;
+    output_predicate    : condition_lo or condition_hi;
+    output_dst          : meta.mbr;
+    output_value        : register_hi;
+}
+
+action memory_17_read() {
+    heap_17_read.execute_stateful_alu(meta.mar);
+    //count(hit_17, meta.mar);
+}
+
+/*blackbox stateful_alu heap_17_write {
+    reg                     : heap_17;
+    condition_lo            : register_lo == 0;
+    condition_hi            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : meta.mar;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : meta.mbr;
+    output_predicate        : condition_lo or condition_hi;
+    output_value            : 0;
+    output_dst              : meta.disabled;
+}*/
+
+blackbox stateful_alu heap_17_write {
+    
+    reg                     : heap_17;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : meta.mbr;
+}
+
+action memory_17_write() {
+    heap_17_write.execute_stateful_alu(meta.mar);
+    //count(hit_17, meta.mar);
+}
+
+/*blackbox stateful_alu heap_17_reset {
+    reg                     : heap_17;
+    condition_lo            : register_lo == meta.mar;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : 0;
+    update_hi_1_predicate   : condition_lo;
+    update_hi_1_value       : 0;
+}
+
+action memory_17_reset() {
+    heap_17_reset.execute_stateful_alu(meta.mar);
+}*/
+
+blackbox stateful_alu count_17_rmw {
+    reg                     : heap_17;
+    
+    //condition_hi            : meta.mbr == 0;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : meta.mar;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi + 1;
+    /*update_hi_2_predicate   : condition_hi;
+    update_hi_2_value       : register_hi - 1;*/
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action counter_17_rmw() {
+    count_17_rmw.execute_stateful_alu(meta.mar);
+}
+
+blackbox stateful_alu heap_17_sub {
+    reg                     : heap_17;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : register_lo;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : register_hi - meta.mbr;
+
+    output_predicate        : true;
+    output_dst              : meta.mbr;
+    output_value            : alu_hi;
+}
+
+action memory_17_sub() {
+    heap_17_sub.execute_stateful_alu(meta.mar);
+}
+
+/*table memaccess_17 {
+    reads {
+        ap[16].opcode        : exact;
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+    }
+    actions {
+        counter_17_rmw;
+        memory_17_read;
+        memory_17_write;
+        memory_17_sub;
+    }
+}*/
+
+register prog_17 {
+    width           : 16;
+    instance_count  : 256;
+}
+
+blackbox stateful_alu prog_17_write {
+    
+    reg                     : prog_17;
+
+    update_lo_1_predicate   : true;
+    update_lo_1_value       : ap[16].opcode;
+
+    update_hi_1_predicate   : true;
+    update_hi_1_value       : ap[16].goto;
+}
+
+action write_prog_17() {
+    prog_17_write.execute_stateful_alu(as.fid);
+}

@@ -1,0 +1,42 @@
+{
+    "PortToIf" : [
+        { "device_port" :  0, "if" : "cpu_pcie"  },
+        { "device_port" :  2, "if" : "cpu_eth_0" },
+        
+        { "device_port" :  8, "if" : "port8"  },
+        { "device_port" :  9, "if" : "port9"  },
+        { "device_port" : 10, "if" : "port10" },
+        { "device_port" : 11, "if" : "port11" },
+        { "device_port" : 12, "if" : "port12" },
+        { "device_port" : 13, "if" : "port13" },
+        { "device_port" : 14, "if" : "port14" },
+        { "device_port" : 15, "if" : "port15" },
+        
+        { "device_port" :136, "if" : "port136"},
+        { "device_port" :137, "if" : "port137"},
+        { "device_port" :138, "if" : "port137"},
+        { "device_port" :139, "if" : "port139"},
+        { "device_port" :140, "if" : "port140"},
+        { "device_port" :141, "if" : "port141"},
+        { "device_port" :142, "if" : "port142"},
+        { "device_port" :143, "if" : "port143"},
+        
+        { "device_port" :264, "if" : "port264"},
+        { "device_port" :265, "if" : "port265"},
+        { "device_port" :266, "if" : "port266"},
+        { "device_port" :267, "if" : "port267"},
+        { "device_port" :268, "if" : "port268"},
+        { "device_port" :269, "if" : "port269"},
+        { "device_port" :270, "if" : "port270"},
+        { "device_port" :271, "if" : "port271"},
+
+        { "device_port" :392, "if" : "port392"},
+        { "device_port" :393, "if" : "port393"},
+        { "device_port" :394, "if" : "port394"},
+        { "device_port" :395, "if" : "port395"},
+        { "device_port" :396, "if" : "port396"},
+        { "device_port" :397, "if" : "port397"},
+        { "device_port" :398, "if" : "port398"},
+        { "device_port" :399, "if" : "port399"}
+    ]
+}

@@ -1819,3 +1819,441 @@ table cached_14 {
         memory_14_sub;
     }
 }
+
+table execute_15 {
+    reads {
+        ap[8].opcode        : exact;
+        as.fid              : exact;
+        meta.complete       : exact;
+        meta.disabled       : exact;
+        meta.mbr            : range;
+        meta.mar            : range;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        clean_ih;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //        
+        hashmar_15;
+        mar_load_15;
+        mbr_load_15;
+        mbr2_load_15;
+        mbr_add_15;
+        mar_add_15;
+        //mbr_subtract_15;
+        //bit_and_mbr_mar_15;
+        jump_15;
+        attempt_rejoin_15;
+        //mar_equals_15;
+        bit_and_mbr_15;
+        bit_and_mar_15;
+        mbr_equals_15;
+        counter_15_rmw;
+        memory_15_read;
+        memory_15_write;
+        memory_15_sub;
+    }
+}
+
+table precache_15 {
+    reads {
+        as.flag_precache    : exact;
+    }
+    actions {
+        write_prog_15;
+    }
+}
+
+table cached_15 {
+    reads {
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+        as.flag_usecache    : exact;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //
+        hashmar_15;
+        //mar_load_15;
+        //mbr_load_15;
+        //mbr2_load_15;
+        //mbr_add_15;
+        //mar_add_15;
+        //jump_15;
+        //attempt_rejoin_15;
+        //bit_and_mbr_15;
+        //bit_and_mar_15;
+        counter_15_rmw;
+        memory_15_read;
+        memory_15_write;
+        memory_15_sub;
+    }
+}
+
+table execute_16 {
+    reads {
+        ap[9].opcode        : exact;
+        as.fid              : exact;
+        meta.complete       : exact;
+        meta.disabled       : exact;
+        meta.mbr            : range;
+        meta.mar            : range;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        clean_ih;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //        
+        hashmar_16;
+        mar_load_16;
+        mbr_load_16;
+        mbr2_load_16;
+        mbr_add_16;
+        mar_add_16;
+        //mbr_subtract_16;
+        //bit_and_mbr_mar_16;
+        jump_16;
+        attempt_rejoin_16;
+        //mar_equals_16;
+        bit_and_mbr_16;
+        bit_and_mar_16;
+        mbr_equals_16;
+        counter_16_rmw;
+        memory_16_read;
+        memory_16_write;
+        memory_16_sub;
+    }
+}
+
+table precache_16 {
+    reads {
+        as.flag_precache    : exact;
+    }
+    actions {
+        write_prog_16;
+    }
+}
+
+table cached_16 {
+    reads {
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+        as.flag_usecache    : exact;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //
+        hashmar_16;
+        //mar_load_16;
+        //mbr_load_16;
+        //mbr2_load_16;
+        //mbr_add_16;
+        //mar_add_16;
+        //jump_16;
+        //attempt_rejoin_16;
+        //bit_and_mbr_16;
+        //bit_and_mar_16;
+        counter_16_rmw;
+        memory_16_read;
+        memory_16_write;
+        memory_16_sub;
+    }
+}
+
+table execute_17 {
+    reads {
+        ap[10].opcode        : exact;
+        as.fid              : exact;
+        meta.complete       : exact;
+        meta.disabled       : exact;
+        meta.mbr            : range;
+        meta.mar            : range;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        clean_ih;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //        
+        hashmar_17;
+        mar_load_17;
+        mbr_load_17;
+        mbr2_load_17;
+        mbr_add_17;
+        mar_add_17;
+        //mbr_subtract_17;
+        //bit_and_mbr_mar_17;
+        jump_17;
+        attempt_rejoin_17;
+        //mar_equals_17;
+        bit_and_mbr_17;
+        bit_and_mar_17;
+        mbr_equals_17;
+        counter_17_rmw;
+        memory_17_read;
+        memory_17_write;
+        memory_17_sub;
+    }
+}
+
+table precache_17 {
+    reads {
+        as.flag_precache    : exact;
+    }
+    actions {
+        write_prog_17;
+    }
+}
+
+table cached_17 {
+    reads {
+        meta.complete       : exact;
+        meta.disabled       : range;
+        meta.mbr            : range;
+        meta.quota_start    : range;
+        meta.quota_end      : range;
+        meta.mar            : range;
+        as.fid              : exact;
+        as.flag_usecache    : exact;
+    }
+    actions {
+// ==== GENERIC ACTIONS ==== //  
+        skip;
+        complete;
+        cancel_complete;
+        loop_init;
+        loop_end;
+        acc_load;
+        acc2_load;
+        copy_mbr2_mbr;
+        copy_mbr_mbr2;
+        mark_packet;
+        drop_eg;
+        cancel_drop_eg;
+        duplicate;
+        enable_execution;
+        return_to_sender;
+        //swap_addr;
+        rts_addr;
+        memfault;
+        set_port;
+        goto_aux;
+        min_mbr_mbr2;
+        min_mbr2_mbr;
+        mbr_equals_mbr2;
+        hash_generic;
+        load_hashlist_ipv4src;
+        load_hashlist_ipv4dst;
+        load_hashlist_ipv4proto;
+        load_hashlist_udpsrcport;
+        load_hashlist_udpdstport;
+        load_hashlist_5tuple;
+        copy_mar_mbr;
+        copy_mbr_mar;
+        bit_and_mar_mbr;
+        mar_add_mbr;
+        acc_to_mbr;
+        set_port_ig;
+// ==== STAGE SPECIFIC ACTIONS ==== //
+        hashmar_17;
+        //mar_load_17;
+        //mbr_load_17;
+        //mbr2_load_17;
+        //mbr_add_17;
+        //mar_add_17;
+        //jump_17;
+        //attempt_rejoin_17;
+        //bit_and_mbr_17;
+        //bit_and_mar_17;
+        counter_17_rmw;
+        memory_17_read;
+        memory_17_write;
+        memory_17_sub;
+    }
+}

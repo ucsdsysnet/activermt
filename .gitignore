@@ -4,6 +4,7 @@ util/upload.sh
 
 pcaps/
 eval/
+ica/
 
 *.pcap
 *.pyc

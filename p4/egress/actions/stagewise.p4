@@ -879,3 +879,192 @@ action mbr_subtract_14() {
 action mar_equals_14() {
     bit_xor(meta.mbr, meta.mar, ap[7].arg);
 }*/
+
+action mar_load_15() {
+    modify_field(meta.mar, ap[8].arg);
+}
+
+action mar_add_15() {
+    add_to_field(meta.mar, ap[8].arg);
+}
+
+action mbr_load_15() {
+    modify_field(meta.mbr, ap[8].arg);
+}
+
+action mbr_add_15() {
+    add_to_field(meta.mbr, ap[8].arg);
+}
+
+action mbr2_load_15() {
+    modify_field(meta.mbr2, ap[8].arg);
+}
+
+action jump_15() {
+    bit_or(meta.disabled, meta.disabled, 2);
+    modify_field(meta.pc, ap[8].goto);
+}
+
+action attempt_rejoin_15() {
+    bit_xor(meta.disabled, meta.pc, ap[8].goto);
+}
+
+action bit_and_mbr_15() {
+    bit_and(meta.mbr, meta.mbr, ap[8].arg);
+}
+
+action bit_and_mar_15() {
+    bit_and(meta.mar, meta.mar, ap[8].arg);
+}
+
+field_list_calculation mar_list_hash_15 {
+    input           { mar_list; }
+    algorithm       : crc_16_dnp;
+    output_width    : 16;
+}
+
+action hashmar_15() {
+    modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_15, 65536);
+}
+
+action mbr_equals_15() {
+    bit_xor(meta.mbr, meta.mbr, ap[8].arg);
+}
+
+/*action bit_and_mbr_mar_15() {
+    bit_and(meta.mar, meta.mbr, ap[8].arg);
+}
+
+action mbr_subtract_15() {
+    subtract_from_field(meta.mbr, ap[8].arg);
+}
+
+action mar_equals_15() {
+    bit_xor(meta.mbr, meta.mar, ap[8].arg);
+}*/
+
+action mar_load_16() {
+    modify_field(meta.mar, ap[9].arg);
+}
+
+action mar_add_16() {
+    add_to_field(meta.mar, ap[9].arg);
+}
+
+action mbr_load_16() {
+    modify_field(meta.mbr, ap[9].arg);
+}
+
+action mbr_add_16() {
+    add_to_field(meta.mbr, ap[9].arg);
+}
+
+action mbr2_load_16() {
+    modify_field(meta.mbr2, ap[9].arg);
+}
+
+action jump_16() {
+    bit_or(meta.disabled, meta.disabled, 2);
+    modify_field(meta.pc, ap[9].goto);
+}
+
+action attempt_rejoin_16() {
+    bit_xor(meta.disabled, meta.pc, ap[9].goto);
+}
+
+action bit_and_mbr_16() {
+    bit_and(meta.mbr, meta.mbr, ap[9].arg);
+}
+
+action bit_and_mar_16() {
+    bit_and(meta.mar, meta.mar, ap[9].arg);
+}
+
+field_list_calculation mar_list_hash_16 {
+    input           { mar_list; }
+    algorithm       : crc_16_genibus;
+    output_width    : 16;
+}
+
+action hashmar_16() {
+    modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_16, 65536);
+}
+
+action mbr_equals_16() {
+    bit_xor(meta.mbr, meta.mbr, ap[9].arg);
+}
+
+/*action bit_and_mbr_mar_16() {
+    bit_and(meta.mar, meta.mbr, ap[9].arg);
+}
+
+action mbr_subtract_16() {
+    subtract_from_field(meta.mbr, ap[9].arg);
+}
+
+action mar_equals_16() {
+    bit_xor(meta.mbr, meta.mar, ap[9].arg);
+}*/
+
+action mar_load_17() {
+    modify_field(meta.mar, ap[10].arg);
+}
+
+action mar_add_17() {
+    add_to_field(meta.mar, ap[10].arg);
+}
+
+action mbr_load_17() {
+    modify_field(meta.mbr, ap[10].arg);
+}
+
+action mbr_add_17() {
+    add_to_field(meta.mbr, ap[10].arg);
+}
+
+action mbr2_load_17() {
+    modify_field(meta.mbr2, ap[10].arg);
+}
+
+action jump_17() {
+    bit_or(meta.disabled, meta.disabled, 2);
+    modify_field(meta.pc, ap[10].goto);
+}
+
+action attempt_rejoin_17() {
+    bit_xor(meta.disabled, meta.pc, ap[10].goto);
+}
+
+action bit_and_mbr_17() {
+    bit_and(meta.mbr, meta.mbr, ap[10].arg);
+}
+
+action bit_and_mar_17() {
+    bit_and(meta.mar, meta.mar, ap[10].arg);
+}
+
+field_list_calculation mar_list_hash_17 {
+    input           { mar_list; }
+    algorithm       : crc_16_maxim;
+    output_width    : 16;
+}
+
+action hashmar_17() {
+    modify_field_with_hash_based_offset(meta.mar, 0, mar_list_hash_17, 65536);
+}
+
+action mbr_equals_17() {
+    bit_xor(meta.mbr, meta.mbr, ap[10].arg);
+}
+
+/*action bit_and_mbr_mar_17() {
+    bit_and(meta.mar, meta.mbr, ap[10].arg);
+}
+
+action mbr_subtract_17() {
+    subtract_from_field(meta.mbr, ap[10].arg);
+}
+
+action mar_equals_17() {
+    bit_xor(meta.mbr, meta.mar, ap[10].arg);
+}*/

@@ -76,11 +76,7 @@ control ingress {
                 apply(preplimit);
                 apply(resources) {
                     hit {
-                        if(as.flag_usecache == 1) {
-    #precacheig
-                        } else {
-    #igtables                        
-                        }
+                        #igtables
                     }
                 }
             }
@@ -129,11 +125,7 @@ control egress {
     apply(generic_traffic_monitor);
     if(valid(as)) {
         apply(active_traffic_counter);
-        if(as.flag_usecache == 1) {
-    #precacheeg
-        } else {
-    #tables        
-        }
+        #tables
         apply(cycleupdate);
         apply(progress);
         apply(lenupdate);

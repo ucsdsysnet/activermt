@@ -37,7 +37,7 @@ header tcp_t                tcp;
 header pktgen_ts_t          ts;
 header active_state_t       as;
 
-header active_program_t     ap[14];
+header active_program_t     ap[17];
 
 header tcp_option_4B_t          tcpo_4b;
 header tcp_option_8B_t          tcpo_8b;
@@ -76,15 +76,7 @@ control ingress {
                 apply(preplimit);
                 apply(resources) {
                     hit {
-                        if(as.flag_usecache == 1) {
-    					apply(cached_1);
-						apply(cached_2);
-						apply(cached_3);
-						apply(cached_4);
-						apply(cached_5);
-						apply(cached_6);
-                        } else {
-    					apply(proceed_1);
+                        					apply(proceed_1);
 						apply(execute_1);
 						apply(proceed_2);
 						apply(execute_2);
@@ -95,8 +87,7 @@ control ingress {
 						apply(proceed_5);
 						apply(execute_5);
 						apply(proceed_6);
-						apply(execute_6);                        
-                        }
+						apply(execute_6);
                     }
                 }
             }
@@ -145,17 +136,7 @@ control egress {
     apply(generic_traffic_monitor);
     if(valid(as)) {
         apply(active_traffic_counter);
-        if(as.flag_usecache == 1) {
-    	apply(cached_7);
-		apply(cached_8);
-		apply(cached_9);
-		apply(cached_10);
-		apply(cached_11);
-		apply(cached_12);
-		apply(cached_13);
-		apply(cached_14);
-        } else {
-    	apply(proceed_7);
+        	apply(proceed_7);
 		apply(execute_7);
 		apply(proceed_8);
 		apply(execute_8);
@@ -170,8 +151,13 @@ control egress {
 		apply(proceed_13);
 		apply(execute_13);
 		apply(proceed_14);
-		apply(execute_14);        
-        }
+		apply(execute_14);
+		apply(proceed_15);
+		apply(execute_15);
+		apply(proceed_16);
+		apply(execute_16);
+		apply(proceed_17);
+		apply(execute_17);
         apply(cycleupdate);
         apply(progress);
         apply(lenupdate);
