@@ -4,6 +4,10 @@ util/upload.sh
 
 pcaps/
 eval/
+ica/
+CMakeFiles/
 
+bf_drivers*
 *.pcap
 *.pyc
+*.log
