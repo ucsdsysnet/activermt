@@ -2,6 +2,9 @@
     #define IPV4_LPM_SIZE (12 * 1024)
 #endif
 
+#define MAX_INSTRUCTIONS 10
+#define MAX_TCP_OPTIONS 10
+
 #include <core.p4>
 #include <tna.p4>
 
@@ -17,6 +20,7 @@ Pipeline(
     IngressDeparser(),
     EgressParser(),
     Egress(),
+    IPV4Checksum(),
     EgressDeparser()
 ) pipe;
 

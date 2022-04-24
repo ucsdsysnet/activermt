@@ -7,6 +7,16 @@ enum bit<16> ether_type_t {
     IPV6 = 0x86DD
 }
 
+enum bit<8> ipv4_protocol_t {
+    UDP = 0x11,
+    TCP = 0x06
+}
+
+enum bit<16> active_port_t {
+    UDP = 9876,
+    TCP = 6378
+}
+
 header ethernet_h {
     mac_addr_t   dst_addr;
     mac_addr_t   src_addr;
@@ -14,30 +24,141 @@ header ethernet_h {
 }
 
 header ipv4_h {
-    bit<4>       version;
-    bit<4>       ihl;
-    bit<8>       diffserv;
-    bit<16>      total_len;
-    bit<16>      identification;
-    bit<3>       flags;
-    bit<13>      frag_offset;
-    bit<8>       ttl;
-    bit<8>       protocol;
-    bit<16>      hdr_checksum;
-    ipv4_addr_t  src_addr;
-    ipv4_addr_t  dst_addr;
+    bit<4>          version;
+    bit<4>          ihl;
+    bit<8>          diffserv;
+    bit<16>         total_len;
+    bit<16>         identification;
+    bit<3>          flags;
+    bit<13>         frag_offset;
+    bit<8>          ttl;
+    ipv4_protocol_t protocol;
+    bit<16>         hdr_checksum;
+    ipv4_addr_t     src_addr;
+    ipv4_addr_t     dst_addr;
+}
+
+header udp_h {
+    bit<16>     src_port;
+    bit<16>     dst_port;
+    bit<16>     len;
+    bit<16>     cksum;    
+}
+
+header tcp_h {
+    bit<16>     src_port;
+    bit<16>     dst_port;
+    bit<32>     seq_no;
+    bit<32>     ack_no;
+    bit<4>      data_offset;
+    bit<3>      res;
+    bit<3>      ecn;
+    bit<6>      ctrl;
+    bit<16>     window;
+    bit<16>     checksum;
+    bit<16>     urgent_ptr;
+}
+
+header tcp_option_h {
+    varbit<320> data;
+}
+
+header active_initial_h {
+    bit<32>     ACTIVEP4;
+    bit<1>      flag_redirect;
+    bit<1>      flag_igclone;
+    bit<1>      flag_bypasseg;
+    bit<1>      flag_rts;
+    bit<1>      flag_marked;
+    bit<1>      flag_aux;
+    bit<1>      flag_ack;
+    bit<1>      flag_done;
+    bit<1>      flag_mfault;
+    bit<1>      flag_exceeded;
+    bit<1>      flag_reqalloc;
+    bit<1>      flag_allocated;
+    bit<1>      flag_precache;
+    bit<1>      flag_usecache;
+    bit<2>      padding;
+    bit<16>     fid;
+    bit<32>     seq;
+    bit<16>     acc;
+    bit<16>     acc2;
+    bit<16>     data;
+    bit<16>     data2;
+}
+
+header active_instruction_h {
+    bit<4>      flags;
+    bit<4>      goto;
+    bit<8>      opcode;
+    bit<16>     arg;
 }
 
 struct ingress_headers_t {
-    ethernet_h   ethernet;
-    ipv4_h       ipv4;
+    ethernet_h                              ethernet;
+    ipv4_h                                  ipv4;
+    udp_h                                   udp;
+    tcp_h                                   tcp;
+    tcp_option_h                            tcpopts;
+    active_initial_h                        ih;
+    active_instruction_h[MAX_INSTRUCTIONS]  instr;
 }
 
 struct active_ingress_metadata_t {
+    bit<4>      tcpopt_remaining;
+    bit<1>      duplicate;
+    bit<1>      complete;
+    bit<1>      skipped;
+    bit<1>      rts;
+    bit<1>      eof;
+    bit<1>      alloc_init;
+    bit<2>      disabled;
+    bit<4>      quota_start;
+    bit<4>      quota_end; 
+    bit<8>      cycles;
+    bit<16>     rtsid;
+    bit<16>     fwdid;
+    bit<16>     mar;
+    bit<16>     mbr;
+    bit<16>     mbr2;
+    /*hashblock_1 : 16;
+    hashblock_2 : 16;
+    hashblock_3 : 16;
+    hashblock_4 : 16;
+    hashblock_5 : 16;
+    hashblock_6 : 16;
+    hashblock_7 : 16;
+    mirror_type : 1;
+    mirror_id   : 10;
+    mirror_sess : 10;*/
 }
 
 struct egress_headers_t {
 }
 
 struct active_egress_metadata_t {
+}
+
+control IPV4Checksum(inout headers hdr, inout metadata meta) {
+    apply {
+        update_checksum(
+            hdr.ipv4.isValid(),
+            { 
+                hdr.ipv4.version,
+                hdr.ipv4.ihl,
+                hdr.ipv4.diffserv,
+                hdr.ipv4.totalLen,
+                hdr.ipv4.identification,
+                hdr.ipv4.flags,
+                hdr.ipv4.fragOffset,
+                hdr.ipv4.ttl,
+                hdr.ipv4.protocol,
+                hdr.ipv4.srcAddr,
+                hdr.ipv4.dstAddr 
+            },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16
+        );
+    }
 }
