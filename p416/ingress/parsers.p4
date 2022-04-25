@@ -4,7 +4,7 @@ Checksum()  udp_checksum;
 parser IngressParser(
     packet_in                       pkt,
     out ingress_headers_t           hdr,
-    out active_ingress_metadata_t   meta,
+    out active_metadata_t   meta,
     
     out ingress_intrinsic_metadata_t    ig_intr_md
 ) {
@@ -89,7 +89,7 @@ parser IngressParser(
 control IngressDeparser(
     packet_out                      pkt,
     inout ingress_headers_t         hdr,
-    in    active_ingress_metadata_t meta,
+    in    active_metadata_t meta,
     
     in    ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md
 ) {

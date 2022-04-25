@@ -105,7 +105,7 @@ struct ingress_headers_t {
     active_instruction_h[MAX_INSTRUCTIONS]  instr;
 }
 
-struct active_ingress_metadata_t {
+struct active_metadata_t {
     bit<4>      tcpopt_remaining;
     bit<1>      duplicate;
     bit<1>      complete;
@@ -113,7 +113,8 @@ struct active_ingress_metadata_t {
     bit<1>      rts;
     bit<1>      eof;
     bit<1>      alloc_init;
-    bit<2>      disabled;
+    bit<4>      disabled;
+    bit<4>      pc;
     bit<4>      quota_start;
     bit<4>      quota_end; 
     bit<8>      cycles;
@@ -135,12 +136,16 @@ struct active_ingress_metadata_t {
 }
 
 struct egress_headers_t {
+    ethernet_h                              ethernet;
+    ipv4_h                                  ipv4;
+    udp_h                                   udp;
+    tcp_h                                   tcp;
+    tcp_option_h                            tcpopts;
+    active_initial_h                        ih;
+    active_instruction_h[MAX_INSTRUCTIONS]  instr;
 }
 
-struct active_egress_metadata_t {
-}
-
-control IPV4Checksum(inout headers hdr, inout metadata meta) {
+/*control IPV4Checksum(inout headers hdr, inout metadata meta) {
     apply {
         update_checksum(
             hdr.ipv4.isValid(),
@@ -161,4 +166,4 @@ control IPV4Checksum(inout headers hdr, inout metadata meta) {
             HashAlgorithm.csum16
         );
     }
-}
+}*/

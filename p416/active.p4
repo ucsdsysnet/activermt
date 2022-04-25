@@ -20,7 +20,7 @@ Pipeline(
     IngressDeparser(),
     EgressParser(),
     Egress(),
-    IPV4Checksum(),
+    //IPV4Checksum(),
     EgressDeparser()
 ) pipe;
 
