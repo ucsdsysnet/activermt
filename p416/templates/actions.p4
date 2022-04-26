@@ -46,3 +46,7 @@ action memory_read_s<stage-id>() {
 action memory_write_s<stage-id>() {
     heap_write_s<stage-id>.execute((bit<32>)meta.mar);
 }
+
+action hash_s<stage-id>() {
+    meta.mar = crc_16_s<stage-id>.get({meta.mbr});
+}

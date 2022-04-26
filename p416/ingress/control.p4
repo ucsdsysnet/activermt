@@ -149,6 +149,118 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_read_s10 = {
     }
 };
 
+    
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s1;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s1) crc_16_s1;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s2;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s2) crc_16_s2;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s3;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s3) crc_16_s3;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s4;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s4) crc_16_s4;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s5;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s5) crc_16_s5;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s6;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s6) crc_16_s6;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s7;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s8;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s9;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s10;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s10) crc_16_s10;
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS
@@ -317,6 +429,10 @@ action memory_read_s1() {
 
 action memory_write_s1() {
     heap_write_s1.execute((bit<32>)meta.mar);
+}
+
+action hash_s1() {
+    meta.mar = crc_16_s1.get({meta.mbr});
 }action mar_load_s2() {
     meta.mar = hdr.instr[1].arg;
 }
@@ -364,6 +480,10 @@ action memory_read_s2() {
 
 action memory_write_s2() {
     heap_write_s2.execute((bit<32>)meta.mar);
+}
+
+action hash_s2() {
+    meta.mar = crc_16_s2.get({meta.mbr});
 }action mar_load_s3() {
     meta.mar = hdr.instr[2].arg;
 }
@@ -411,6 +531,10 @@ action memory_read_s3() {
 
 action memory_write_s3() {
     heap_write_s3.execute((bit<32>)meta.mar);
+}
+
+action hash_s3() {
+    meta.mar = crc_16_s3.get({meta.mbr});
 }action mar_load_s4() {
     meta.mar = hdr.instr[3].arg;
 }
@@ -458,6 +582,10 @@ action memory_read_s4() {
 
 action memory_write_s4() {
     heap_write_s4.execute((bit<32>)meta.mar);
+}
+
+action hash_s4() {
+    meta.mar = crc_16_s4.get({meta.mbr});
 }action mar_load_s5() {
     meta.mar = hdr.instr[4].arg;
 }
@@ -505,6 +633,10 @@ action memory_read_s5() {
 
 action memory_write_s5() {
     heap_write_s5.execute((bit<32>)meta.mar);
+}
+
+action hash_s5() {
+    meta.mar = crc_16_s5.get({meta.mbr});
 }action mar_load_s6() {
     meta.mar = hdr.instr[5].arg;
 }
@@ -552,6 +684,10 @@ action memory_read_s6() {
 
 action memory_write_s6() {
     heap_write_s6.execute((bit<32>)meta.mar);
+}
+
+action hash_s6() {
+    meta.mar = crc_16_s6.get({meta.mbr});
 }action mar_load_s7() {
     meta.mar = hdr.instr[6].arg;
 }
@@ -599,6 +735,10 @@ action memory_read_s7() {
 
 action memory_write_s7() {
     heap_write_s7.execute((bit<32>)meta.mar);
+}
+
+action hash_s7() {
+    meta.mar = crc_16_s7.get({meta.mbr});
 }action mar_load_s8() {
     meta.mar = hdr.instr[7].arg;
 }
@@ -646,6 +786,10 @@ action memory_read_s8() {
 
 action memory_write_s8() {
     heap_write_s8.execute((bit<32>)meta.mar);
+}
+
+action hash_s8() {
+    meta.mar = crc_16_s8.get({meta.mbr});
 }action mar_load_s9() {
     meta.mar = hdr.instr[8].arg;
 }
@@ -693,6 +837,10 @@ action memory_read_s9() {
 
 action memory_write_s9() {
     heap_write_s9.execute((bit<32>)meta.mar);
+}
+
+action hash_s9() {
+    meta.mar = crc_16_s9.get({meta.mbr});
 }action mar_load_s10() {
     meta.mar = hdr.instr[9].arg;
 }
@@ -742,6 +890,10 @@ action memory_write_s10() {
     heap_write_s10.execute((bit<32>)meta.mar);
 }
 
+action hash_s10() {
+    meta.mar = crc_16_s10.get({meta.mbr});
+}
+
     // GENERATED: TABLES
 
     
@@ -787,6 +939,7 @@ bit_and_mar_s1;
 mbr_equals_arg_s1;
 memory_read_s1;
 memory_write_s1;
+hash_s1;
     }
 }
 
@@ -833,6 +986,7 @@ bit_and_mar_s2;
 mbr_equals_arg_s2;
 memory_read_s2;
 memory_write_s2;
+hash_s2;
     }
 }
 
@@ -879,6 +1033,7 @@ bit_and_mar_s3;
 mbr_equals_arg_s3;
 memory_read_s3;
 memory_write_s3;
+hash_s3;
     }
 }
 
@@ -925,6 +1080,7 @@ bit_and_mar_s4;
 mbr_equals_arg_s4;
 memory_read_s4;
 memory_write_s4;
+hash_s4;
     }
 }
 
@@ -971,6 +1127,7 @@ bit_and_mar_s5;
 mbr_equals_arg_s5;
 memory_read_s5;
 memory_write_s5;
+hash_s5;
     }
 }
 
@@ -1017,6 +1174,7 @@ bit_and_mar_s6;
 mbr_equals_arg_s6;
 memory_read_s6;
 memory_write_s6;
+hash_s6;
     }
 }
 
@@ -1063,6 +1221,7 @@ bit_and_mar_s7;
 mbr_equals_arg_s7;
 memory_read_s7;
 memory_write_s7;
+hash_s7;
     }
 }
 
@@ -1109,6 +1268,7 @@ bit_and_mar_s8;
 mbr_equals_arg_s8;
 memory_read_s8;
 memory_write_s8;
+hash_s8;
     }
 }
 
@@ -1155,6 +1315,7 @@ bit_and_mar_s9;
 mbr_equals_arg_s9;
 memory_read_s9;
 memory_write_s9;
+hash_s9;
     }
 }
 
@@ -1201,6 +1362,7 @@ bit_and_mar_s10;
 mbr_equals_arg_s10;
 memory_read_s10;
 memory_write_s10;
+hash_s10;
     }
 }
 

@@ -9,6 +9,8 @@ control Ingress(
 ) {
     <register-defs>
 
+    <hash-defs>
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS

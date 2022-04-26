@@ -9,6 +9,8 @@ control Egress(
 ) {
     <register-defs>
 
+    <hash-defs>
+
     action drop() {
         eg_dprsr_md.drop_ctl = 1;
     }

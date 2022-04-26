@@ -7,6 +7,11 @@ ANNOTATION_ACTIONDEFS       = '<generated-actions-defs>'
 ANNOTATION_TABLES           = '<generated-tables>'
 ANNOTATION_CTRLFLOW         = '<generated-ctrlflow>'
 ANNOTATION_MEMORY           = '<register-defs>'
+ANNOTATION_POLY_COEFF       = '<poly-param-coeff>'
+ANNOTATION_POLY_REVERSED    = '<poly-param-reversed>'
+ANNOTATION_POLY_INIT        = '<poly-param-init>'
+ANNOTATION_POLY_XOR         = '<poly-param-xor>'
+ANNOTATION_HASHDEFS         = '<hash-defs>'
 
 class ActiveP4Generator:
 
@@ -15,8 +20,12 @@ class ActiveP4Generator:
             'actions'       : 'templates/actions.p4',
             'instruction'   : 'templates/instruction.p4',
             'memory'        : 'templates/memory.p4',
+            'hashing'       : 'templates/hashing.p4',
             'ingress'       : 'templates/control.ingress.p4',
             'egress'        : 'templates/control.egress.p4'
+        }
+        self.crc_16_params = {
+            'crc_16'        : ('0x18005', 'true', '0x0000', '0x0000')
         }
 
     def getGeneratedActions(self, stage_id):
@@ -60,6 +69,15 @@ class ActiveP4Generator:
             f.close()
         return p4code
 
+    def getGeneratedHashing(self, stage_id, hash_algo):
+        p4code = None
+        with open(self.paths['hashing']) as f:
+            template = f.read()
+            hash_params = self.crc_16_params[hash_algo]
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_POLY_COEFF, hash_params[0]).replace(ANNOTATION_POLY_REVERSED, hash_params[1]).replace(ANNOTATION_POLY_INIT, hash_params[2]).replace(ANNOTATION_POLY_XOR, hash_params[3])
+            f.close()
+        return p4code
+
     def getGeneratedControl(self, eg_ig, stage_offset, num_stages):
         p4code = None
         with open(self.paths[eg_ig]) as f:
@@ -67,15 +85,22 @@ class ActiveP4Generator:
             table_code = ""
             action_code = ""
             register_code = ""
+            hashing_code = ""
             table_names = []
+            hash_idx = 0
+            hash_algos = list(self.crc_16_params.keys())
             for i in range(stage_offset, stage_offset + num_stages):
                 tabledefs = self.getGeneratedTable(i)
                 registerdefs = self.getGeneratedRegister(i)
+                hash_algo = hash_algos[hash_idx]
+                hash_idx = (hash_idx + 1) % len(hash_algos)
+                hashdefs = self.getGeneratedHashing(i, hash_algo)
                 table_code = table_code + "\n\n" + tabledefs[0]
                 action_code = action_code + tabledefs[2]
                 register_code = register_code + "\n\n" + registerdefs
+                hashing_code = hashing_code + "\n\n" + hashdefs
                 table_names.append(tabledefs[1])
-            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join([ ('%s.apply();' % x) for x in table_names ])).replace(ANNOTATION_MEMORY, register_code)
+            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join([ ('%s.apply();' % x) for x in table_names ])).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
         return p4code
 
