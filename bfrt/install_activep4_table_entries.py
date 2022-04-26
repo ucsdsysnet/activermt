@@ -1,4 +1,9 @@
+import os
+import sys
 from netaddr import IPAddress
+
+#print(os.getcwd())
+#sys.path.insert(0, os.path.join(os.environ['ACTIVEP4_SRC'], 'bfrt', 'ptf'))
 
 class ActiveP4Installer:
 
@@ -7,6 +12,23 @@ class ActiveP4Installer:
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
+        self.num_stages_ingress = 10
+        self.num_stages_egress = 10
+        self.opcode_action = {}
+        with open('bfrt/opcode_action_mapping.csv') as f:
+            mapping = f.read().strip().splitlines()
+            for opcode in range(0, len(mapping)):
+                m = mapping[opcode].split(',')
+                pnemonic = m[0]
+                action = m[1]
+                conditional = (bool(m[2]) if len(m) == 3 else None)
+                self.opcode_action[pnemonic] = {
+                    'opcode'    : opcode,
+                    'action'    : action,
+                    'condition' : conditional,
+                    'args'      : None
+                }
+            f.close()
 
     # Taken from ICA examples
     def clear_all(self, verbose=True, batching=True):
@@ -22,16 +44,29 @@ class ActiveP4Installer:
                     if verbose:
                         print('Done')
 
-    def installTableEntries(self):
+    def installForwardingTableEntries(self, dst_port_mapping):
         ipv4_host = self.p4.Ingress.ipv4_host
-        ipv4_host.add_with_send(dst_addr=IPAddress('192.168.1.1'),   port=1)
-        ipv4_lpm =  self.p4.Ingress.ipv4_lpm
-        ipv4_lpm.add_with_send(
-            dst_addr=IPAddress('192.168.1.0'), dst_addr_p_length=24, port=1)
+        for host in dst_port_mapping:
+            ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host])
         bfrt.complete_operations()
-        ipv4_host.dump(table=True)
-        ipv4_lpm.dump(table=True)
-        info = ipv4_host.info(return_info=True, print_info=False)
+        #ipv4_host.dump(table=True)
+        #info = ipv4_host.info(return_info=True, print_info=False)
+
+    def installInstructionTableEntriesGress(self, fid, gress, num_stages):
+        for i in range(0, num_stages):
+            instr_table = getattr(gress, 'instruction_%d' % (i + 1))
+            for a in self.opcode_action:
+                act = self.opcode_action[a]
+                # TODO add conditional instructions
+                if act['action'] == 'NULL' or act['condition'] is not None: 
+                    continue
+                add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i + 1)))
+                add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0)
+        bfrt.complete_operations()
+
+    def installInstructionTableEntries(self, fid):
+        self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
+        self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
 
     def installInBatches(self):
         bfrt.batch_begin()
@@ -44,4 +79,11 @@ class ActiveP4Installer:
 
 installer = ActiveP4Installer()
 
-installer.installTableEntries()
+dst_port_mapping = {
+    '10.0.0.1'  : 0,
+    '10.0.0.2'  : 1
+}
+
+installer.clear_all()
+installer.installForwardingTableEntries(dst_port_mapping)
+installer.installInstructionTableEntries(1)

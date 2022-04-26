@@ -123,14 +123,7 @@ struct active_metadata_t {
     bit<16>     mar;
     bit<16>     mbr;
     bit<16>     mbr2;
-    /*hashblock_1 : 16;
-    hashblock_2 : 16;
-    hashblock_3 : 16;
-    hashblock_4 : 16;
-    hashblock_5 : 16;
-    hashblock_6 : 16;
-    hashblock_7 : 16;
-    mirror_type : 1;
+    /*mirror_type : 1;
     mirror_id   : 10;
     mirror_sess : 10;*/
 }
@@ -144,26 +137,3 @@ struct egress_headers_t {
     active_initial_h                        ih;
     active_instruction_h[MAX_INSTRUCTIONS]  instr;
 }
-
-/*control IPV4Checksum(inout headers hdr, inout metadata meta) {
-    apply {
-        update_checksum(
-            hdr.ipv4.isValid(),
-            { 
-                hdr.ipv4.version,
-                hdr.ipv4.ihl,
-                hdr.ipv4.diffserv,
-                hdr.ipv4.totalLen,
-                hdr.ipv4.identification,
-                hdr.ipv4.flags,
-                hdr.ipv4.fragOffset,
-                hdr.ipv4.ttl,
-                hdr.ipv4.protocol,
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr 
-            },
-            hdr.ipv4.hdrChecksum,
-            HashAlgorithm.csum16
-        );
-    }
-}*/

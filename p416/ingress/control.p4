@@ -286,14 +286,6 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s10) crc_16_s10;
 #endif
     }
 
-    table ipv4_lpm {
-        key     = { hdr.ipv4.dst_addr : lpm; }
-        actions = { send; drop; }
-
-        default_action = send(64);
-        size           = IPV4_LPM_SIZE;
-    }
-
     // actions
 
     action skip() {}
@@ -909,6 +901,7 @@ table instruction_1 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -956,6 +949,7 @@ table instruction_2 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1003,6 +997,7 @@ table instruction_3 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1050,6 +1045,7 @@ table instruction_4 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1097,6 +1093,7 @@ table instruction_5 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1144,6 +1141,7 @@ table instruction_6 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1191,6 +1189,7 @@ table instruction_7 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1238,6 +1237,7 @@ table instruction_8 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1285,6 +1285,7 @@ table instruction_9 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1332,6 +1333,7 @@ table instruction_10 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1372,9 +1374,7 @@ hash_s10;
 
     apply {
         if (hdr.ipv4.isValid()) {
-            if (ipv4_host.apply().miss) {
-                ipv4_lpm.apply();
-            }
+            ipv4_host.apply();
         }
         instruction_1.apply();
 		instruction_2.apply();

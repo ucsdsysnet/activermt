@@ -36,14 +36,6 @@ control Ingress(
 #endif
     }
 
-    table ipv4_lpm {
-        key     = { hdr.ipv4.dst_addr : lpm; }
-        actions = { send; drop; }
-
-        default_action = send(64);
-        size           = IPV4_LPM_SIZE;
-    }
-
     // actions
 
     action skip() {}
@@ -142,9 +134,7 @@ control Ingress(
 
     apply {
         if (hdr.ipv4.isValid()) {
-            if (ipv4_host.apply().miss) {
-                ipv4_lpm.apply();
-            }
+            ipv4_host.apply();
         }
         <generated-ctrlflow>
     }

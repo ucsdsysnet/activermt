@@ -879,6 +879,7 @@ table instruction_1 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -926,6 +927,7 @@ table instruction_2 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -973,6 +975,7 @@ table instruction_3 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1020,6 +1023,7 @@ table instruction_4 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1067,6 +1071,7 @@ table instruction_5 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1114,6 +1119,7 @@ table instruction_6 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1161,6 +1167,7 @@ table instruction_7 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1208,6 +1215,7 @@ table instruction_8 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1255,6 +1263,7 @@ table instruction_9 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;
@@ -1302,6 +1311,7 @@ table instruction_10 {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;

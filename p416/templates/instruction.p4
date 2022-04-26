@@ -9,6 +9,7 @@ table instruction_<stage-id> {
     }
     actions = {
         drop;
+        skip;
         rts;
         set_port;
         complete;

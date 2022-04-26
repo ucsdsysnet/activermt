@@ -49,8 +49,8 @@ parser IngressParser(
     state parse_tcp {
         pkt.extract(hdr.tcp);
         transition select(hdr.tcp.data_offset) {
-            0       : check_active_tcp_pkt;
-            1..10   : parse_tcp_options;
+            5       : check_active_tcp_pkt;
+            6..15   : parse_tcp_options;
             default : accept;
         }
     }
@@ -75,7 +75,7 @@ parser IngressParser(
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
         transition select(hdr.instr.last.opcode) {
-            0x01    : mark_eof;
+            0x0     : mark_eof;
             default : parse_active_instruction;
         }
     }
