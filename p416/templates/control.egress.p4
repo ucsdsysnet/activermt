@@ -7,6 +7,7 @@ control Egress(
     inout egress_intrinsic_metadata_for_deparser_t     eg_dprsr_md,
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md
 ) {
+    <register-defs>
 
     action drop() {
         eg_dprsr_md.drop_ctl = 1;

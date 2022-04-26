@@ -38,3 +38,11 @@ action bit_and_mar_s<stage-id>() {
 action mbr_equals_arg_s<stage-id>() {
     meta.mbr = meta.mbr ^ hdr.instr[<instruction-id>].arg;
 }
+
+action memory_read_s<stage-id>() {
+    meta.mbr = heap_read_s<stage-id>.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s<stage-id>() {
+    heap_write_s<stage-id>.execute((bit<32>)meta.mar);
+}

@@ -7,6 +7,8 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md
 ) {
+    <register-defs>
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS

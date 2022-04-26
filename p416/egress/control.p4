@@ -7,6 +7,147 @@ control Egress(
     inout egress_intrinsic_metadata_for_deparser_t     eg_dprsr_md,
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md
 ) {
+    
+
+Register<bit<16>, bit<32>>(32w65536) heap_s1;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_write_s1 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_read_s1 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s2;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_write_s2 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_read_s2 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s3;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_write_s3 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_read_s3 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s4;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_write_s4 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_read_s4 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s5;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_write_s5 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_read_s5 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s6;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_write_s6 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_read_s6 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s7;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_write_s7 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_read_s7 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s8;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s8) heap_write_s8 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s8) heap_read_s8 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s9;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s9) heap_write_s9 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s9) heap_read_s9 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
+
+Register<bit<16>, bit<32>>(32w65536) heap_s10;
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_write_s10 = {
+    void apply(inout bit<16> value) {
+        value = meta.mbr;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_read_s10 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+    }
+};
 
     action drop() {
         eg_dprsr_md.drop_ctl = 1;
@@ -138,6 +279,14 @@ action bit_and_mar_s1() {
 
 action mbr_equals_arg_s1() {
     meta.mbr = meta.mbr ^ hdr.instr[0].arg;
+}
+
+action memory_read_s1() {
+    meta.mbr = heap_read_s1.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s1() {
+    heap_write_s1.execute((bit<32>)meta.mar);
 }action mar_load_s2() {
     meta.mar = hdr.instr[1].arg;
 }
@@ -177,6 +326,14 @@ action bit_and_mar_s2() {
 
 action mbr_equals_arg_s2() {
     meta.mbr = meta.mbr ^ hdr.instr[1].arg;
+}
+
+action memory_read_s2() {
+    meta.mbr = heap_read_s2.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s2() {
+    heap_write_s2.execute((bit<32>)meta.mar);
 }action mar_load_s3() {
     meta.mar = hdr.instr[2].arg;
 }
@@ -216,6 +373,14 @@ action bit_and_mar_s3() {
 
 action mbr_equals_arg_s3() {
     meta.mbr = meta.mbr ^ hdr.instr[2].arg;
+}
+
+action memory_read_s3() {
+    meta.mbr = heap_read_s3.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s3() {
+    heap_write_s3.execute((bit<32>)meta.mar);
 }action mar_load_s4() {
     meta.mar = hdr.instr[3].arg;
 }
@@ -255,6 +420,14 @@ action bit_and_mar_s4() {
 
 action mbr_equals_arg_s4() {
     meta.mbr = meta.mbr ^ hdr.instr[3].arg;
+}
+
+action memory_read_s4() {
+    meta.mbr = heap_read_s4.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s4() {
+    heap_write_s4.execute((bit<32>)meta.mar);
 }action mar_load_s5() {
     meta.mar = hdr.instr[4].arg;
 }
@@ -294,6 +467,14 @@ action bit_and_mar_s5() {
 
 action mbr_equals_arg_s5() {
     meta.mbr = meta.mbr ^ hdr.instr[4].arg;
+}
+
+action memory_read_s5() {
+    meta.mbr = heap_read_s5.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s5() {
+    heap_write_s5.execute((bit<32>)meta.mar);
 }action mar_load_s6() {
     meta.mar = hdr.instr[5].arg;
 }
@@ -333,6 +514,14 @@ action bit_and_mar_s6() {
 
 action mbr_equals_arg_s6() {
     meta.mbr = meta.mbr ^ hdr.instr[5].arg;
+}
+
+action memory_read_s6() {
+    meta.mbr = heap_read_s6.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s6() {
+    heap_write_s6.execute((bit<32>)meta.mar);
 }action mar_load_s7() {
     meta.mar = hdr.instr[6].arg;
 }
@@ -372,6 +561,14 @@ action bit_and_mar_s7() {
 
 action mbr_equals_arg_s7() {
     meta.mbr = meta.mbr ^ hdr.instr[6].arg;
+}
+
+action memory_read_s7() {
+    meta.mbr = heap_read_s7.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s7() {
+    heap_write_s7.execute((bit<32>)meta.mar);
 }action mar_load_s8() {
     meta.mar = hdr.instr[7].arg;
 }
@@ -411,6 +608,14 @@ action bit_and_mar_s8() {
 
 action mbr_equals_arg_s8() {
     meta.mbr = meta.mbr ^ hdr.instr[7].arg;
+}
+
+action memory_read_s8() {
+    meta.mbr = heap_read_s8.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s8() {
+    heap_write_s8.execute((bit<32>)meta.mar);
 }action mar_load_s9() {
     meta.mar = hdr.instr[8].arg;
 }
@@ -450,6 +655,14 @@ action bit_and_mar_s9() {
 
 action mbr_equals_arg_s9() {
     meta.mbr = meta.mbr ^ hdr.instr[8].arg;
+}
+
+action memory_read_s9() {
+    meta.mbr = heap_read_s9.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s9() {
+    heap_write_s9.execute((bit<32>)meta.mar);
 }action mar_load_s10() {
     meta.mar = hdr.instr[9].arg;
 }
@@ -489,6 +702,14 @@ action bit_and_mar_s10() {
 
 action mbr_equals_arg_s10() {
     meta.mbr = meta.mbr ^ hdr.instr[9].arg;
+}
+
+action memory_read_s10() {
+    meta.mbr = heap_read_s10.execute((bit<32>)meta.mar);
+}
+
+action memory_write_s10() {
+    heap_write_s10.execute((bit<32>)meta.mar);
 }
 
     // GENERATED: TABLES
@@ -534,6 +755,8 @@ attempt_rejoin_s1;
 bit_and_mbr_s1;
 bit_and_mar_s1;
 mbr_equals_arg_s1;
+memory_read_s1;
+memory_write_s1;
     }
 }
 
@@ -578,6 +801,8 @@ attempt_rejoin_s2;
 bit_and_mbr_s2;
 bit_and_mar_s2;
 mbr_equals_arg_s2;
+memory_read_s2;
+memory_write_s2;
     }
 }
 
@@ -622,6 +847,8 @@ attempt_rejoin_s3;
 bit_and_mbr_s3;
 bit_and_mar_s3;
 mbr_equals_arg_s3;
+memory_read_s3;
+memory_write_s3;
     }
 }
 
@@ -666,6 +893,8 @@ attempt_rejoin_s4;
 bit_and_mbr_s4;
 bit_and_mar_s4;
 mbr_equals_arg_s4;
+memory_read_s4;
+memory_write_s4;
     }
 }
 
@@ -710,6 +939,8 @@ attempt_rejoin_s5;
 bit_and_mbr_s5;
 bit_and_mar_s5;
 mbr_equals_arg_s5;
+memory_read_s5;
+memory_write_s5;
     }
 }
 
@@ -754,6 +985,8 @@ attempt_rejoin_s6;
 bit_and_mbr_s6;
 bit_and_mar_s6;
 mbr_equals_arg_s6;
+memory_read_s6;
+memory_write_s6;
     }
 }
 
@@ -798,6 +1031,8 @@ attempt_rejoin_s7;
 bit_and_mbr_s7;
 bit_and_mar_s7;
 mbr_equals_arg_s7;
+memory_read_s7;
+memory_write_s7;
     }
 }
 
@@ -842,6 +1077,8 @@ attempt_rejoin_s8;
 bit_and_mbr_s8;
 bit_and_mar_s8;
 mbr_equals_arg_s8;
+memory_read_s8;
+memory_write_s8;
     }
 }
 
@@ -886,6 +1123,8 @@ attempt_rejoin_s9;
 bit_and_mbr_s9;
 bit_and_mar_s9;
 mbr_equals_arg_s9;
+memory_read_s9;
+memory_write_s9;
     }
 }
 
@@ -930,6 +1169,8 @@ attempt_rejoin_s10;
 bit_and_mbr_s10;
 bit_and_mar_s10;
 mbr_equals_arg_s10;
+memory_read_s10;
+memory_write_s10;
     }
 }
 
