@@ -85,11 +85,12 @@ parser EgressParser(
 control EgressDeparser(
     packet_out                      pkt,
     inout egress_headers_t          hdr,
-    in    active_metadata_t  meta,
+    in    active_metadata_t         meta,
     
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md
 ) {
     Checksum() ipv4_checksum;
+    Mirror() mirror;
     apply {
         if(hdr.ipv4.isValid()) {
             hdr.ipv4.hdr_checksum = ipv4_checksum.update({
@@ -105,6 +106,20 @@ control EgressDeparser(
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr
             });
+        }
+        if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
+            mirror.emit<eg_port_mirror_h>(
+                meta.egr_mir_ses,
+                {
+                    /*meta.mirror_header_type,
+                    meta.mirror_header_info,
+                    meta.ingress_port,
+                    meta.mirror_session,
+                    meta.ingress_mac_tstamp,
+                    meta.ingress_global_tstamp*/
+                    meta.pkt_type
+                }
+            );
         }
         pkt.emit(hdr.ethernet);
         pkt.emit(hdr.ipv4);

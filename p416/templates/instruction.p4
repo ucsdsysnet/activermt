@@ -4,8 +4,8 @@ table instruction_<stage-id> {
         hdr.instr[<instruction-id>].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;

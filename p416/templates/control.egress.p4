@@ -108,9 +108,30 @@ control Egress(
 
     <generated-tables>
 
+    Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
+
+    action set_mirror(MirrorId_t mir_sess) {
+        meta.egr_mir_ses = mir_sess;
+        meta.pkt_type = PKT_TYPE_MIRROR;
+        eg_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
+        drop();
+    }
+
+    table recirculation {
+        key     = {
+            meta.complete   : exact;
+            meta.cycles     : range;
+        }
+        actions = {
+            set_mirror;
+        }
+    }
+    
     // control flow
     
     apply {
         <generated-ctrlflow>
+        activep4_stats.count((bit<32>)hdr.ih.fid);
+        recirculation.apply();
     }
 }

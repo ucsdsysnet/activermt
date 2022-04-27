@@ -11,11 +11,18 @@ control Ingress(
 
     <hash-defs>
 
+    Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
+
+    action bypass_egress() {
+        ig_tm_md.bypass_egress = 1;
+    }
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS
-        ig_tm_md.bypass_egress = 1;
+        bypass_egress();
 #endif
+        overall_stats.count(0);
     }
 
     action drop() {
@@ -130,9 +137,45 @@ control Ingress(
 
     <generated-tables>
 
+    // resource monitoring
+
+    // quota enforcement
+
+    Random<bit<16>>() rnd;
+    Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
+
+    action set_quotas(bit<8> circulations) {
+        meta.cycles = circulations;
+        activep4_stats.count((bit<32>)hdr.ih.fid);
+    }
+
+    action get_quotas(bit<16> alloc_id, bit<16> mem_start, bit<16> mem_end, bit<16> curr_bw) {
+        hdr.ih.acc = mem_start;
+        hdr.ih.acc2 = mem_end;
+        hdr.ih.data = curr_bw;
+        hdr.ih.data2 = alloc_id;
+        hdr.ih.flag_allocated = 1;
+        rts();
+        bypass_egress();
+    }
+
+    table quotas {
+        key     = {
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_reqalloc    : exact;
+            meta.randnum            : range;
+        }
+        actions = {
+            set_quotas;
+            get_quotas;
+        }
+    }
+
     // control flow
 
     apply {
+        meta.randnum = rnd.get();
+        quotas.apply();
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }

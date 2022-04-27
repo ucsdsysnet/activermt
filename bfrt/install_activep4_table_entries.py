@@ -12,7 +12,7 @@ class ActiveP4Installer:
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
-        self.num_stages_ingress = 10
+        self.num_stages_ingress = 9
         self.num_stages_egress = 10
         self.opcode_action = {}
         with open('bfrt/opcode_action_mapping.csv') as f:
@@ -68,6 +68,11 @@ class ActiveP4Installer:
         self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
         self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
 
+    def installControlTableEntries(self, fid):
+        self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=0xFFFF, circulations=1)
+        self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=0, mem_start=0, mem_end=0xFFFF, curr_bw=0)
+        self.p4.Egress.recirculation.add_with_set_mirror(mir_sess=0)
+
     def installInBatches(self):
         bfrt.batch_begin()
         try:
@@ -87,3 +92,4 @@ dst_port_mapping = {
 installer.clear_all()
 installer.installForwardingTableEntries(dst_port_mapping)
 installer.installInstructionTableEntries(1)
+installer.installControlTableEntries(1)

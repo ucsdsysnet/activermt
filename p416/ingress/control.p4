@@ -135,20 +135,6 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s9) heap_read_s9 = {
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s10;
-
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_write_s10 = {
-    void apply(inout bit<16> value) {
-        value = meta.mbr;
-    }
-};
-
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_read_s10 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
-        rv = value;
-    }
-};
-
     
 
 CRCPolynomial<bit<16>>(
@@ -250,22 +236,18 @@ CRCPolynomial<bit<16>>(
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
 
-CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
-    reversed    = true,
-    msb         = false,
-    extended    = false,
-    init        = 0x0000,
-    xor         = 0x0000
-) crc_16_poly_s10;
+    Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
 
-Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s10) crc_16_s10;
+    action bypass_egress() {
+        ig_tm_md.bypass_egress = 1;
+    }
 
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
 #ifdef BYPASS_EGRESS
-        ig_tm_md.bypass_egress = 1;
+        bypass_egress();
 #endif
+        overall_stats.count(0);
     }
 
     action drop() {
@@ -833,57 +815,6 @@ action memory_write_s9() {
 
 action hash_s9() {
     meta.mar = crc_16_s9.get({meta.mbr});
-}action mar_load_s10() {
-    meta.mar = hdr.instr[9].arg;
-}
-
-action mbr1_load_s10() {
-    meta.mbr = hdr.instr[9].arg;
-}
-
-action mbr2_load_s10() {
-    meta.mbr2 = hdr.instr[9].arg;
-}
-
-action mbr_add_s10() {
-    meta.mbr = meta.mbr + hdr.instr[9].arg;
-}
-
-action mar_add_s10() {
-    meta.mar = meta.mar + hdr.instr[9].arg;
-}
-
-action jump_s10() {
-    meta.disabled = 1;
-    meta.pc = hdr.instr[9].goto;
-}
-
-action attempt_rejoin_s10() {
-    meta.disabled = (meta.pc ^ hdr.instr[9].goto);
-}
-
-action bit_and_mbr_s10() {
-    meta.mbr = meta.mbr & hdr.instr[9].arg;
-}
-
-action bit_and_mar_s10() {
-    meta.mar = meta.mar & hdr.instr[9].arg;
-}
-
-action mbr_equals_arg_s10() {
-    meta.mbr = meta.mbr ^ hdr.instr[9].arg;
-}
-
-action memory_read_s10() {
-    meta.mbr = heap_read_s10.execute((bit<32>)meta.mar);
-}
-
-action memory_write_s10() {
-    heap_write_s10.execute((bit<32>)meta.mar);
-}
-
-action hash_s10() {
-    meta.mar = crc_16_s10.get({meta.mbr});
 }
 
     // GENERATED: TABLES
@@ -896,8 +827,8 @@ table instruction_1 {
         hdr.instr[0].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -944,8 +875,8 @@ table instruction_2 {
         hdr.instr[1].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -992,8 +923,8 @@ table instruction_3 {
         hdr.instr[2].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1040,8 +971,8 @@ table instruction_4 {
         hdr.instr[3].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1088,8 +1019,8 @@ table instruction_5 {
         hdr.instr[4].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1136,8 +1067,8 @@ table instruction_6 {
         hdr.instr[5].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1184,8 +1115,8 @@ table instruction_7 {
         hdr.instr[6].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1232,8 +1163,8 @@ table instruction_8 {
         hdr.instr[7].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1280,8 +1211,8 @@ table instruction_9 {
         hdr.instr[8].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1322,57 +1253,45 @@ hash_s9;
 
 // create a set of parallel tables for mutually exclusive actions
 
-table instruction_10 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[9].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
-    }
-    actions = {
-        drop;
-        skip;
-        rts;
-        set_port;
-        complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        copy_acc_mbr;
-        mar_load_s10;
-mbr1_load_s10;
-mbr2_load_s10;
-mbr_add_s10;
-mar_add_s10;
-jump_s10;
-attempt_rejoin_s10;
-bit_and_mbr_s10;
-bit_and_mar_s10;
-mbr_equals_arg_s10;
-memory_read_s10;
-memory_write_s10;
-hash_s10;
-    }
-}
+    // resource monitoring
 
-// create a set of parallel tables for mutually exclusive actions
+    // quota enforcement
+
+    Random<bit<16>>() rnd;
+    Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
+
+    action set_quotas(bit<8> circulations) {
+        meta.cycles = circulations;
+        activep4_stats.count((bit<32>)hdr.ih.fid);
+    }
+
+    action get_quotas(bit<16> alloc_id, bit<16> mem_start, bit<16> mem_end, bit<16> curr_bw) {
+        hdr.ih.acc = mem_start;
+        hdr.ih.acc2 = mem_end;
+        hdr.ih.data = curr_bw;
+        hdr.ih.data2 = alloc_id;
+        hdr.ih.flag_allocated = 1;
+        rts();
+        bypass_egress();
+    }
+
+    table quotas {
+        key     = {
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_reqalloc    : exact;
+            meta.randnum            : range;
+        }
+        actions = {
+            set_quotas;
+            get_quotas;
+        }
+    }
 
     // control flow
 
     apply {
+        meta.randnum = rnd.get();
+        quotas.apply();
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
@@ -1385,6 +1304,5 @@ hash_s10;
 		instruction_7.apply();
 		instruction_8.apply();
 		instruction_9.apply();
-		instruction_10.apply();
     }
 }

@@ -2,8 +2,22 @@
     #define IPV4_LPM_SIZE (12 * 1024)
 #endif
 
-#define MAX_INSTRUCTIONS 10
-#define MAX_TCP_OPTIONS 10
+typedef bit<8>  pkt_type_t;
+const pkt_type_t PKT_TYPE_NORMAL = 1;
+const pkt_type_t PKT_TYPE_MIRROR = 2;
+
+#if __TARGET_TOFINO__ == 1
+typedef bit<3> mirror_type_t;
+#else
+typedef bit<4> mirror_type_t;
+#endif
+
+const mirror_type_t MIRROR_TYPE_I2E = 1;
+const mirror_type_t MIRROR_TYPE_E2E = 2;
+
+#define MAX_INSTRUCTIONS_IG    9
+#define MAX_INSTRUCTIONS_EG    10
+#define MAX_TCP_OPTIONS        10
 
 #include <core.p4>
 #include <tna.p4>

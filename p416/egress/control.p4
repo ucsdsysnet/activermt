@@ -874,8 +874,8 @@ table instruction_1 {
         hdr.instr[0].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -922,8 +922,8 @@ table instruction_2 {
         hdr.instr[1].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -970,8 +970,8 @@ table instruction_3 {
         hdr.instr[2].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1018,8 +1018,8 @@ table instruction_4 {
         hdr.instr[3].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1066,8 +1066,8 @@ table instruction_5 {
         hdr.instr[4].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1114,8 +1114,8 @@ table instruction_6 {
         hdr.instr[5].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1162,8 +1162,8 @@ table instruction_7 {
         hdr.instr[6].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1210,8 +1210,8 @@ table instruction_8 {
         hdr.instr[7].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1258,8 +1258,8 @@ table instruction_9 {
         hdr.instr[8].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1306,8 +1306,8 @@ table instruction_10 {
         hdr.instr[9].opcode     : exact;
         meta.complete           : exact;
         meta.disabled           : exact;
-        /*meta.mbr                : range;
-        meta.mar                : range;*/
+        meta.mbr                : range;
+        meta.mar                : range;
     }
     actions = {
         drop;
@@ -1348,6 +1348,24 @@ hash_s10;
 
 // create a set of parallel tables for mutually exclusive actions
 
+    Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
+
+    action set_mirror(MirrorId_t mir_sess) {
+        meta.egr_mir_ses = mir_sess;
+        meta.pkt_type = PKT_TYPE_MIRROR;
+        eg_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
+        drop();
+    }
+
+    table recirculation {
+        key     = {
+            meta.complete   : exact;
+            meta.cycles     : range;
+        }
+        actions = {
+            set_mirror;
+        }
+    }
     // control flow
     
     apply {
@@ -1361,5 +1379,7 @@ hash_s10;
 		instruction_8.apply();
 		instruction_9.apply();
 		instruction_10.apply();
+        activep4_stats.count((bit<32>)hdr.ih.fid);
+        recirculation.apply();
     }
 }
