@@ -20,11 +20,10 @@ action mar_add_s<stage-id>() {
 
 action jump_s<stage-id>() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[<instruction-id>].goto;
 }
 
 action attempt_rejoin_s<stage-id>() {
-    meta.disabled = (meta.pc ^ hdr.instr[<instruction-id>].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[<instruction-id>].goto);
 }
 
 action bit_and_mbr_s<stage-id>() {

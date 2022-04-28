@@ -54,12 +54,12 @@ class ActiveP4Generator:
             p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n".join([ x + ';' for x in p4code_actions[1] ]))
             f.close()
         lines = p4code.splitlines()
-        table = None
+        tables = []
         for line in lines:
             if line.startswith('table'):
                 tokens = line.split(' ')
-                table = tokens[1]
-        return (p4code, table, p4code_actions[0])
+                tables.append(tokens[1])
+        return (p4code, tables, p4code_actions[0])
 
     def getGeneratedRegister(self, stage_id):
         p4code = None
@@ -90,6 +90,7 @@ class ActiveP4Generator:
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
             for i in range(stage_offset, stage_offset + num_stages):
+                instr_id = i - stage_offset
                 tabledefs = self.getGeneratedTable(i)
                 registerdefs = self.getGeneratedRegister(i)
                 hash_algo = hash_algos[hash_idx]
@@ -99,8 +100,8 @@ class ActiveP4Generator:
                 action_code = action_code + tabledefs[2]
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
-                table_names.append(tabledefs[1])
-            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join([ ('%s.apply();' % x) for x in table_names ])).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
+                table_names = table_names + [('%s.apply();' % x) for x in tabledefs[1]]
+            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
         return p4code
 

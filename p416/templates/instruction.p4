@@ -31,5 +31,3 @@ table instruction_<stage-id> {
         <generated-actions>
     }
 }
-
-// create a set of parallel tables for mutually exclusive actions

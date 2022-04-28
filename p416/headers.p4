@@ -89,8 +89,8 @@ header active_initial_h {
 }
 
 header active_instruction_h {
-    bit<4>      flags;
-    bit<4>      goto;
+    bit<7>      flags;
+    bit<1>      goto;
     bit<8>      opcode;
     bit<16>     arg;
 }
@@ -117,8 +117,8 @@ struct active_metadata_t {
     bit<1>      rts;
     bit<1>      eof;
     bit<1>      alloc_init;
-    bit<4>      disabled;
-    bit<4>      pc;
+    bit<1>      disabled;
+    //bit<4>      pc;
     bit<4>      quota_start;
     bit<4>      quota_end; 
     bit<8>      cycles;

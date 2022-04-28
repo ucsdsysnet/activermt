@@ -17,9 +17,11 @@ class ActiveInstruction:
 class ActiveProgram:
     def __init__(self, program):
         self.OPCODES = {}
-        opcodeList = open('../config/opcodes.csv').read().strip().splitlines()
-        for id in range(0, len(opcodeList)):
-            self.OPCODES[ opcodeList[id] ] = id + 1
+        opcodeList = open('../bfrt/opcode_action_mapping.csv').read().strip().splitlines()
+        for opcode in range(0, len(opcodeList)):
+            m = opcodeList[opcode].split(',')
+            pnemonic = m[0]
+            self.OPCODES[pnemonic] = opcode
         self.program = []
         self.args = {}
         self.labels = {}
@@ -36,7 +38,10 @@ class ActiveProgram:
                 elif param_1[0] == '@':
                     label = self.labels[':%s' % param_1[1:]]
                 elif param_1[0] == '$':
-                    self.args[param_1[1:]] = len(program) - i - 1
+                    argname = param_1[1:]
+                    if argname not in self.args:
+                        self.args[argname] = []    
+                    self.args[argname].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
                     self.labels[param_2] = i + 1
@@ -44,7 +49,10 @@ class ActiveProgram:
                 elif param_2[0] == '@':
                     label = self.labels[':%s' % param_2[1:]]
                 elif param_2[0] == '$':
-                    self.args[param_2[1:]] = len(program) - i - 1
+                    argname = param_2[1:]
+                    if argname not in self.args:
+                        self.args[argname] = []    
+                    self.args[argname].append(len(program) - i - 1)
             self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], arg=0, goto=label))
         self.program.reverse()
         self.program.append(ActiveInstruction(opcode=0, arg=0, goto=0))
@@ -61,7 +69,8 @@ class ActiveProgram:
     def getArgumentMap(self):
         args = []
         for arg in self.args:
-            args.append((arg, self.args[arg]))
+            for idx in self.args[arg]:
+                args.append((arg, idx))
         return args
 
 if len(sys.argv) < 2:

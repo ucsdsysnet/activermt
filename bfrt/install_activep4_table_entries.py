@@ -1,19 +1,28 @@
 import os
+import math
 import sys
+import inspect
 from netaddr import IPAddress
-
-#print(os.getcwd())
-#sys.path.insert(0, os.path.join(os.environ['ACTIVEP4_SRC'], 'bfrt', 'ptf'))
 
 class ActiveP4Installer:
 
     global bfrt
+    global math
+    global inspect
     global IPAddress
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
         self.num_stages_ingress = 9
         self.num_stages_egress = 10
+        self.recirculation_enabled = False
+        self.allocations = {
+            1       : {
+                'memory'        : (0, 0xFFFF),
+                'recirc_pct'    : 1.0,
+                'recirc_circs'  : 1
+            }
+        }
         self.opcode_action = {}
         with open('bfrt/opcode_action_mapping.csv') as f:
             mapping = f.read().strip().splitlines()
@@ -57,21 +66,74 @@ class ActiveP4Installer:
             instr_table = getattr(gress, 'instruction_%d' % (i + 1))
             for a in self.opcode_action:
                 act = self.opcode_action[a]
-                # TODO add conditional instructions
-                if act['action'] == 'NULL' or act['condition'] is not None: 
+                if act['action'] == 'NULL': 
                     continue
                 add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i + 1)))
-                add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0)
+                add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(i + 1))
+                if act['condition'] is not None:
+                    mbr_start = 1 if act['condition'] else 0
+                    mbr_end = 0xFFFF if act['condition'] else 0
+                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=mbr_start, mbr_end=mbr_end, mar_start=0, mar_end=0xFFFF)
+                else:
+                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
+                add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
         bfrt.complete_operations()
 
     def installInstructionTableEntries(self, fid):
         self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
         self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
 
-    def installControlTableEntries(self, fid):
-        self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=0xFFFF, circulations=1)
-        self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=0, mem_start=0, mem_end=0xFFFF, curr_bw=0)
-        self.p4.Egress.recirculation.add_with_set_mirror(mir_sess=0)
+    def addQuotas(self, fid, alloc_id, recirc_pct, circulations, mem_start, mem_end, curr_bw):
+        rand_thresh = math.floor(recirc_pct * 0xFFFF)
+        self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=rand_thresh, circulations=circulations)
+        self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=alloc_id, mem_start=mem_start, mem_end=mem_end, curr_bw=curr_bw)
+        if self.recirculation_enabled:
+            self.p4.Egress.recirculation.add_with_set_mirror(mir_sess=0)
+
+    def setMirrorSessions(self, sid_to_port_mapping):
+        if not self.recirculation_enabled:
+            return
+        for sid in sid_to_port_mapping:
+            bfrt.mirror.cfg.add_with_normal(
+                sid=sid, 
+                session_enable=True, 
+                direction="EGRESS", 
+                ucast_egress_port=0, 
+                ucast_egress_port_valid=False, 
+                egress_port_queue=0, 
+                ingress_cos=0, 
+                packet_color=0, 
+                level1_mcast_hash=0, 
+                level2_mcast_hash=0, 
+                mcast_grp_a=0, 
+                mcast_grp_a_valid=False, 
+                mcast_grp_b=0, 
+                mcast_grp_b_valid=False, 
+                mcast_l1_xid=0, 
+                mcast_l2_xid=0, 
+                mcast_rid=0, 
+                icos_for_copy_to_cpu=0, 
+                copy_to_cpu=False, 
+                max_pkt_len=0
+            )
+        #bfrt.mirror.dump()
+
+    def getTrafficCounters(self, fids):
+        traffic_overall = self.p4.Ingress.overall_stats.get(0)
+        traffic_by_fid = {}
+        for fid in fids:
+            traffic_ig = self.p4.Ingress.activep4_stats.get(fid)
+            traffic_eg = self.p4.Egress.activep4_stats.get(fid)
+            traffic_by_fid[fid] = {
+                'ingress'   : traffic_ig,
+                'egress'    : traffic_eg
+            }
+        return (traffic_overall, traffic_by_fid)
+
+    def resetTrafficCounters(self):
+        self.p4.Ingress.activep4_stats.clear()
+        self.p4.Egress.activep4_stats.clear()
+        self.p4.Ingress.overall_stats.clear()
 
     def installInBatches(self):
         bfrt.batch_begin()
@@ -89,7 +151,17 @@ dst_port_mapping = {
     '10.0.0.2'  : 1
 }
 
+sid_to_port_mapping = {
+    1   : 0,
+    2   : 1
+}
+
+fids = [1]
+
 installer.clear_all()
 installer.installForwardingTableEntries(dst_port_mapping)
 installer.installInstructionTableEntries(1)
-installer.installControlTableEntries(1)
+installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0)
+installer.setMirrorSessions(sid_to_port_mapping)
+#installer.getTrafficCounters(fids)
+#installer.resetTrafficCounters()

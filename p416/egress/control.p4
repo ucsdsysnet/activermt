@@ -374,11 +374,10 @@ action mar_add_s1() {
 
 action jump_s1() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[0].goto;
 }
 
 action attempt_rejoin_s1() {
-    meta.disabled = (meta.pc ^ hdr.instr[0].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[0].goto);
 }
 
 action bit_and_mbr_s1() {
@@ -425,11 +424,10 @@ action mar_add_s2() {
 
 action jump_s2() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[1].goto;
 }
 
 action attempt_rejoin_s2() {
-    meta.disabled = (meta.pc ^ hdr.instr[1].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[1].goto);
 }
 
 action bit_and_mbr_s2() {
@@ -476,11 +474,10 @@ action mar_add_s3() {
 
 action jump_s3() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[2].goto;
 }
 
 action attempt_rejoin_s3() {
-    meta.disabled = (meta.pc ^ hdr.instr[2].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[2].goto);
 }
 
 action bit_and_mbr_s3() {
@@ -527,11 +524,10 @@ action mar_add_s4() {
 
 action jump_s4() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[3].goto;
 }
 
 action attempt_rejoin_s4() {
-    meta.disabled = (meta.pc ^ hdr.instr[3].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[3].goto);
 }
 
 action bit_and_mbr_s4() {
@@ -578,11 +574,10 @@ action mar_add_s5() {
 
 action jump_s5() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[4].goto;
 }
 
 action attempt_rejoin_s5() {
-    meta.disabled = (meta.pc ^ hdr.instr[4].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[4].goto);
 }
 
 action bit_and_mbr_s5() {
@@ -629,11 +624,10 @@ action mar_add_s6() {
 
 action jump_s6() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[5].goto;
 }
 
 action attempt_rejoin_s6() {
-    meta.disabled = (meta.pc ^ hdr.instr[5].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[5].goto);
 }
 
 action bit_and_mbr_s6() {
@@ -680,11 +674,10 @@ action mar_add_s7() {
 
 action jump_s7() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[6].goto;
 }
 
 action attempt_rejoin_s7() {
-    meta.disabled = (meta.pc ^ hdr.instr[6].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[6].goto);
 }
 
 action bit_and_mbr_s7() {
@@ -731,11 +724,10 @@ action mar_add_s8() {
 
 action jump_s8() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[7].goto;
 }
 
 action attempt_rejoin_s8() {
-    meta.disabled = (meta.pc ^ hdr.instr[7].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[7].goto);
 }
 
 action bit_and_mbr_s8() {
@@ -782,11 +774,10 @@ action mar_add_s9() {
 
 action jump_s9() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[8].goto;
 }
 
 action attempt_rejoin_s9() {
-    meta.disabled = (meta.pc ^ hdr.instr[8].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[8].goto);
 }
 
 action bit_and_mbr_s9() {
@@ -833,11 +824,10 @@ action mar_add_s10() {
 
 action jump_s10() {
     meta.disabled = 1;
-    meta.pc = hdr.instr[9].goto;
 }
 
 action attempt_rejoin_s10() {
-    meta.disabled = (meta.pc ^ hdr.instr[9].goto);
+    meta.disabled = (meta.disabled ^ hdr.instr[9].goto);
 }
 
 action bit_and_mbr_s10() {
@@ -914,8 +904,6 @@ hash_s1;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
 table instruction_2 {
     key = {
         hdr.ih.fid              : exact;
@@ -961,8 +949,6 @@ memory_write_s2;
 hash_s2;
     }
 }
-
-// create a set of parallel tables for mutually exclusive actions
 
 table instruction_3 {
     key = {
@@ -1010,8 +996,6 @@ hash_s3;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
 table instruction_4 {
     key = {
         hdr.ih.fid              : exact;
@@ -1057,8 +1041,6 @@ memory_write_s4;
 hash_s4;
     }
 }
-
-// create a set of parallel tables for mutually exclusive actions
 
 table instruction_5 {
     key = {
@@ -1106,8 +1088,6 @@ hash_s5;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
 table instruction_6 {
     key = {
         hdr.ih.fid              : exact;
@@ -1153,8 +1133,6 @@ memory_write_s6;
 hash_s6;
     }
 }
-
-// create a set of parallel tables for mutually exclusive actions
 
 table instruction_7 {
     key = {
@@ -1202,8 +1180,6 @@ hash_s7;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
 table instruction_8 {
     key = {
         hdr.ih.fid              : exact;
@@ -1249,8 +1225,6 @@ memory_write_s8;
 hash_s8;
     }
 }
-
-// create a set of parallel tables for mutually exclusive actions
 
 table instruction_9 {
     key = {
@@ -1298,8 +1272,6 @@ hash_s9;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
 table instruction_10 {
     key = {
         hdr.ih.fid              : exact;
@@ -1346,8 +1318,6 @@ hash_s10;
     }
 }
 
-// create a set of parallel tables for mutually exclusive actions
-
     Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
     action set_mirror(MirrorId_t mir_sess) {
@@ -1366,6 +1336,7 @@ hash_s10;
             set_mirror;
         }
     }
+    
     // control flow
     
     apply {
