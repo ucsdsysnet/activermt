@@ -1,6 +1,6 @@
 control Egress(
     inout egress_headers_t                             hdr,
-    inout active_metadata_t                            meta,
+    inout eg_metadata_t                                meta,
     
     in    egress_intrinsic_metadata_t                  eg_intr_md,
     in    egress_intrinsic_metadata_from_parser_t      eg_prsr_md,
@@ -13,7 +13,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s1;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_write_s1 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -27,7 +27,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s2;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_write_s2 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -41,7 +41,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s3;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_write_s3 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -55,7 +55,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s4;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_write_s4 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -69,7 +69,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s5;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_write_s5 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -83,7 +83,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s6;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_write_s6 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -97,7 +97,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s7;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_write_s7 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -111,7 +111,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s8;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s8) heap_write_s8 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -125,7 +125,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s9;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s9) heap_write_s9 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -139,7 +139,7 @@ Register<bit<16>, bit<32>>(32w65536) heap_s10;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s10) heap_write_s10 = {
     void apply(inout bit<16> value) {
-        value = meta.mbr;
+        value = hdr.meta.mbr;
     }
 };
 
@@ -284,27 +284,27 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s10) crc_16_s10;
     }
 
     action complete() {
-        meta.complete = 1;
+        hdr.meta.complete = 1;
     }
 
     action uncomplete() {
-        meta.complete = 0;
+        hdr.meta.complete = 0;
     }
 
     action acc1_load() {
-        hdr.ih.acc = meta.mbr;
+        hdr.ih.acc = hdr.meta.mbr;
     }
 
     action acc2_load() {
-        hdr.ih.acc2 = meta.mbr;
+        hdr.ih.acc2 = hdr.meta.mbr;
     }
 
     action copy_mbr2_mbr1() {
-        meta.mbr2 = meta.mbr;
+        hdr.meta.mbr2 = hdr.meta.mbr;
     }
 
     action copy_mbr1_mbr2() {
-        meta.mbr = meta.mbr2;
+        hdr.meta.mbr = hdr.meta.mbr2;
     }
 
     action mark_packet() {
@@ -313,545 +313,545 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s10) crc_16_s10;
 
     action memfault() {
         hdr.ih.flag_mfault = 1;
-        hdr.ih.acc = meta.mar;
+        hdr.ih.acc = hdr.meta.mar;
         complete();
         rts();
     }
 
     action min_mbr1_mbr2() {
-        meta.mbr = (meta.mbr <= meta.mbr2 ? meta.mbr : meta.mbr2);
+        hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
     }
 
     action min_mbr2_mbr1() {
-        meta.mbr2 = (meta.mbr2 <= meta.mbr ? meta.mbr2 : meta.mbr);
+        hdr.meta.mbr2 = (hdr.meta.mbr2 <= hdr.meta.mbr ? hdr.meta.mbr2 : hdr.meta.mbr);
     }
 
     action mbr1_equals_mbr2() {
-        meta.mbr = meta.mbr ^ meta.mbr2;
+        hdr.meta.mbr = hdr.meta.mbr ^ hdr.meta.mbr2;
     }
 
     action copy_mar_mbr() {
-        meta.mar = meta.mbr;
+        hdr.meta.mar = hdr.meta.mbr;
     }
 
     action copy_mbr_mar() {
-        meta.mbr = meta.mar;
+        hdr.meta.mbr = hdr.meta.mar;
     }
 
     action bit_and_mar_mbr() {
-        meta.mar = meta.mar & meta.mbr;
+        hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
     }
 
     action mar_add_mbr() {
-        meta.mar = meta.mar + meta.mbr;
+        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
     }
 
     action copy_acc_mbr() {
-        hdr.ih.acc = meta.mbr;
+        hdr.ih.acc = hdr.meta.mbr;
     }
 
     // GENERATED: ACTIONS
 
     action mar_load_s1() {
-    meta.mar = hdr.instr[0].arg;
+    hdr.meta.mar = hdr.instr[0].arg;
 }
 
 action mbr1_load_s1() {
-    meta.mbr = hdr.instr[0].arg;
+    hdr.meta.mbr = hdr.instr[0].arg;
 }
 
 action mbr2_load_s1() {
-    meta.mbr2 = hdr.instr[0].arg;
+    hdr.meta.mbr2 = hdr.instr[0].arg;
 }
 
 action mbr_add_s1() {
-    meta.mbr = meta.mbr + hdr.instr[0].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[0].arg;
 }
 
 action mar_add_s1() {
-    meta.mar = meta.mar + hdr.instr[0].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[0].arg;
 }
 
 action jump_s1() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s1() {
-    meta.disabled = (meta.disabled ^ hdr.instr[0].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[0].goto);
 }
 
 action bit_and_mbr_s1() {
-    meta.mbr = meta.mbr & hdr.instr[0].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[0].arg;
 }
 
 action bit_and_mar_s1() {
-    meta.mar = meta.mar & hdr.instr[0].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[0].arg;
 }
 
 action mbr_equals_arg_s1() {
-    meta.mbr = meta.mbr ^ hdr.instr[0].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[0].arg;
 }
 
 action memory_read_s1() {
-    meta.mbr = heap_read_s1.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s1.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s1() {
-    heap_write_s1.execute((bit<32>)meta.mar);
+    heap_write_s1.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s1() {
-    meta.mar = crc_16_s1.get({meta.mbr});
+    hdr.meta.mar = crc_16_s1.get({hdr.meta.mbr});
 }action mar_load_s2() {
-    meta.mar = hdr.instr[1].arg;
+    hdr.meta.mar = hdr.instr[1].arg;
 }
 
 action mbr1_load_s2() {
-    meta.mbr = hdr.instr[1].arg;
+    hdr.meta.mbr = hdr.instr[1].arg;
 }
 
 action mbr2_load_s2() {
-    meta.mbr2 = hdr.instr[1].arg;
+    hdr.meta.mbr2 = hdr.instr[1].arg;
 }
 
 action mbr_add_s2() {
-    meta.mbr = meta.mbr + hdr.instr[1].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[1].arg;
 }
 
 action mar_add_s2() {
-    meta.mar = meta.mar + hdr.instr[1].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[1].arg;
 }
 
 action jump_s2() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s2() {
-    meta.disabled = (meta.disabled ^ hdr.instr[1].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[1].goto);
 }
 
 action bit_and_mbr_s2() {
-    meta.mbr = meta.mbr & hdr.instr[1].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[1].arg;
 }
 
 action bit_and_mar_s2() {
-    meta.mar = meta.mar & hdr.instr[1].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[1].arg;
 }
 
 action mbr_equals_arg_s2() {
-    meta.mbr = meta.mbr ^ hdr.instr[1].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[1].arg;
 }
 
 action memory_read_s2() {
-    meta.mbr = heap_read_s2.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s2.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s2() {
-    heap_write_s2.execute((bit<32>)meta.mar);
+    heap_write_s2.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s2() {
-    meta.mar = crc_16_s2.get({meta.mbr});
+    hdr.meta.mar = crc_16_s2.get({hdr.meta.mbr});
 }action mar_load_s3() {
-    meta.mar = hdr.instr[2].arg;
+    hdr.meta.mar = hdr.instr[2].arg;
 }
 
 action mbr1_load_s3() {
-    meta.mbr = hdr.instr[2].arg;
+    hdr.meta.mbr = hdr.instr[2].arg;
 }
 
 action mbr2_load_s3() {
-    meta.mbr2 = hdr.instr[2].arg;
+    hdr.meta.mbr2 = hdr.instr[2].arg;
 }
 
 action mbr_add_s3() {
-    meta.mbr = meta.mbr + hdr.instr[2].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[2].arg;
 }
 
 action mar_add_s3() {
-    meta.mar = meta.mar + hdr.instr[2].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[2].arg;
 }
 
 action jump_s3() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s3() {
-    meta.disabled = (meta.disabled ^ hdr.instr[2].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[2].goto);
 }
 
 action bit_and_mbr_s3() {
-    meta.mbr = meta.mbr & hdr.instr[2].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[2].arg;
 }
 
 action bit_and_mar_s3() {
-    meta.mar = meta.mar & hdr.instr[2].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[2].arg;
 }
 
 action mbr_equals_arg_s3() {
-    meta.mbr = meta.mbr ^ hdr.instr[2].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[2].arg;
 }
 
 action memory_read_s3() {
-    meta.mbr = heap_read_s3.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s3.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s3() {
-    heap_write_s3.execute((bit<32>)meta.mar);
+    heap_write_s3.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s3() {
-    meta.mar = crc_16_s3.get({meta.mbr});
+    hdr.meta.mar = crc_16_s3.get({hdr.meta.mbr});
 }action mar_load_s4() {
-    meta.mar = hdr.instr[3].arg;
+    hdr.meta.mar = hdr.instr[3].arg;
 }
 
 action mbr1_load_s4() {
-    meta.mbr = hdr.instr[3].arg;
+    hdr.meta.mbr = hdr.instr[3].arg;
 }
 
 action mbr2_load_s4() {
-    meta.mbr2 = hdr.instr[3].arg;
+    hdr.meta.mbr2 = hdr.instr[3].arg;
 }
 
 action mbr_add_s4() {
-    meta.mbr = meta.mbr + hdr.instr[3].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[3].arg;
 }
 
 action mar_add_s4() {
-    meta.mar = meta.mar + hdr.instr[3].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[3].arg;
 }
 
 action jump_s4() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s4() {
-    meta.disabled = (meta.disabled ^ hdr.instr[3].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[3].goto);
 }
 
 action bit_and_mbr_s4() {
-    meta.mbr = meta.mbr & hdr.instr[3].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[3].arg;
 }
 
 action bit_and_mar_s4() {
-    meta.mar = meta.mar & hdr.instr[3].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[3].arg;
 }
 
 action mbr_equals_arg_s4() {
-    meta.mbr = meta.mbr ^ hdr.instr[3].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[3].arg;
 }
 
 action memory_read_s4() {
-    meta.mbr = heap_read_s4.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s4.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s4() {
-    heap_write_s4.execute((bit<32>)meta.mar);
+    heap_write_s4.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s4() {
-    meta.mar = crc_16_s4.get({meta.mbr});
+    hdr.meta.mar = crc_16_s4.get({hdr.meta.mbr});
 }action mar_load_s5() {
-    meta.mar = hdr.instr[4].arg;
+    hdr.meta.mar = hdr.instr[4].arg;
 }
 
 action mbr1_load_s5() {
-    meta.mbr = hdr.instr[4].arg;
+    hdr.meta.mbr = hdr.instr[4].arg;
 }
 
 action mbr2_load_s5() {
-    meta.mbr2 = hdr.instr[4].arg;
+    hdr.meta.mbr2 = hdr.instr[4].arg;
 }
 
 action mbr_add_s5() {
-    meta.mbr = meta.mbr + hdr.instr[4].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[4].arg;
 }
 
 action mar_add_s5() {
-    meta.mar = meta.mar + hdr.instr[4].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[4].arg;
 }
 
 action jump_s5() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s5() {
-    meta.disabled = (meta.disabled ^ hdr.instr[4].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[4].goto);
 }
 
 action bit_and_mbr_s5() {
-    meta.mbr = meta.mbr & hdr.instr[4].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[4].arg;
 }
 
 action bit_and_mar_s5() {
-    meta.mar = meta.mar & hdr.instr[4].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[4].arg;
 }
 
 action mbr_equals_arg_s5() {
-    meta.mbr = meta.mbr ^ hdr.instr[4].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[4].arg;
 }
 
 action memory_read_s5() {
-    meta.mbr = heap_read_s5.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s5.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s5() {
-    heap_write_s5.execute((bit<32>)meta.mar);
+    heap_write_s5.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s5() {
-    meta.mar = crc_16_s5.get({meta.mbr});
+    hdr.meta.mar = crc_16_s5.get({hdr.meta.mbr});
 }action mar_load_s6() {
-    meta.mar = hdr.instr[5].arg;
+    hdr.meta.mar = hdr.instr[5].arg;
 }
 
 action mbr1_load_s6() {
-    meta.mbr = hdr.instr[5].arg;
+    hdr.meta.mbr = hdr.instr[5].arg;
 }
 
 action mbr2_load_s6() {
-    meta.mbr2 = hdr.instr[5].arg;
+    hdr.meta.mbr2 = hdr.instr[5].arg;
 }
 
 action mbr_add_s6() {
-    meta.mbr = meta.mbr + hdr.instr[5].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[5].arg;
 }
 
 action mar_add_s6() {
-    meta.mar = meta.mar + hdr.instr[5].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[5].arg;
 }
 
 action jump_s6() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s6() {
-    meta.disabled = (meta.disabled ^ hdr.instr[5].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[5].goto);
 }
 
 action bit_and_mbr_s6() {
-    meta.mbr = meta.mbr & hdr.instr[5].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[5].arg;
 }
 
 action bit_and_mar_s6() {
-    meta.mar = meta.mar & hdr.instr[5].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[5].arg;
 }
 
 action mbr_equals_arg_s6() {
-    meta.mbr = meta.mbr ^ hdr.instr[5].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[5].arg;
 }
 
 action memory_read_s6() {
-    meta.mbr = heap_read_s6.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s6.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s6() {
-    heap_write_s6.execute((bit<32>)meta.mar);
+    heap_write_s6.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s6() {
-    meta.mar = crc_16_s6.get({meta.mbr});
+    hdr.meta.mar = crc_16_s6.get({hdr.meta.mbr});
 }action mar_load_s7() {
-    meta.mar = hdr.instr[6].arg;
+    hdr.meta.mar = hdr.instr[6].arg;
 }
 
 action mbr1_load_s7() {
-    meta.mbr = hdr.instr[6].arg;
+    hdr.meta.mbr = hdr.instr[6].arg;
 }
 
 action mbr2_load_s7() {
-    meta.mbr2 = hdr.instr[6].arg;
+    hdr.meta.mbr2 = hdr.instr[6].arg;
 }
 
 action mbr_add_s7() {
-    meta.mbr = meta.mbr + hdr.instr[6].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[6].arg;
 }
 
 action mar_add_s7() {
-    meta.mar = meta.mar + hdr.instr[6].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[6].arg;
 }
 
 action jump_s7() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s7() {
-    meta.disabled = (meta.disabled ^ hdr.instr[6].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[6].goto);
 }
 
 action bit_and_mbr_s7() {
-    meta.mbr = meta.mbr & hdr.instr[6].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[6].arg;
 }
 
 action bit_and_mar_s7() {
-    meta.mar = meta.mar & hdr.instr[6].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[6].arg;
 }
 
 action mbr_equals_arg_s7() {
-    meta.mbr = meta.mbr ^ hdr.instr[6].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[6].arg;
 }
 
 action memory_read_s7() {
-    meta.mbr = heap_read_s7.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s7.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s7() {
-    heap_write_s7.execute((bit<32>)meta.mar);
+    heap_write_s7.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s7() {
-    meta.mar = crc_16_s7.get({meta.mbr});
+    hdr.meta.mar = crc_16_s7.get({hdr.meta.mbr});
 }action mar_load_s8() {
-    meta.mar = hdr.instr[7].arg;
+    hdr.meta.mar = hdr.instr[7].arg;
 }
 
 action mbr1_load_s8() {
-    meta.mbr = hdr.instr[7].arg;
+    hdr.meta.mbr = hdr.instr[7].arg;
 }
 
 action mbr2_load_s8() {
-    meta.mbr2 = hdr.instr[7].arg;
+    hdr.meta.mbr2 = hdr.instr[7].arg;
 }
 
 action mbr_add_s8() {
-    meta.mbr = meta.mbr + hdr.instr[7].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[7].arg;
 }
 
 action mar_add_s8() {
-    meta.mar = meta.mar + hdr.instr[7].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[7].arg;
 }
 
 action jump_s8() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s8() {
-    meta.disabled = (meta.disabled ^ hdr.instr[7].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[7].goto);
 }
 
 action bit_and_mbr_s8() {
-    meta.mbr = meta.mbr & hdr.instr[7].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[7].arg;
 }
 
 action bit_and_mar_s8() {
-    meta.mar = meta.mar & hdr.instr[7].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[7].arg;
 }
 
 action mbr_equals_arg_s8() {
-    meta.mbr = meta.mbr ^ hdr.instr[7].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[7].arg;
 }
 
 action memory_read_s8() {
-    meta.mbr = heap_read_s8.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s8.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s8() {
-    heap_write_s8.execute((bit<32>)meta.mar);
+    heap_write_s8.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s8() {
-    meta.mar = crc_16_s8.get({meta.mbr});
+    hdr.meta.mar = crc_16_s8.get({hdr.meta.mbr});
 }action mar_load_s9() {
-    meta.mar = hdr.instr[8].arg;
+    hdr.meta.mar = hdr.instr[8].arg;
 }
 
 action mbr1_load_s9() {
-    meta.mbr = hdr.instr[8].arg;
+    hdr.meta.mbr = hdr.instr[8].arg;
 }
 
 action mbr2_load_s9() {
-    meta.mbr2 = hdr.instr[8].arg;
+    hdr.meta.mbr2 = hdr.instr[8].arg;
 }
 
 action mbr_add_s9() {
-    meta.mbr = meta.mbr + hdr.instr[8].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[8].arg;
 }
 
 action mar_add_s9() {
-    meta.mar = meta.mar + hdr.instr[8].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[8].arg;
 }
 
 action jump_s9() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s9() {
-    meta.disabled = (meta.disabled ^ hdr.instr[8].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[8].goto);
 }
 
 action bit_and_mbr_s9() {
-    meta.mbr = meta.mbr & hdr.instr[8].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[8].arg;
 }
 
 action bit_and_mar_s9() {
-    meta.mar = meta.mar & hdr.instr[8].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[8].arg;
 }
 
 action mbr_equals_arg_s9() {
-    meta.mbr = meta.mbr ^ hdr.instr[8].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[8].arg;
 }
 
 action memory_read_s9() {
-    meta.mbr = heap_read_s9.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s9.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s9() {
-    heap_write_s9.execute((bit<32>)meta.mar);
+    heap_write_s9.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s9() {
-    meta.mar = crc_16_s9.get({meta.mbr});
+    hdr.meta.mar = crc_16_s9.get({hdr.meta.mbr});
 }action mar_load_s10() {
-    meta.mar = hdr.instr[9].arg;
+    hdr.meta.mar = hdr.instr[9].arg;
 }
 
 action mbr1_load_s10() {
-    meta.mbr = hdr.instr[9].arg;
+    hdr.meta.mbr = hdr.instr[9].arg;
 }
 
 action mbr2_load_s10() {
-    meta.mbr2 = hdr.instr[9].arg;
+    hdr.meta.mbr2 = hdr.instr[9].arg;
 }
 
 action mbr_add_s10() {
-    meta.mbr = meta.mbr + hdr.instr[9].arg;
+    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[9].arg;
 }
 
 action mar_add_s10() {
-    meta.mar = meta.mar + hdr.instr[9].arg;
+    hdr.meta.mar = hdr.meta.mar + hdr.instr[9].arg;
 }
 
 action jump_s10() {
-    meta.disabled = 1;
+    hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s10() {
-    meta.disabled = (meta.disabled ^ hdr.instr[9].goto);
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[9].goto);
 }
 
 action bit_and_mbr_s10() {
-    meta.mbr = meta.mbr & hdr.instr[9].arg;
+    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[9].arg;
 }
 
 action bit_and_mar_s10() {
-    meta.mar = meta.mar & hdr.instr[9].arg;
+    hdr.meta.mar = hdr.meta.mar & hdr.instr[9].arg;
 }
 
 action mbr_equals_arg_s10() {
-    meta.mbr = meta.mbr ^ hdr.instr[9].arg;
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[9].arg;
 }
 
 action memory_read_s10() {
-    meta.mbr = heap_read_s10.execute((bit<32>)meta.mar);
+    hdr.meta.mbr = heap_read_s10.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_write_s10() {
-    heap_write_s10.execute((bit<32>)meta.mar);
+    heap_write_s10.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s10() {
-    meta.mar = crc_16_s10.get({meta.mbr});
+    hdr.meta.mar = crc_16_s10.get({hdr.meta.mbr});
 }
 
     // GENERATED: TABLES
@@ -860,12 +860,12 @@ action hash_s10() {
 
 table instruction_1 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[0].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[0].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -906,12 +906,12 @@ hash_s1;
 
 table instruction_2 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[1].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[1].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -952,12 +952,12 @@ hash_s2;
 
 table instruction_3 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[2].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[2].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -998,12 +998,12 @@ hash_s3;
 
 table instruction_4 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[3].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[3].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1044,12 +1044,12 @@ hash_s4;
 
 table instruction_5 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[4].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[4].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1090,12 +1090,12 @@ hash_s5;
 
 table instruction_6 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[5].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[5].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1136,12 +1136,12 @@ hash_s6;
 
 table instruction_7 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[6].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[6].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1182,12 +1182,12 @@ hash_s7;
 
 table instruction_8 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[7].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[7].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1228,12 +1228,12 @@ hash_s8;
 
 table instruction_9 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[8].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[8].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1274,12 +1274,12 @@ hash_s9;
 
 table instruction_10 {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[9].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[9].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;
@@ -1321,16 +1321,16 @@ hash_s10;
     Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
     action set_mirror(MirrorId_t mir_sess) {
-        meta.egr_mir_ses = mir_sess;
-        meta.pkt_type = PKT_TYPE_MIRROR;
+        hdr.meta.egr_mir_ses = mir_sess;
+        hdr.meta.pkt_type = PKT_TYPE_MIRROR;
         eg_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
         drop();
     }
 
     table recirculation {
         key     = {
-            meta.complete   : exact;
-            meta.cycles     : range;
+            hdr.meta.complete   : exact;
+            hdr.meta.cycles     : range;
         }
         actions = {
             set_mirror;

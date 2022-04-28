@@ -33,8 +33,8 @@ class ActiveProgram:
             label = 0
             if param_1 is not None:
                 if param_1[0] == ':':
-                    self.labels[param_1] = i + 1
-                    label = i + 1
+                    self.labels[param_1] = 1
+                    label = 1
                 elif param_1[0] == '@':
                     label = self.labels[':%s' % param_1[1:]]
                 elif param_1[0] == '$':
@@ -44,8 +44,8 @@ class ActiveProgram:
                     self.args[argname].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
-                    self.labels[param_2] = i + 1
-                    label = i + 1
+                    self.labels[param_2] = 1
+                    label = 1
                 elif param_2[0] == '@':
                     label = self.labels[':%s' % param_2[1:]]
                 elif param_2[0] == '$':

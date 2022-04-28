@@ -1,11 +1,11 @@
 table instruction_<stage-id> {
     key = {
-        hdr.ih.fid              : exact;
-        hdr.instr[<instruction-id>].opcode     : exact;
-        meta.complete           : exact;
-        meta.disabled           : exact;
-        meta.mbr                : range;
-        meta.mar                : range;
+        hdr.ih.fid                              : exact;
+        hdr.instr[<instruction-id>].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        hdr.meta.mbr                            : range;
+        hdr.meta.mar                            : range;
     }
     actions = {
         drop;

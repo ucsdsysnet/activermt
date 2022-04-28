@@ -95,32 +95,13 @@ header active_instruction_h {
     bit<16>     arg;
 }
 
-header eg_port_mirror_h {
-    pkt_type_t  pkt_type;
-}
-
-struct ingress_headers_t {
-    ethernet_h                              ethernet;
-    ipv4_h                                  ipv4;
-    udp_h                                   udp;
-    tcp_h                                   tcp;
-    tcp_option_h                            tcpopts;
-    active_initial_h                        ih;
-    active_instruction_h[MAX_INSTRUCTIONS_IG]  instr;
-}
-
-struct active_metadata_t {
-    bit<16>     randnum;
+@flexible
+header bridged_metadata_h {
     bit<1>      duplicate;
     bit<1>      complete;
-    bit<1>      skipped;
     bit<1>      rts;
     bit<1>      eof;
-    bit<1>      alloc_init;
-    bit<1>      disabled;
-    //bit<4>      pc;
-    bit<4>      quota_start;
-    bit<4>      quota_end; 
+    bit<1>      disabled; 
     bit<8>      cycles;
     bit<16>     rtsid;
     bit<16>     fwdid;
@@ -129,9 +110,33 @@ struct active_metadata_t {
     bit<16>     mbr2;
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
+    bit<1>      padding;
+}
+
+header eg_port_mirror_h {
+    pkt_type_t  pkt_type;
+}
+
+struct ig_metadata_t {
+    bit<16>     randnum;
+}
+
+struct eg_metadata_t {
+}
+
+struct ingress_headers_t {
+    bridged_metadata_h                          meta;
+    ethernet_h                                  ethernet;
+    ipv4_h                                      ipv4;
+    udp_h                                       udp;
+    tcp_h                                       tcp;
+    tcp_option_h                                tcpopts;
+    active_initial_h                            ih;
+    active_instruction_h[MAX_INSTRUCTIONS_IG]   instr;
 }
 
 struct egress_headers_t {
+    bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
     ipv4_h                                      ipv4;
     udp_h                                       udp;

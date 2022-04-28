@@ -1,16 +1,14 @@
-Checksum()  ipv4_checksum;
-Checksum()  udp_checksum;
-
 parser IngressParser(
     packet_in                       pkt,
     out ingress_headers_t           hdr,
-    out active_metadata_t   meta,
+    out ig_metadata_t               meta,
     
     out ingress_intrinsic_metadata_t    ig_intr_md
 ) {
     state start {
         pkt.extract(ig_intr_md);
         pkt.advance(PORT_METADATA_SIZE);
+        hdr.meta.setValid();
         transition parse_ethernet;
     }
 
@@ -30,7 +28,6 @@ parser IngressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        ipv4_checksum.add(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -81,7 +78,7 @@ parser IngressParser(
     }
 
     state mark_eof {
-        meta.eof = 1;
+        hdr.meta.eof = 1;
         transition accept;
     }
 }
@@ -89,11 +86,12 @@ parser IngressParser(
 control IngressDeparser(
     packet_out                      pkt,
     inout ingress_headers_t         hdr,
-    in    active_metadata_t meta,
+    in    ig_metadata_t             meta,
     
     in    ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md
 ) {
     apply {
+        pkt.emit(hdr.meta);
         pkt.emit(hdr.ethernet);
         pkt.emit(hdr.ipv4);
         pkt.emit(hdr.udp);

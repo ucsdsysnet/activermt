@@ -13,7 +13,7 @@ class ActiveP4Installer:
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
-        self.num_stages_ingress = 9
+        self.num_stages_ingress = 8
         self.num_stages_egress = 10
         self.recirculation_enabled = False
         self.allocations = {

@@ -1,6 +1,6 @@
 control Ingress(
     inout ingress_headers_t                          hdr,
-    inout active_metadata_t                          meta,
+    inout ig_metadata_t                              meta,
     
     in    ingress_intrinsic_metadata_t               ig_intr_md,
     in    ingress_intrinsic_metadata_from_parser_t   ig_prsr_md,
@@ -59,31 +59,31 @@ control Ingress(
     }
 
     action set_port() {
-        ig_tm_md.ucast_egress_port = (bit<9>) meta.mbr;
+        ig_tm_md.ucast_egress_port = (bit<9>) hdr.meta.mbr;
     }
 
     action complete() {
-        meta.complete = 1;
+        hdr.meta.complete = 1;
     }
 
     action uncomplete() {
-        meta.complete = 0;
+        hdr.meta.complete = 0;
     }
 
     action acc1_load() {
-        hdr.ih.acc = meta.mbr;
+        hdr.ih.acc = hdr.meta.mbr;
     }
 
     action acc2_load() {
-        hdr.ih.acc2 = meta.mbr;
+        hdr.ih.acc2 = hdr.meta.mbr;
     }
 
     action copy_mbr2_mbr1() {
-        meta.mbr2 = meta.mbr;
+        hdr.meta.mbr2 = hdr.meta.mbr;
     }
 
     action copy_mbr1_mbr2() {
-        meta.mbr = meta.mbr2;
+        hdr.meta.mbr = hdr.meta.mbr2;
     }
 
     action mark_packet() {
@@ -92,41 +92,41 @@ control Ingress(
 
     action memfault() {
         hdr.ih.flag_mfault = 1;
-        hdr.ih.acc = meta.mar;
+        hdr.ih.acc = hdr.meta.mar;
         complete();
         rts();
     }
 
     action min_mbr1_mbr2() {
-        meta.mbr = (meta.mbr <= meta.mbr2 ? meta.mbr : meta.mbr2);
+        hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
     }
 
     action min_mbr2_mbr1() {
-        meta.mbr2 = (meta.mbr2 <= meta.mbr ? meta.mbr2 : meta.mbr);
+        hdr.meta.mbr2 = (hdr.meta.mbr2 <= hdr.meta.mbr ? hdr.meta.mbr2 : hdr.meta.mbr);
     }
 
     action mbr1_equals_mbr2() {
-        meta.mbr = meta.mbr ^ meta.mbr2;
+        hdr.meta.mbr = hdr.meta.mbr ^ hdr.meta.mbr2;
     }
 
     action copy_mar_mbr() {
-        meta.mar = meta.mbr;
+        hdr.meta.mar = hdr.meta.mbr;
     }
 
     action copy_mbr_mar() {
-        meta.mbr = meta.mar;
+        hdr.meta.mbr = hdr.meta.mar;
     }
 
     action bit_and_mar_mbr() {
-        meta.mar = meta.mar & meta.mbr;
+        hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
     }
 
     action mar_add_mbr() {
-        meta.mar = meta.mar + meta.mbr;
+        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
     }
 
     action copy_acc_mbr() {
-        hdr.ih.acc = meta.mbr;
+        hdr.ih.acc = hdr.meta.mbr;
     }
 
     // GENERATED: ACTIONS
@@ -145,7 +145,7 @@ control Ingress(
     Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
     action set_quotas(bit<8> circulations) {
-        meta.cycles = circulations;
+        hdr.meta.cycles = circulations;
         activep4_stats.count((bit<32>)hdr.ih.fid);
     }
 

@@ -1,12 +1,17 @@
 parser EgressParser(
     packet_in                       pkt,
     out egress_headers_t            hdr,
-    out active_metadata_t    meta,
+    out eg_metadata_t               meta,
     
     out egress_intrinsic_metadata_t eg_intr_md
 ) {
     state start {
         pkt.extract(eg_intr_md);
+        transition parse_metadata;
+    }
+
+    state parse_metadata {
+        pkt.extract(hdr.meta);
         transition parse_ethernet;
     }
 
@@ -26,7 +31,6 @@ parser EgressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        ipv4_checksum.add(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -77,7 +81,7 @@ parser EgressParser(
     }
 
     state mark_eof {
-        meta.eof = 1;
+        hdr.meta.eof = 1;
         transition accept;
     }
 }
@@ -85,7 +89,7 @@ parser EgressParser(
 control EgressDeparser(
     packet_out                      pkt,
     inout egress_headers_t          hdr,
-    in    active_metadata_t         meta,
+    in    eg_metadata_t             meta,
     
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md
 ) {
@@ -109,7 +113,7 @@ control EgressDeparser(
         }
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
             mirror.emit<eg_port_mirror_h>(
-                meta.egr_mir_ses,
+                hdr.meta.egr_mir_ses,
                 {
                     /*meta.mirror_header_type,
                     meta.mirror_header_info,
@@ -117,7 +121,7 @@ control EgressDeparser(
                     meta.mirror_session,
                     meta.ingress_mac_tstamp,
                     meta.ingress_global_tstamp*/
-                    meta.pkt_type
+                    hdr.meta.pkt_type
                 }
             );
         }

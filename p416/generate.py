@@ -108,7 +108,7 @@ class ActiveP4Generator:
 generator = ActiveP4Generator()
 
 with open('ingress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('ingress', 1, 9))
+    f.write(generator.getGeneratedControl('ingress', 1, 8))
     f.close()
 
 with open('egress/control.p4', 'w') as f:
