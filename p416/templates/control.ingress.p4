@@ -176,9 +176,9 @@ control Ingress(
     apply {
         meta.randnum = rnd.get();
         quotas.apply();
+        <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        <generated-ctrlflow>
     }
 }

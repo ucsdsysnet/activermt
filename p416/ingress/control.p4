@@ -1144,9 +1144,6 @@ hash_s8;
     apply {
         meta.randnum = rnd.get();
         quotas.apply();
-        if (hdr.ipv4.isValid()) {
-            ipv4_host.apply();
-        }
         instruction_1.apply();
 		instruction_2.apply();
 		instruction_3.apply();
@@ -1155,5 +1152,8 @@ hash_s8;
 		instruction_6.apply();
 		instruction_7.apply();
 		instruction_8.apply();
+        if (hdr.ipv4.isValid()) {
+            ipv4_host.apply();
+        }
     }
 }
