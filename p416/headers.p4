@@ -111,6 +111,7 @@ header bridged_metadata_h {
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
     bit<1>      padding;
+    bit<16>     chksum_tcp;
 }
 
 header eg_port_mirror_h {
@@ -119,9 +120,13 @@ header eg_port_mirror_h {
 
 struct ig_metadata_t {
     bit<16>     randnum;
+    bit<1>      is_active;
+    bit<16>     instr_count;
 }
 
 struct eg_metadata_t {
+    bit<16>     instr_count;
+    bit<16>     tcp_length;
 }
 
 struct ingress_headers_t {

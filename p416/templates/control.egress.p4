@@ -130,8 +130,11 @@ control Egress(
     // control flow
     
     apply {
+        <generated-count-instr>
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        meta.tcp_length = hdr.ipv4.total_len - 20;
     }
 }

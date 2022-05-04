@@ -15,13 +15,11 @@ control Ingress(
 
     action bypass_egress() {
         ig_tm_md.bypass_egress = 1;
+        hdr.meta.setInvalid();
     }
 
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-#ifdef BYPASS_EGRESS
-        bypass_egress();
-#endif
         overall_stats.count(0);
     }
 
@@ -30,7 +28,9 @@ control Ingress(
     }
 
     table ipv4_host {
-        key = { hdr.ipv4.dst_addr : exact; }
+        key = { 
+            hdr.ipv4.dst_addr   : exact; 
+        }
         actions = {
             send; drop;
 #ifdef ONE_STAGE
@@ -41,6 +41,15 @@ control Ingress(
 #ifdef ONE_STAGE
         const default_action = NoAction();
 #endif
+    }
+
+    table active_check {
+        key = {
+            meta.is_active      : exact;
+        }
+        actions = {
+            bypass_egress;
+        }
     }
 
     // actions
@@ -174,11 +183,14 @@ control Ingress(
     // control flow
 
     apply {
+        <generated-count-instr>
         meta.randnum = rnd.get();
         quotas.apply();
+        active_check.apply();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

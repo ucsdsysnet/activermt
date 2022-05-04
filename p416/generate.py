@@ -12,6 +12,7 @@ ANNOTATION_POLY_REVERSED    = '<poly-param-reversed>'
 ANNOTATION_POLY_INIT        = '<poly-param-init>'
 ANNOTATION_POLY_XOR         = '<poly-param-xor>'
 ANNOTATION_HASHDEFS         = '<hash-defs>'
+ANNOTATION_INSTRCOUNT       = '<generated-count-instr>'
 
 class ActiveP4Generator:
 
@@ -87,6 +88,7 @@ class ActiveP4Generator:
             register_code = ""
             hashing_code = ""
             table_names = []
+            instrcount_defs = []
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
             for i in range(stage_offset, stage_offset + num_stages):
@@ -101,7 +103,8 @@ class ActiveP4Generator:
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
                 table_names = table_names + [('%s.apply();' % x) for x in tabledefs[1]]
-            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
+                instrcount_defs.append("if(hdr.instr[%d].isValid()) meta.instr_count = meta.instr_count + 4;" % instr_id)
+            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code).replace(ANNOTATION_INSTRCOUNT, "\n\t\t".join(instrcount_defs))
             f.close()
         return p4code
 

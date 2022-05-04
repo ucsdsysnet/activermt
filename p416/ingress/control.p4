@@ -215,13 +215,11 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
 
     action bypass_egress() {
         ig_tm_md.bypass_egress = 1;
+        hdr.meta.setInvalid();
     }
 
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-#ifdef BYPASS_EGRESS
-        bypass_egress();
-#endif
         overall_stats.count(0);
     }
 
@@ -230,7 +228,9 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
     }
 
     table ipv4_host {
-        key = { hdr.ipv4.dst_addr : exact; }
+        key = { 
+            hdr.ipv4.dst_addr   : exact; 
+        }
         actions = {
             send; drop;
 #ifdef ONE_STAGE
@@ -241,6 +241,15 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
 #ifdef ONE_STAGE
         const default_action = NoAction();
 #endif
+    }
+
+    table active_check {
+        key = {
+            meta.is_active      : exact;
+        }
+        actions = {
+            bypass_egress;
+        }
     }
 
     // actions
@@ -1142,8 +1151,17 @@ hash_s8;
     // control flow
 
     apply {
+        if(hdr.instr[0].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[1].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[2].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[3].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[4].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[5].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[6].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[7].isValid()) meta.instr_count = meta.instr_count + 4;
         meta.randnum = rnd.get();
         quotas.apply();
+        active_check.apply();
         instruction_1.apply();
 		instruction_2.apply();
 		instruction_3.apply();
@@ -1155,5 +1173,6 @@ hash_s8;
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

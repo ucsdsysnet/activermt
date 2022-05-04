@@ -5,6 +5,8 @@ parser EgressParser(
     
     out egress_intrinsic_metadata_t eg_intr_md
 ) {
+    Checksum() tcp_checksum;
+
     state start {
         pkt.extract(eg_intr_md);
         transition parse_metadata;
@@ -49,31 +51,38 @@ parser EgressParser(
     state parse_tcp {
         pkt.extract(hdr.tcp);
         transition select(hdr.tcp.data_offset) {
-            5       : check_active_tcp_pkt;
-            6..15   : parse_tcp_options;
+            5..15   : parse_tcp_options;
             default : accept;
         }
     }
 
     state parse_tcp_options {
-        pkt.extract(hdr.tcpopts, (bit<32>)hdr.tcp.data_offset * 32);
-        transition check_active_tcp_pkt;
-    }
-
-    state check_active_tcp_pkt {
-        transition select(hdr.tcp.dst_port) {
-            active_port_t.TCP    : parse_active_ih;
-            default : accept;
-        }
+        pkt.extract(hdr.tcpopts, (bit<32>)(hdr.tcp.data_offset - 5) * 32);
+        transition parse_active_ih;
     }
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
+        tcp_checksum.subtract({
+            hdr.ih.flag_rts,
+            hdr.ih.acc,
+            hdr.ih.acc2,
+            hdr.ih.data,
+            hdr.ih.data2
+        });
+        hdr.meta.chksum_tcp = tcp_checksum.get();
         transition parse_active_instruction;
     }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
+        tcp_checksum.subtract({
+            hdr.instr.last.flags,
+            hdr.instr.last.goto,
+            hdr.instr.last.opcode,
+            hdr.instr.last.arg
+        });
+        hdr.meta.chksum_tcp = tcp_checksum.get();
         transition select(hdr.instr.last.opcode) {
             0x0     : mark_eof;
             default : parse_active_instruction;
@@ -94,6 +103,7 @@ control EgressDeparser(
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md
 ) {
     Checksum() ipv4_checksum;
+    Checksum() tcp_checksum;
     Mirror() mirror;
     apply {
         if(hdr.ipv4.isValid()) {
@@ -109,6 +119,32 @@ control EgressDeparser(
                 hdr.ipv4.protocol,
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr
+            });
+        }
+        if(hdr.tcp.isValid()) {
+            hdr.tcp.checksum = tcp_checksum.update({
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr,
+                hdr.ipv4.total_len,
+                hdr.ih.flag_rts,
+                hdr.ih.acc,
+                hdr.ih.acc2,
+                hdr.ih.data,
+                hdr.ih.data2,
+                hdr.meta.chksum_tcp
+                /*8w0,
+                hdr.ipv4.protocol,
+                meta.tcp_length,
+                hdr.tcp.src_port,
+                hdr.tcp.dst_port,
+                hdr.tcp.seq_no,
+                hdr.tcp.ack_no,
+                hdr.tcp.data_offset,
+                hdr.tcp.res,
+                hdr.tcp.ecn,
+                hdr.tcp.ctrl,
+                hdr.tcp.window,
+                hdr.tcp.urgent_ptr*/
             });
         }
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {

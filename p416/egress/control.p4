@@ -1340,6 +1340,16 @@ hash_s10;
     // control flow
     
     apply {
+        if(hdr.instr[0].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[1].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[2].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[3].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[4].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[5].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[6].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[7].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[8].isValid()) meta.instr_count = meta.instr_count + 4;
+		if(hdr.instr[9].isValid()) meta.instr_count = meta.instr_count + 4;
         instruction_1.apply();
 		instruction_2.apply();
 		instruction_3.apply();
@@ -1352,5 +1362,7 @@ hash_s10;
 		instruction_10.apply();
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        meta.tcp_length = hdr.ipv4.total_len - 20;
     }
 }
