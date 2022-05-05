@@ -171,26 +171,19 @@ control Ingress(
         }
     }
 
-    table active_check {
-        key = {
-            meta.is_active      : exact;
-        }
-        actions = {
-            bypass_egress;
-        }
-    }
-
     // control flow
 
     apply {
+        hdr.ih.flag_done = hdr.meta.eof;
         meta.randnum = rnd.get();
         quotas.apply();
-        //active_check.apply();
+        if(meta.is_active != 1) {
+            bypass_egress();
+        }
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
-        bypass_egress();
+        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

@@ -5,6 +5,8 @@ parser EgressParser(
     
     out egress_intrinsic_metadata_t eg_intr_md
 ) {
+    Checksum() tcp_checksum;
+
     state start {
         pkt.extract(eg_intr_md);
         transition parse_metadata;
@@ -31,6 +33,11 @@ parser EgressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
+        tcp_checksum.subtract({
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr,
+            hdr.ipv4.total_len
+        });
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -48,6 +55,9 @@ parser EgressParser(
 
     state parse_tcp {
         pkt.extract(hdr.tcp);
+        tcp_checksum.subtract({
+            hdr.tcp.checksum
+        });
         transition select(hdr.tcp.data_offset) {
             5..15   : parse_tcp_options;
             default : accept;
@@ -61,15 +71,44 @@ parser EgressParser(
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
-        /*transition select(hdr.meta.eof) {
+        tcp_checksum.subtract({
+            hdr.ih.flag_redirect,
+            hdr.ih.flag_igclone,
+            hdr.ih.flag_bypasseg,
+            hdr.ih.flag_rts,
+            hdr.ih.flag_marked,
+            hdr.ih.flag_aux,
+            hdr.ih.flag_ack,
+            hdr.ih.flag_done,
+            hdr.ih.flag_mfault,
+            hdr.ih.flag_exceeded,
+            hdr.ih.flag_reqalloc,
+            hdr.ih.flag_allocated,
+            hdr.ih.flag_precache,
+            hdr.ih.flag_usecache,
+            hdr.ih.padding,
+            hdr.ih.fid,
+            hdr.ih.seq,
+            hdr.ih.acc,
+            hdr.ih.acc2,
+            hdr.ih.data,
+            hdr.ih.data2
+        });
+        tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
+        transition select(hdr.meta.eof) {
             1   : accept;
             _   : parse_active_instruction;
-        }*/
-        transition accept;
+        }
     }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
+        tcp_checksum.subtract({
+            hdr.instr.last.flags,
+            hdr.instr.last.goto,
+            hdr.instr.last.opcode,
+            hdr.instr.last.arg
+        });
         transition select(hdr.instr.last.opcode) {
             0x0     : mark_eof;
             default : parse_active_instruction;
@@ -108,7 +147,7 @@ control EgressDeparser(
                 hdr.ipv4.dst_addr
             });
         }
-        /*if(hdr.ih.isValid()) {
+        if(hdr.ih.isValid()) {
             hdr.tcp.checksum = tcp_checksum.update({
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
@@ -134,9 +173,49 @@ control EgressDeparser(
                 hdr.ih.acc2,
                 hdr.ih.data,
                 hdr.ih.data2,
-                hdr.meta.chksum_tcp
+                hdr.instr[0].flags,
+                hdr.instr[0].goto,
+                hdr.instr[0].opcode,
+                hdr.instr[0].arg,
+                hdr.instr[1].flags,
+                hdr.instr[1].goto,
+                hdr.instr[1].opcode,
+                hdr.instr[1].arg,
+                hdr.instr[2].flags,
+                hdr.instr[2].goto,
+                hdr.instr[2].opcode,
+                hdr.instr[2].arg,
+                hdr.instr[3].flags,
+                hdr.instr[3].goto,
+                hdr.instr[3].opcode,
+                hdr.instr[3].arg,
+                hdr.instr[4].flags,
+                hdr.instr[4].goto,
+                hdr.instr[4].opcode,
+                hdr.instr[4].arg,
+                hdr.instr[5].flags,
+                hdr.instr[5].goto,
+                hdr.instr[5].opcode,
+                hdr.instr[5].arg,
+                hdr.instr[6].flags,
+                hdr.instr[6].goto,
+                hdr.instr[6].opcode,
+                hdr.instr[6].arg,
+                hdr.instr[7].flags,
+                hdr.instr[7].goto,
+                hdr.instr[7].opcode,
+                hdr.instr[7].arg,
+                hdr.instr[8].flags,
+                hdr.instr[8].goto,
+                hdr.instr[8].opcode,
+                hdr.instr[8].arg,
+                hdr.instr[9].flags,
+                hdr.instr[9].goto,
+                hdr.instr[9].opcode,
+                hdr.instr[9].arg,
+                meta.chksum_tcp
             });
-        }*/
+        }
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
             mirror.emit<eg_port_mirror_h>(
                 hdr.meta.egr_mir_ses,

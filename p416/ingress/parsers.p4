@@ -211,7 +211,6 @@ parser IngressParser(
 
     state mark_eof {
         hdr.meta.eof = 1;
-        hdr.ih.flag_done = 1;
         transition accept;
     }
 }
@@ -267,6 +266,38 @@ control IngressDeparser(
                 hdr.ih.acc2,
                 hdr.ih.data,
                 hdr.ih.data2,
+                hdr.instr[0].flags,
+                hdr.instr[0].goto,
+                hdr.instr[0].opcode,
+                hdr.instr[0].arg,
+                hdr.instr[1].flags,
+                hdr.instr[1].goto,
+                hdr.instr[1].opcode,
+                hdr.instr[1].arg,
+                hdr.instr[2].flags,
+                hdr.instr[2].goto,
+                hdr.instr[2].opcode,
+                hdr.instr[2].arg,
+                hdr.instr[3].flags,
+                hdr.instr[3].goto,
+                hdr.instr[3].opcode,
+                hdr.instr[3].arg,
+                hdr.instr[4].flags,
+                hdr.instr[4].goto,
+                hdr.instr[4].opcode,
+                hdr.instr[4].arg,
+                hdr.instr[5].flags,
+                hdr.instr[5].goto,
+                hdr.instr[5].opcode,
+                hdr.instr[5].arg,
+                hdr.instr[6].flags,
+                hdr.instr[6].goto,
+                hdr.instr[6].opcode,
+                hdr.instr[6].arg,
+                hdr.instr[7].flags,
+                hdr.instr[7].goto,
+                hdr.instr[7].opcode,
+                hdr.instr[7].arg,
                 meta.chksum_tcp
             });
         }

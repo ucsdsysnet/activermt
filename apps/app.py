@@ -67,7 +67,7 @@ class ActiveP4RedisClient:
         flag_complete = data[4] & 0x01
         if self.DEBUG:
             print(data)
-        if flag_complete == 1 or len(data) < self.ACTIVEP4_IH_LEN:
+        if len(data) < self.ACTIVEP4_IH_LEN:
             if self.DEBUG:
                 print("Active program instructions not present.")
             return (data[:self.ACTIVEP4_IH_LEN], data[self.ACTIVEP4_IH_LEN:])
