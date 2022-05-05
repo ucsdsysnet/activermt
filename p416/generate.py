@@ -34,7 +34,7 @@ class ActiveP4Generator:
         actions = []
         with open(self.paths['actions']) as f:
             template = f.read()
-            instruction_id = stage_id - 1
+            instruction_id = stage_id
             p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id))
             f.close()
         lines = p4code.splitlines()
@@ -51,7 +51,7 @@ class ActiveP4Generator:
         p4code_actions = self.getGeneratedActions(stage_id)
         with open(self.paths['instruction']) as f:
             template = f.read()
-            instruction_id = stage_id - 1
+            instruction_id = stage_id
             p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n".join([ x + ';' for x in p4code_actions[1] ]))
             f.close()
         lines = p4code.splitlines()
@@ -79,7 +79,7 @@ class ActiveP4Generator:
             f.close()
         return p4code
 
-    def getGeneratedControl(self, eg_ig, stage_offset, num_stages):
+    def getGeneratedControl(self, eg_ig, num_stages):
         p4code = None
         with open(self.paths[eg_ig]) as f:
             template = f.read()
@@ -91,8 +91,8 @@ class ActiveP4Generator:
             instrcount_defs = []
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
-            for i in range(stage_offset, stage_offset + num_stages):
-                instr_id = i - stage_offset
+            for i in range(0, num_stages):
+                instr_id = i
                 tabledefs = self.getGeneratedTable(i)
                 registerdefs = self.getGeneratedRegister(i)
                 hash_algo = hash_algos[hash_idx]
@@ -102,18 +102,18 @@ class ActiveP4Generator:
                 action_code = action_code + tabledefs[2]
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
-                table_names = table_names + [('%s.apply();' % x) for x in tabledefs[1]]
+                table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); }' % (i, x)) for x in tabledefs[1]]
                 instrcount_defs.append("if(hdr.instr[%d].isValid()) meta.instr_count = meta.instr_count + 4;" % instr_id)
-            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code).replace(ANNOTATION_INSTRCOUNT, "\n\t\t".join(instrcount_defs))
+            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
         return p4code
 
 generator = ActiveP4Generator()
 
 with open('ingress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('ingress', 1, 8))
+    f.write(generator.getGeneratedControl('ingress', 8))
     f.close()
 
 with open('egress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('egress', 1, 10))
+    f.write(generator.getGeneratedControl('egress', 10))
     f.close()

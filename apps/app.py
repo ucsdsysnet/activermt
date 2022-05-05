@@ -33,6 +33,8 @@ class ActiveP4RedisClient:
         self.OK = 0
         self.ERROR = 1
         self.UNKNOWN = 2
+        self.ACTIVEP4_IH_LEN = 20
+        self.ACTIVEP4_EOF = 0x0
         self.ACTIVE_EN = active_enable
         self.DEBUG = debug
         self.HOST = proxy_host
@@ -52,15 +54,21 @@ class ActiveP4RedisClient:
                 'file'  : [ 'cachewrite.apo', 'cachewrite.args.csv' ],
                 'code'  : None,
                 'args'  : {}
+            },
+            'DUMMY' : {
+                'file'  : [ 'dummy.apo', 'dummy.args.csv' ],
+                'code'  : None,
+                'args'  : {}
             }
         }
         self.th = None
 
     def filterActiveProgram(self, data):
-        data = data[12:]
-        idx = 1
-        opcode = 0x0
-        while opcode != 0x1:
+        if self.DEBUG:
+            print(data)
+        idx = self.ACTIVEP4_IH_LEN + 1
+        opcode = 0x1
+        while opcode != self.ACTIVEP4_EOF:
             opcode = data[idx]
             idx = idx + 4
         return (data[:idx - 1], data[idx - 1:])
@@ -84,6 +92,8 @@ class ActiveP4RedisClient:
                             # modify data from client
                             if self.ACTIVE_EN:
                                 data = self.filterActiveProgram(data)
+                                if self.DEBUG:
+                                    print(data)
                                 t.sendall(data[1])
                             else:
                                 t.sendall(data)
@@ -154,6 +164,8 @@ class ActiveP4RedisClient:
                     activecode[idx * 4 + 2] = bytes(chr(val >> 8))
                     activecode[idx * 4 + 3] = bytes(chr(val))
         pktbytes = bytes(ActiveIH(fid=self.fid)) + activecode
+        if self.DEBUG:
+            print(activecode)
         return pktbytes
 
     def set(self, key, value):
@@ -184,7 +196,8 @@ class ActiveP4RedisClient:
             ('OFFSET', self.offset)
         ]
         if self.ACTIVE_EN:
-            pktbytes = self.buildActiveProgram('READ', args) + self.buildCommand("get", key)
+            #pktbytes = self.buildActiveProgram('READ', args) + self.buildCommand("get", key)
+            pktbytes = self.buildActiveProgram('DUMMY', args) + self.buildCommand("get", key)
         else:
             pktbytes = self.buildCommand("get", key)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -203,24 +216,25 @@ def sighandler(sig, frame):
 
 signal.signal(signal.SIGINT, sighandler)
 
-isActiveEnabled = False
+isActiveEnabled = True
+isDebugEnabled = True
 
 if len(sys.argv) > 1:
     if sys.argv[1] == 'proxy':
-        client = ActiveP4RedisClient(active_enable=isActiveEnabled)
+        client = ActiveP4RedisClient(active_enable=isActiveEnabled, debug=isDebugEnabled)
         print("proxy mode")
         bind_addr = sys.argv[2] if len(sys.argv) > 2 else None
         client.bgProxy(bind_addr)
     else:
-        client = ActiveP4RedisClient(active_enable=isActiveEnabled, proxy_host=sys.argv[1])
+        client = ActiveP4RedisClient(active_enable=isActiveEnabled, proxy_host=sys.argv[1], debug=isDebugEnabled)
         # result = client.set("key1", "value1")
         # print(result)
-        result = client.get("key1")
+        result = client.get("key01")
         print(result)
 else:
     print("Using localhost proxy")
-    client = ActiveP4RedisClient(active_enable=isActiveEnabled)
+    client = ActiveP4RedisClient(active_enable=isActiveEnabled, debug=isDebugEnabled)
     # result = client.set("key1", "value1")
     # print(result)
-    result = client.get("key1")
+    result = client.get("key01")
     print(result)

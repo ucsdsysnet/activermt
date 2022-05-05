@@ -5,8 +5,6 @@ parser EgressParser(
     
     out egress_intrinsic_metadata_t eg_intr_md
 ) {
-    Checksum() tcp_checksum;
-
     state start {
         pkt.extract(eg_intr_md);
         transition parse_metadata;
@@ -58,31 +56,19 @@ parser EgressParser(
 
     state parse_tcp_options {
         pkt.extract(hdr.tcpopts, (bit<32>)(hdr.tcp.data_offset - 5) * 32);
-        transition parse_active_ih;
+        transition select(hdr.meta.eof) {
+            1   : accept;
+            _   : parse_active_ih;
+        }
     }
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
-        tcp_checksum.subtract({
-            hdr.ih.flag_rts,
-            hdr.ih.acc,
-            hdr.ih.acc2,
-            hdr.ih.data,
-            hdr.ih.data2
-        });
-        hdr.meta.chksum_tcp = tcp_checksum.get();
         transition parse_active_instruction;
     }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
-        tcp_checksum.subtract({
-            hdr.instr.last.flags,
-            hdr.instr.last.goto,
-            hdr.instr.last.opcode,
-            hdr.instr.last.arg
-        });
-        hdr.meta.chksum_tcp = tcp_checksum.get();
         transition select(hdr.instr.last.opcode) {
             0x0     : mark_eof;
             default : parse_active_instruction;
@@ -121,30 +107,33 @@ control EgressDeparser(
                 hdr.ipv4.dst_addr
             });
         }
-        if(hdr.tcp.isValid()) {
+        if(hdr.ih.isValid()) {
             hdr.tcp.checksum = tcp_checksum.update({
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
                 hdr.ipv4.total_len,
+                hdr.ih.flag_redirect,
+                hdr.ih.flag_igclone,
+                hdr.ih.flag_bypasseg,
                 hdr.ih.flag_rts,
+                hdr.ih.flag_marked,
+                hdr.ih.flag_aux,
+                hdr.ih.flag_ack,
+                hdr.ih.flag_done,
+                hdr.ih.flag_mfault,
+                hdr.ih.flag_exceeded,
+                hdr.ih.flag_reqalloc,
+                hdr.ih.flag_allocated,
+                hdr.ih.flag_precache,
+                hdr.ih.flag_usecache,
+                hdr.ih.padding,
+                hdr.ih.fid,
+                hdr.ih.seq,
                 hdr.ih.acc,
                 hdr.ih.acc2,
                 hdr.ih.data,
                 hdr.ih.data2,
                 hdr.meta.chksum_tcp
-                /*8w0,
-                hdr.ipv4.protocol,
-                meta.tcp_length,
-                hdr.tcp.src_port,
-                hdr.tcp.dst_port,
-                hdr.tcp.seq_no,
-                hdr.tcp.ack_no,
-                hdr.tcp.data_offset,
-                hdr.tcp.res,
-                hdr.tcp.ecn,
-                hdr.tcp.ctrl,
-                hdr.tcp.window,
-                hdr.tcp.urgent_ptr*/
             });
         }
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
@@ -161,11 +150,6 @@ control EgressDeparser(
                 }
             );
         }
-        pkt.emit(hdr.ethernet);
-        pkt.emit(hdr.ipv4);
-        pkt.emit(hdr.udp);
-        pkt.emit(hdr.tcp);
-        pkt.emit(hdr.tcpopts);
-        pkt.emit(hdr.ih);
+        pkt.emit(hdr);
     }
 }

@@ -64,7 +64,8 @@ header redis_array_h {
     bit<8>      FMT_STR_KEY;
     bit<8>      str_len_key;
     bit<16>     CRLF_STR_KEY;
-    bit<32>     key;
+    bit<24>     key_pfx;
+    bit<16>     key;
     bit<16>     CRLF_STR_KEYNAME;
 }
 
@@ -140,11 +141,6 @@ parser IngressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        tcp_checksum.subtract({
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr,
-            hdr.ipv4.total_len
-        });
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.TCP : parse_tcp;
             _                   : accept;
@@ -156,7 +152,6 @@ parser IngressParser(
         tcp_checksum.subtract({
             hdr.tcp.checksum
         });
-        meta.chksum_tcp = tcp_checksum.get();
         transition select(hdr.tcp.data_offset) {
             5..15   : parse_tcp_options;
             _       : accept;
@@ -273,6 +268,10 @@ parser IngressParser(
 
     state parse_redis_array {
         pkt.extract(hdr.redis_arr);
+        tcp_checksum.subtract({
+            hdr.redis_arr.key
+        });
+        tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
         transition select(hdr.redis_arr.arr_len) {
             2   : accept;
             3   : parse_redis_array_ctd;
@@ -329,6 +328,9 @@ control Ingress(
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
+        if(hdr.redis_arr.isValid()) {
+            hdr.redis_arr.key = 0xFFFF;
+        }
     }
 }
 
@@ -355,6 +357,12 @@ control IngressDeparser(
                 hdr.ipv4.protocol,
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr
+            });
+        }
+        if(hdr.redis_arr.isValid()) {
+            hdr.tcp.checksum = tcp_checksum.update({
+                hdr.redis_arr.key,
+                meta.chksum_tcp
             });
         }
         pkt.emit(hdr);

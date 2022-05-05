@@ -17,8 +17,8 @@ class ActiveP4Installer:
         self.num_stages_ingress = 8
         self.num_stages_egress = 10
         self.recirculation_enabled = False
-        #self.base_path = "/usr/local/home/rajdeepd/activep4"
-        self.base_path = "/root/src/activep4-p416"
+        self.base_path = "/usr/local/home/rajdeepd/activep4"
+        #self.base_path = "/root/src/activep4-p416"
         self.allocations = {
             1       : {
                 'memory'        : (0, 0xFFFF),
@@ -66,13 +66,13 @@ class ActiveP4Installer:
 
     def installInstructionTableEntriesGress(self, fid, gress, num_stages):
         for i in range(0, num_stages):
-            instr_table = getattr(gress, 'instruction_%d' % (i + 1))
+            instr_table = getattr(gress, 'instruction_%d' % i)
             for a in self.opcode_action:
                 act = self.opcode_action[a]
                 if act['action'] == 'NULL': 
                     continue
-                add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i + 1)))
-                add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(i + 1))
+                add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i)))
+                add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(i))
                 if act['condition'] is not None:
                     mbr_start = 1 if act['condition'] else 0
                     mbr_end = 0xFFFF if act['condition'] else 0
@@ -151,8 +151,8 @@ class ActiveP4Installer:
 installer = ActiveP4Installer()
 
 dst_port_mapping = {
-    '10.0.0.1'      : 0,
-    '10.0.0.2'      : 1,
+    '10.0.0.1'      : 2,
+    '10.0.0.2'      : 3,
     '192.168.0.1'   : 188,
     '192.168.1.1'   : 184
 }

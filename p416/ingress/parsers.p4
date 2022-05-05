@@ -55,7 +55,6 @@ parser IngressParser(
         tcp_checksum.subtract({
             hdr.tcp.checksum
         });
-        hdr.meta.chksum_tcp = tcp_checksum.get();
         transition select(hdr.tcp.data_offset) {
             5..15   : parse_tcp_options;
             default : accept;
@@ -167,25 +166,41 @@ parser IngressParser(
         pkt.extract(hdr.ih);
         meta.is_active = 1;
         tcp_checksum.subtract({
+            hdr.ih.flag_redirect,
+            hdr.ih.flag_igclone,
+            hdr.ih.flag_bypasseg,
             hdr.ih.flag_rts,
+            hdr.ih.flag_marked,
+            hdr.ih.flag_aux,
+            hdr.ih.flag_ack,
+            hdr.ih.flag_done,
+            hdr.ih.flag_mfault,
+            hdr.ih.flag_exceeded,
+            hdr.ih.flag_reqalloc,
+            hdr.ih.flag_allocated,
+            hdr.ih.flag_precache,
+            hdr.ih.flag_usecache,
+            hdr.ih.padding,
+            hdr.ih.fid,
+            hdr.ih.seq,
             hdr.ih.acc,
             hdr.ih.acc2,
             hdr.ih.data,
             hdr.ih.data2
         });
-        hdr.meta.chksum_tcp = tcp_checksum.get();
+        tcp_checksum.subtract_all_and_deposit(hdr.meta.chksum_tcp);
         transition parse_active_instruction;
     }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
-        tcp_checksum.subtract({
+        /*tcp_checksum.subtract({
             hdr.instr.last.flags,
             hdr.instr.last.goto,
             hdr.instr.last.opcode,
             hdr.instr.last.arg
         });
-        hdr.meta.chksum_tcp = tcp_checksum.get();
+        tcp_checksum.subtract_all_and_deposit(hdr.meta.chksum_tcp);*/
         transition select(hdr.instr.last.opcode) {
             0x0     : mark_eof;
             default : parse_active_instruction;
@@ -222,12 +237,6 @@ control IngressDeparser(
                 hdr.ipv4.dst_addr
             });
         }
-        pkt.emit(hdr.meta);
-        pkt.emit(hdr.ethernet);
-        pkt.emit(hdr.ipv4);
-        pkt.emit(hdr.udp);
-        pkt.emit(hdr.tcp);
-        pkt.emit(hdr.tcpopts);
-        pkt.emit(hdr.ih);
+        pkt.emit(hdr);
     }
 }

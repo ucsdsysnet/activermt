@@ -43,15 +43,6 @@ control Ingress(
 #endif
     }
 
-    table active_check {
-        key = {
-            meta.is_active      : exact;
-        }
-        actions = {
-            bypass_egress;
-        }
-    }
-
     // actions
 
     action skip() {}
@@ -180,10 +171,18 @@ control Ingress(
         }
     }
 
+    table active_check {
+        key = {
+            meta.is_active      : exact;
+        }
+        actions = {
+            bypass_egress;
+        }
+    }
+
     // control flow
 
     apply {
-        <generated-count-instr>
         meta.randnum = rnd.get();
         quotas.apply();
         active_check.apply();
@@ -191,6 +190,6 @@ control Ingress(
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

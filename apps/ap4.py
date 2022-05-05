@@ -55,8 +55,7 @@ class ActiveProgram:
                     self.args[argname].append(len(program) - i - 1)
             self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], arg=0, goto=label))
         self.program.reverse()
-        self.program.append(ActiveInstruction(opcode=0, arg=0, goto=0))
-        self.program.append(ActiveInstruction(opcode=1, arg=0, goto=0))
+        self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], arg=0, goto=0))
 
     def getByteCode(self):
         if len(self.program) < 1:
