@@ -185,11 +185,12 @@ control Ingress(
     apply {
         meta.randnum = rnd.get();
         quotas.apply();
-        active_check.apply();
+        //active_check.apply();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        bypass_egress();
     }
 }

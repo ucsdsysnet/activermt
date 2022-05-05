@@ -188,19 +188,21 @@ parser IngressParser(
             hdr.ih.data,
             hdr.ih.data2
         });
-        tcp_checksum.subtract_all_and_deposit(hdr.meta.chksum_tcp);
-        transition parse_active_instruction;
+        tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
+        transition select(hdr.ih.flag_done) {
+            1   : accept;
+            _   : parse_active_instruction;
+        }
     }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
-        /*tcp_checksum.subtract({
+        tcp_checksum.subtract({
             hdr.instr.last.flags,
             hdr.instr.last.goto,
             hdr.instr.last.opcode,
             hdr.instr.last.arg
         });
-        tcp_checksum.subtract_all_and_deposit(hdr.meta.chksum_tcp);*/
         transition select(hdr.instr.last.opcode) {
             0x0     : mark_eof;
             default : parse_active_instruction;
@@ -209,6 +211,7 @@ parser IngressParser(
 
     state mark_eof {
         hdr.meta.eof = 1;
+        hdr.ih.flag_done = 1;
         transition accept;
     }
 }
@@ -221,6 +224,7 @@ control IngressDeparser(
     in    ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md
 ) {
     Checksum() ipv4_checksum;
+    Checksum() tcp_checksum;
     apply {
         if(hdr.ipv4.isValid()) {
             hdr.ipv4.hdr_checksum = ipv4_checksum.update({
@@ -235,6 +239,35 @@ control IngressDeparser(
                 hdr.ipv4.protocol,
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr
+            });
+        }
+        if(hdr.ih.isValid()) {
+            hdr.tcp.checksum = tcp_checksum.update({
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr,
+                hdr.ipv4.total_len,
+                hdr.ih.flag_redirect,
+                hdr.ih.flag_igclone,
+                hdr.ih.flag_bypasseg,
+                hdr.ih.flag_rts,
+                hdr.ih.flag_marked,
+                hdr.ih.flag_aux,
+                hdr.ih.flag_ack,
+                hdr.ih.flag_done,
+                hdr.ih.flag_mfault,
+                hdr.ih.flag_exceeded,
+                hdr.ih.flag_reqalloc,
+                hdr.ih.flag_allocated,
+                hdr.ih.flag_precache,
+                hdr.ih.flag_usecache,
+                hdr.ih.padding,
+                hdr.ih.fid,
+                hdr.ih.seq,
+                hdr.ih.acc,
+                hdr.ih.acc2,
+                hdr.ih.data,
+                hdr.ih.data2,
+                meta.chksum_tcp
             });
         }
         pkt.emit(hdr);

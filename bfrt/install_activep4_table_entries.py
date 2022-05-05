@@ -88,7 +88,7 @@ class ActiveP4Installer:
 
     def addQuotas(self, fid, alloc_id, recirc_pct, circulations, mem_start, mem_end, curr_bw):
         rand_thresh = math.floor(recirc_pct * 0xFFFF)
-        self.p4.Ingress.active_check.add_with_bypass_egress(is_active=0)
+        #self.p4.Ingress.active_check.add_with_bypass_egress(is_active=0)
         self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=rand_thresh, circulations=circulations)
         self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=alloc_id, mem_start=mem_start, mem_end=mem_end, curr_bw=curr_bw)
         if self.recirculation_enabled:

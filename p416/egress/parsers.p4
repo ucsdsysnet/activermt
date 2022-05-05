@@ -56,15 +56,16 @@ parser EgressParser(
 
     state parse_tcp_options {
         pkt.extract(hdr.tcpopts, (bit<32>)(hdr.tcp.data_offset - 5) * 32);
-        transition select(hdr.meta.eof) {
-            1   : accept;
-            _   : parse_active_ih;
-        }
+        transition parse_active_ih;
     }
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
-        transition parse_active_instruction;
+        /*transition select(hdr.meta.eof) {
+            1   : accept;
+            _   : parse_active_instruction;
+        }*/
+        transition accept;
     }
 
     state parse_active_instruction {
@@ -107,7 +108,7 @@ control EgressDeparser(
                 hdr.ipv4.dst_addr
             });
         }
-        if(hdr.ih.isValid()) {
+        /*if(hdr.ih.isValid()) {
             hdr.tcp.checksum = tcp_checksum.update({
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
@@ -135,7 +136,7 @@ control EgressDeparser(
                 hdr.ih.data2,
                 hdr.meta.chksum_tcp
             });
-        }
+        }*/
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
             mirror.emit<eg_port_mirror_h>(
                 hdr.meta.egr_mir_ses,

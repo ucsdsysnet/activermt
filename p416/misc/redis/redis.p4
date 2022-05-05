@@ -329,7 +329,7 @@ control Ingress(
             ipv4_host.apply();
         }
         if(hdr.redis_arr.isValid()) {
-            hdr.redis_arr.key = 0xFFFF;
+            hdr.redis_arr.key = 0x3032;
         }
     }
 }

@@ -1153,18 +1153,19 @@ hash_s7;
     apply {
         meta.randnum = rnd.get();
         quotas.apply();
-        active_check.apply();
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); }
+        //active_check.apply();
+        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].setInvalid(); }
+		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].setInvalid(); }
+		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].setInvalid(); }
+		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].setInvalid(); }
+		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].setInvalid(); }
+		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].setInvalid(); }
+		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].setInvalid(); }
+		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].setInvalid(); }
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
+        bypass_egress();
     }
 }
