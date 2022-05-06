@@ -1340,17 +1340,19 @@ hash_s9;
     // control flow
     
     apply {
-        hdr.ih.flag_done = hdr.meta.eof;
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); }
-		if(hdr.instr[8].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_8.apply(); }
-		if(hdr.instr[9].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_9.apply(); }
+        if(meta.eof == 1) {
+            hdr.ih.flag_done = 1;
+        }
+        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].flags = 1; }
+		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].flags = 1; }
+		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].flags = 1; }
+		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].flags = 1; }
+		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].flags = 1; }
+		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].flags = 1; }
+		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].flags = 1; }
+		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].flags = 1; }
+		if(hdr.instr[8].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_8.apply(); hdr.instr[8].flags = 1; }
+		if(hdr.instr[9].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_9.apply(); hdr.instr[9].flags = 1; }
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
         hdr.meta.setInvalid();

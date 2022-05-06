@@ -86,9 +86,9 @@ class ActiveP4Installer:
         self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
         self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
 
-    def addQuotas(self, fid, alloc_id, recirc_pct, circulations, mem_start, mem_end, curr_bw):
+    def addQuotas(self, fid, alloc_id, recirc_pct, circulations, mem_start, mem_end, curr_bw, addrmask, offset):
         rand_thresh = math.floor(recirc_pct * 0xFFFF)
-        #self.p4.Ingress.active_check.add_with_bypass_egress(is_active=0)
+        self.p4.Ingress.seq_vaddr.add_with_get_seq_vaddr_params(fid=fid, addrmask=addrmask, offset=offset)
         self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=rand_thresh, circulations=circulations)
         self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=alloc_id, mem_start=mem_start, mem_end=mem_end, curr_bw=curr_bw)
         if self.recirculation_enabled:
@@ -167,7 +167,7 @@ fids = [1]
 installer.clear_all()
 installer.installForwardingTableEntries(dst_port_mapping)
 installer.installInstructionTableEntries(1)
-installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0)
+installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)
 #installer.getTrafficCounters(fids)
 #installer.resetTrafficCounters()

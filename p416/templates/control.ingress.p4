@@ -171,15 +171,51 @@ control Ingress(
         }
     }
 
+    action get_seq_vaddr_params(bit<16> addrmask, bit<16> offset) {
+        meta.seq_addr = hdr.ih.seq & addrmask;
+        meta.seq_offset = offset;
+    }
+
+    table seq_vaddr {
+        key     = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            get_seq_vaddr_params;
+        }
+    }
+
+    Register<bit<8>, bit<32>>(32w65536) seqmap;
+
+    RegisterAction<bit<8>, bit<32>, bit<8>>(seqmap) seq_update = {
+        void apply(inout bit<8> value, out bit<8> rv) {
+            rv = value;
+            value = meta.set_clr_seq;
+        }
+    };
+
+    action seq_addr_translate() {
+        meta.seq_addr = meta.seq_addr + meta.seq_offset;
+    }
+
+    action check_prior_exec() {
+        hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
+    }
+
     // control flow
 
     apply {
-        hdr.ih.flag_done = hdr.meta.eof;
-        meta.randnum = rnd.get();
-        quotas.apply();
+        if(meta.eof == 1) {
+            hdr.ih.flag_done = 1;
+        }
+        seq_vaddr.apply();
+        seq_addr_translate();
+        check_prior_exec();
         if(meta.is_active != 1) {
             bypass_egress();
         }
+        meta.randnum = rnd.get();
+        quotas.apply();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();

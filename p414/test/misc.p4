@@ -18,6 +18,7 @@ header_type ethernet_t {
 header_type metadata_t {
     fields {
         result  : 16;
+        addr    : 16;
     }
 }
 
@@ -32,6 +33,34 @@ parser start {
 
 action compute() {
     min(meta.result, meta.result, ethernet.etherType);
+}
+
+register heap {
+    width           : 8;
+    instance_count  : 65536;
+}
+
+blackbox stateful_alu heap_read {
+    reg                 : heap;
+    condition_lo        : register_lo == meta.mar;
+    condition_hi        : meta.mbr > 0;
+    output_predicate    : condition_lo or condition_hi;
+    output_dst          : meta.mbr;
+    output_value        : register_hi;
+}
+
+field_list addr_list {
+    meta.addr;
+}
+
+field_list_calculation addr_list_hash {
+    input           { addr_list; }
+    algorithm       : crc_16_dnp;
+    output_width    : 16;
+}
+
+action memory_read() {
+    heap_read.execute_stateful_alu_from_hash(addr_list_hash);
 }
 
 table dummy {

@@ -130,7 +130,9 @@ control Egress(
     // control flow
     
     apply {
-        hdr.ih.flag_done = hdr.meta.eof;
+        if(meta.eof == 1) {
+            hdr.ih.flag_done = 1;
+        }
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();

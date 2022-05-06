@@ -81,11 +81,12 @@ header active_initial_h {
     bit<1>      flag_usecache;
     bit<2>      padding;
     bit<16>     fid;
-    bit<32>     seq;
+    bit<16>     seq;
     bit<16>     acc;
     bit<16>     acc2;
     bit<16>     data;
     bit<16>     data2;
+    bit<16>     res;
 }
 
 header active_instruction_h {
@@ -95,12 +96,15 @@ header active_instruction_h {
     bit<16>     arg;
 }
 
+header executed_active_instruction_h {
+    bit<32>     data;
+}
+
 @flexible
 header bridged_metadata_h {
     bit<1>      duplicate;
     bit<1>      complete;
     bit<1>      rts;
-    bit<1>      eof;
     bit<1>      disabled; 
     bit<8>      cycles;
     bit<16>     rtsid;
@@ -110,7 +114,7 @@ header bridged_metadata_h {
     bit<16>     mbr2;
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
-    bit<1>      padding;
+    bit<2>      padding;
     bit<16>     tcp_length;
 }
 
@@ -119,13 +123,19 @@ header eg_port_mirror_h {
 }
 
 struct ig_metadata_t {
-    bit<16>     randnum;
     bit<1>      is_active;
+    bit<1>      eof;
+    bit<8>      set_clr_seq;
+    bit<8>      prev_exec;
+    bit<16>     randnum;
     bit<16>     instr_count;
     bit<16>     chksum_tcp;
+    bit<16>     seq_offset;
+    bit<16>     seq_addr;
 }
 
 struct eg_metadata_t {
+    bit<1>      eof;
     bit<16>     instr_count;
     bit<16>     chksum_tcp;
 }
@@ -139,6 +149,7 @@ struct ingress_headers_t {
     tcp_option_h                                tcpopts;
     active_initial_h                            ih;
     active_instruction_h[MAX_INSTRUCTIONS_IG]   instr;
+    executed_active_instruction_h[MAX_INSTRUCTIONS_STALE]   stale;
 }
 
 struct egress_headers_t {
@@ -150,4 +161,5 @@ struct egress_headers_t {
     tcp_option_h                                tcpopts;
     active_initial_h                            ih;
     active_instruction_h[MAX_INSTRUCTIONS_EG]   instr;
+    executed_active_instruction_h[MAX_INSTRUCTIONS_STALE]   stale;
 }

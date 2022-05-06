@@ -95,8 +95,23 @@ parser EgressParser(
             hdr.ih.data2
         });
         tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
-        transition select(hdr.meta.eof) {
+        transition select(hdr.ih.flag_done) {
             1   : accept;
+            _   : check_prior_execution;
+        }
+    }
+
+    state check_prior_execution {
+        transition select(pkt.lookahead<bit<7>>()) {
+            1   : skip_executed_instruction;
+            _   : parse_active_instruction;
+        }
+    }
+
+    state skip_executed_instruction {
+        pkt.extract(hdr.stale.next);
+        transition select(pkt.lookahead<bit<7>>()) {
+            1   : skip_executed_instruction;
             _   : parse_active_instruction;
         }
     }
@@ -116,7 +131,7 @@ parser EgressParser(
     }
 
     state mark_eof {
-        hdr.meta.eof = 1;
+        meta.eof = 1;
         transition accept;
     }
 }

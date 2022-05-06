@@ -1139,23 +1139,59 @@ hash_s7;
         }
     }
 
+    action get_seq_vaddr_params(bit<16> addrmask, bit<16> offset) {
+        meta.seq_addr = hdr.ih.seq & addrmask;
+        meta.seq_offset = offset;
+    }
+
+    table seq_vaddr {
+        key     = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            get_seq_vaddr_params;
+        }
+    }
+
+    Register<bit<8>, bit<32>>(32w65536) seqmap;
+
+    RegisterAction<bit<8>, bit<32>, bit<8>>(seqmap) seq_update = {
+        void apply(inout bit<8> value, out bit<8> rv) {
+            rv = value;
+            value = meta.set_clr_seq;
+        }
+    };
+
+    action seq_addr_translate() {
+        meta.seq_addr = meta.seq_addr + meta.seq_offset;
+    }
+
+    action check_prior_exec() {
+        hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
+    }
+
     // control flow
 
     apply {
-        hdr.ih.flag_done = hdr.meta.eof;
-        meta.randnum = rnd.get();
-        quotas.apply();
+        if(meta.eof == 1) {
+            hdr.ih.flag_done = 1;
+        }
+        seq_vaddr.apply();
+        seq_addr_translate();
+        check_prior_exec();
         if(meta.is_active != 1) {
             bypass_egress();
         }
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); }
+        meta.randnum = rnd.get();
+        quotas.apply();
+        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].flags = 1; }
+		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].flags = 1; }
+		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].flags = 1; }
+		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].flags = 1; }
+		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].flags = 1; }
+		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].flags = 1; }
+		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].flags = 1; }
+		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].flags = 1; }
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }

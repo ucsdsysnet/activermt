@@ -12,11 +12,12 @@ class ActiveIH(Packet):
         IntField("ACTIVEP4", 0x12345678),
         ShortField("flags", 0),
         ShortField("fid", 0),
-        IntField("seq", 0),
+        ShortField("seq", 0),
         ShortField("acc", 0),
         ShortField("acc2", 0),
         ShortField("data", 0),
-        ShortField("data2", 0)
+        ShortField("data2", 0),
+        ShortField("res", 0)
     ]
 
 class ActiveInstruction(Packet):
@@ -62,6 +63,7 @@ class ActiveP4RedisClient:
             }
         }
         self.th = None
+        self.seq = 0
 
     def filterActiveProgram(self, data):
         flag_complete = data[4] & 0x01
@@ -168,7 +170,8 @@ class ActiveP4RedisClient:
                 for idx in arr_idx:
                     activecode[idx * 4 + 2] = bytes(chr(val >> 8))
                     activecode[idx * 4 + 3] = bytes(chr(val))
-        pktbytes = bytes(ActiveIH(fid=self.fid)) + activecode
+        self.seq = self.seq + 1
+        pktbytes = bytes(ActiveIH(fid=self.fid, seq=self.seq)) + activecode
         if self.DEBUG:
             print(activecode)
         return pktbytes
