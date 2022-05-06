@@ -137,6 +137,5 @@ control Egress(
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
         hdr.meta.setInvalid();
-        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

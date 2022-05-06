@@ -1184,17 +1184,16 @@ hash_s7;
         }
         meta.randnum = rnd.get();
         quotas.apply();
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].flags = 1; }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].flags = 1; }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].flags = 1; }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].flags = 1; }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].flags = 1; }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].flags = 1; }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].flags = 1; }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].flags = 1; }
+        if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].flags = 1; }
+		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].flags = 1; }
+		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].flags = 1; }
+		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].flags = 1; }
+		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].flags = 1; }
+		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].flags = 1; }
+		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].flags = 1; }
+		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].flags = 1; }
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

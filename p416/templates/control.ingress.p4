@@ -220,6 +220,5 @@ control Ingress(
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
         }
-        //hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }
