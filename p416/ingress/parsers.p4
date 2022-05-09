@@ -30,11 +30,11 @@ parser IngressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
-        tcp_checksum.subtract({
+        /*tcp_checksum.subtract({
             hdr.ipv4.src_addr,
             hdr.ipv4.dst_addr,
             hdr.ipv4.total_len
-        });
+        });*/
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -186,7 +186,8 @@ parser IngressParser(
             hdr.ih.acc,
             hdr.ih.acc2,
             hdr.ih.data,
-            hdr.ih.data2
+            hdr.ih.data2,
+            hdr.ih.res
         });
         tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
         meta.set_clr_seq = 1;
@@ -258,9 +259,9 @@ control IngressDeparser(
         }
         if(hdr.ih.isValid()) {
             hdr.tcp.checksum = tcp_checksum.update({
-                hdr.ipv4.src_addr,
+                /*hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
-                hdr.ipv4.total_len,
+                hdr.ipv4.total_len,*/
                 hdr.ih.flag_redirect,
                 hdr.ih.flag_igclone,
                 hdr.ih.flag_bypasseg,
@@ -282,6 +283,7 @@ control IngressDeparser(
                 hdr.ih.acc2,
                 hdr.ih.data,
                 hdr.ih.data2,
+                hdr.ih.res,
                 hdr.instr[0].flags,
                 hdr.instr[0].goto,
                 hdr.instr[0].opcode,

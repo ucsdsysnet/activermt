@@ -1167,7 +1167,7 @@ hash_s7;
     }
 
     action check_prior_exec() {
-        hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
+        //hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
     }
 
     // control flow

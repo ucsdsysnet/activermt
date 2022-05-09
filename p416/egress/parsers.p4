@@ -92,7 +92,8 @@ parser EgressParser(
             hdr.ih.acc,
             hdr.ih.acc2,
             hdr.ih.data,
-            hdr.ih.data2
+            hdr.ih.data2,
+            hdr.ih.res
         });
         tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
         transition select(hdr.ih.flag_done) {
@@ -188,6 +189,7 @@ control EgressDeparser(
                 hdr.ih.acc2,
                 hdr.ih.data,
                 hdr.ih.data2,
+                hdr.ih.res,
                 hdr.instr[0].flags,
                 hdr.instr[0].goto,
                 hdr.instr[0].opcode,
