@@ -23,6 +23,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s0) heap_read_s0 = {
     }
 };
 
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s0) heap_count_s0 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
 Register<bit<16>, bit<32>>(32w65536) heap_s1;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_write_s1 = {
@@ -34,6 +41,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_write_s1 = {
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_read_s1 = {
     void apply(inout bit<16> value, out bit<16> rv) {
         rv = value;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_count_s1 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
     }
 };
 
@@ -51,6 +65,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_read_s2 = {
     }
 };
 
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_count_s2 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
 Register<bit<16>, bit<32>>(32w65536) heap_s3;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_write_s3 = {
@@ -62,6 +83,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_write_s3 = {
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_read_s3 = {
     void apply(inout bit<16> value, out bit<16> rv) {
         rv = value;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_count_s3 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
     }
 };
 
@@ -79,6 +107,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_read_s4 = {
     }
 };
 
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_count_s4 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
 Register<bit<16>, bit<32>>(32w65536) heap_s5;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_write_s5 = {
@@ -90,6 +125,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_write_s5 = {
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_read_s5 = {
     void apply(inout bit<16> value, out bit<16> rv) {
         rv = value;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_count_s5 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
     }
 };
 
@@ -107,6 +149,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_read_s6 = {
     }
 };
 
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_count_s6 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
 Register<bit<16>, bit<32>>(32w65536) heap_s7;
 
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_write_s7 = {
@@ -118,6 +167,13 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_write_s7 = {
 RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_read_s7 = {
     void apply(inout bit<16> value, out bit<16> rv) {
         rv = value;
+    }
+};
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_count_s7 = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
     }
 };
 
@@ -243,6 +299,20 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
 #endif
     }
 
+    action set_dstaddr(bit<32> dst_addr) {
+        hdr.ipv4.dst_addr = dst_addr;
+    }
+
+    table dst_update {
+        key = {
+            meta.port_change    : exact;
+            meta.vport          : exact;
+        }
+        actions = {
+            set_dstaddr;
+        }
+    }
+
     // actions
 
     action skip() {}
@@ -259,7 +329,8 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
     }
 
     action set_port() {
-        ig_tm_md.ucast_egress_port = (bit<9>) hdr.meta.mbr;
+        meta.port_change = 1;
+        meta.vport = hdr.meta.mbr;
     }
 
     action complete() {
@@ -325,8 +396,37 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
         hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
     }
 
+    action mar_add_mbr2() {
+        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
+    }
+
+    action mbr_add_mbr2() {
+        hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
+    }
+
     action copy_acc_mbr() {
         hdr.ih.acc = hdr.meta.mbr;
+    }
+
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
+
+    action hash_5_tuple() {
+        hdr.meta.mbr = crc16.get({
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr,
+            hdr.ipv4.protocol,
+            hdr.tcp.src_port,
+            hdr.tcp.dst_port,
+            hdr.meta.mbr
+        });
+    }
+
+    action load_tcp_ctrl_flags() {
+        hdr.meta.mbr = (bit<16>) hdr.tcp.ctrl;
+    }
+
+    action load_salt() {
+        hdr.meta.mbr = CONST_SALT;
     }
 
     // GENERATED: ACTIONS
@@ -379,6 +479,10 @@ action memory_write_s0() {
     heap_write_s0.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s0() {
+    hdr.meta.mbr = heap_count_s0.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s0() {
     hdr.meta.mar = crc_16_s0.get({hdr.meta.mbr});
 }action mar_load_s1() {
@@ -427,6 +531,10 @@ action memory_read_s1() {
 
 action memory_write_s1() {
     heap_write_s1.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_count_s1() {
+    hdr.meta.mbr = heap_count_s1.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s1() {
@@ -479,6 +587,10 @@ action memory_write_s2() {
     heap_write_s2.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s2() {
+    hdr.meta.mbr = heap_count_s2.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s2() {
     hdr.meta.mar = crc_16_s2.get({hdr.meta.mbr});
 }action mar_load_s3() {
@@ -527,6 +639,10 @@ action memory_read_s3() {
 
 action memory_write_s3() {
     heap_write_s3.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_count_s3() {
+    hdr.meta.mbr = heap_count_s3.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s3() {
@@ -579,6 +695,10 @@ action memory_write_s4() {
     heap_write_s4.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s4() {
+    hdr.meta.mbr = heap_count_s4.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s4() {
     hdr.meta.mar = crc_16_s4.get({hdr.meta.mbr});
 }action mar_load_s5() {
@@ -627,6 +747,10 @@ action memory_read_s5() {
 
 action memory_write_s5() {
     heap_write_s5.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_count_s5() {
+    hdr.meta.mbr = heap_count_s5.execute((bit<32>)hdr.meta.mar);
 }
 
 action hash_s5() {
@@ -679,6 +803,10 @@ action memory_write_s6() {
     heap_write_s6.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s6() {
+    hdr.meta.mbr = heap_count_s6.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s6() {
     hdr.meta.mar = crc_16_s6.get({hdr.meta.mbr});
 }action mar_load_s7() {
@@ -729,6 +857,10 @@ action memory_write_s7() {
     heap_write_s7.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s7() {
+    hdr.meta.mbr = heap_count_s7.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s7() {
     hdr.meta.mar = crc_16_s7.get({hdr.meta.mbr});
 }
@@ -766,7 +898,12 @@ table instruction_0 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s0;
 mbr1_load_s0;
 mbr2_load_s0;
@@ -779,6 +916,7 @@ bit_and_mar_s0;
 mbr_equals_arg_s0;
 memory_read_s0;
 memory_write_s0;
+memory_count_s0;
 hash_s0;
     }
 }
@@ -812,7 +950,12 @@ table instruction_1 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s1;
 mbr1_load_s1;
 mbr2_load_s1;
@@ -825,6 +968,7 @@ bit_and_mar_s1;
 mbr_equals_arg_s1;
 memory_read_s1;
 memory_write_s1;
+memory_count_s1;
 hash_s1;
     }
 }
@@ -858,7 +1002,12 @@ table instruction_2 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s2;
 mbr1_load_s2;
 mbr2_load_s2;
@@ -871,6 +1020,7 @@ bit_and_mar_s2;
 mbr_equals_arg_s2;
 memory_read_s2;
 memory_write_s2;
+memory_count_s2;
 hash_s2;
     }
 }
@@ -904,7 +1054,12 @@ table instruction_3 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s3;
 mbr1_load_s3;
 mbr2_load_s3;
@@ -917,6 +1072,7 @@ bit_and_mar_s3;
 mbr_equals_arg_s3;
 memory_read_s3;
 memory_write_s3;
+memory_count_s3;
 hash_s3;
     }
 }
@@ -950,7 +1106,12 @@ table instruction_4 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s4;
 mbr1_load_s4;
 mbr2_load_s4;
@@ -963,6 +1124,7 @@ bit_and_mar_s4;
 mbr_equals_arg_s4;
 memory_read_s4;
 memory_write_s4;
+memory_count_s4;
 hash_s4;
     }
 }
@@ -996,7 +1158,12 @@ table instruction_5 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s5;
 mbr1_load_s5;
 mbr2_load_s5;
@@ -1009,6 +1176,7 @@ bit_and_mar_s5;
 mbr_equals_arg_s5;
 memory_read_s5;
 memory_write_s5;
+memory_count_s5;
 hash_s5;
     }
 }
@@ -1042,7 +1210,12 @@ table instruction_6 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s6;
 mbr1_load_s6;
 mbr2_load_s6;
@@ -1055,6 +1228,7 @@ bit_and_mar_s6;
 mbr_equals_arg_s6;
 memory_read_s6;
 memory_write_s6;
+memory_count_s6;
 hash_s6;
     }
 }
@@ -1088,7 +1262,12 @@ table instruction_7 {
         copy_mbr_mar;
         bit_and_mar_mbr;
         mar_add_mbr;
+        mar_add_mbr2;
+        mbr_add_mbr2;
         copy_acc_mbr;
+        hash_5_tuple;
+        load_tcp_ctrl_flags;
+        load_salt;
         mar_load_s7;
 mbr1_load_s7;
 mbr2_load_s7;
@@ -1101,6 +1280,7 @@ bit_and_mar_s7;
 mbr_equals_arg_s7;
 memory_read_s7;
 memory_write_s7;
+memory_count_s7;
 hash_s7;
     }
 }
@@ -1131,7 +1311,7 @@ hash_s7;
         key     = {
             hdr.ih.fid              : exact;
             hdr.ih.flag_reqalloc    : exact;
-            meta.randnum            : range;
+            hdr.meta.randnum        : range;
         }
         actions = {
             set_quotas;
@@ -1182,18 +1362,20 @@ hash_s7;
         if(meta.is_active != 1) {
             bypass_egress();
         }
-        meta.randnum = rnd.get();
+        hdr.meta.randnum = rnd.get();
         quotas.apply();
-        if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].flags = 1; }
-		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].flags = 1; }
-		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].flags = 1; }
-		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].flags = 1; }
-		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].flags = 1; }
-		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].flags = 1; }
-		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].flags = 1; }
-		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].flags = 1; }
+        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].setInvalid(); }
+		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].setInvalid(); }
+		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].setInvalid(); }
+		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].setInvalid(); }
+		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].setInvalid(); }
+		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].setInvalid(); }
+		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].setInvalid(); }
+		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].setInvalid(); }
         if (hdr.ipv4.isValid()) {
+            dst_update.apply();
             ipv4_host.apply();
         }
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

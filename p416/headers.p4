@@ -54,6 +54,12 @@ header tcp_h {
     bit<3>      res;
     bit<3>      ecn;
     bit<6>      ctrl;
+    /*bit<1>      ctrl_urgent;
+    bit<1>      ctrl_ack;
+    bit<1>      ctrl_push;
+    bit<1>      ctrl_rst;
+    bit<1>      ctrl_syn;
+    bit<1>      ctrl_fin;*/
     bit<16>     window;
     bit<16>     checksum;
     bit<16>     urgent_ptr;
@@ -115,6 +121,7 @@ header bridged_metadata_h {
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
     bit<2>      padding;
+    bit<16>     randnum;
     bit<16>     tcp_length;
 }
 
@@ -125,13 +132,14 @@ header eg_port_mirror_h {
 struct ig_metadata_t {
     bit<1>      is_active;
     bit<1>      eof;
+    bit<1>      port_change;
     bit<8>      set_clr_seq;
     bit<8>      prev_exec;
-    bit<16>     randnum;
     bit<16>     instr_count;
     bit<16>     chksum_tcp;
     bit<16>     seq_offset;
     bit<16>     seq_addr;
+    bit<16>     vport;
 }
 
 struct eg_metadata_t {

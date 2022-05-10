@@ -56,10 +56,13 @@ class ActiveP4Installer:
                     if verbose:
                         print('Done')
 
-    def installForwardingTableEntries(self, dst_port_mapping):
+    def installForwardingTableEntries(self, dst_port_mapping, vport_dst_mapping):
         ipv4_host = self.p4.Ingress.ipv4_host
+        dst_update = self.p4.Ingress.dst_update
         for host in dst_port_mapping:
             ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host])
+        for vport in vport_dst_mapping:
+            dst_update.add_with_set_dstaddr(port_change=1, vport=vport, dst_addr=IPAddress(vport_dst_mapping[vport]))
         bfrt.complete_operations()
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
@@ -151,10 +154,17 @@ class ActiveP4Installer:
 installer = ActiveP4Installer()
 
 dst_port_mapping = {
+    '10.0.1.1'      : 0,
+    '10.0.1.2'      : 1,
     '10.0.0.1'      : 2,
     '10.0.0.2'      : 3,
     '192.168.0.1'   : 188,
     '192.168.1.1'   : 184
+}
+
+vport_dst_mapping = {
+    0   : '10.0.1.1',
+    1   : '10.0.1.2'
 }
 
 sid_to_port_mapping = {
@@ -165,7 +175,7 @@ sid_to_port_mapping = {
 fids = [1]
 
 installer.clear_all()
-installer.installForwardingTableEntries(dst_port_mapping)
+installer.installForwardingTableEntries(dst_port_mapping, vport_dst_mapping)
 installer.installInstructionTableEntries(1)
 installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)

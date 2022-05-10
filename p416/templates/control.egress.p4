@@ -96,8 +96,37 @@ control Egress(
         hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
     }
 
+    action mar_add_mbr2() {
+        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
+    }
+
+    action mbr_add_mbr2() {
+        hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
+    }
+
     action copy_acc_mbr() {
         hdr.ih.acc = hdr.meta.mbr;
+    }
+
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
+
+    action hash_5_tuple() {
+        hdr.meta.mbr = crc16.get({
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr,
+            hdr.ipv4.protocol,
+            hdr.tcp.src_port,
+            hdr.tcp.dst_port,
+            hdr.meta.mbr
+        });
+    }
+
+    action load_tcp_ctrl_flags() {
+        hdr.meta.mbr = (bit<16>) hdr.tcp.ctrl;
+    }
+
+    action load_salt() {
+        hdr.meta.mbr = CONST_SALT;
     }
 
     // GENERATED: ACTIONS
@@ -136,6 +165,7 @@ control Egress(
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
         hdr.meta.setInvalid();
     }
 }

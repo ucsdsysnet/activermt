@@ -190,7 +190,7 @@ control EgressDeparser(
                 hdr.ih.data,
                 hdr.ih.data2,
                 hdr.ih.res,
-                hdr.instr[0].flags,
+                /*hdr.instr[0].flags,
                 hdr.instr[0].goto,
                 hdr.instr[0].opcode,
                 hdr.instr[0].arg,
@@ -229,7 +229,7 @@ control EgressDeparser(
                 hdr.instr[9].flags,
                 hdr.instr[9].goto,
                 hdr.instr[9].opcode,
-                hdr.instr[9].arg,
+                hdr.instr[9].arg,*/
                 meta.chksum_tcp
             });
         }

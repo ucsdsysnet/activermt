@@ -43,6 +43,20 @@ control Ingress(
 #endif
     }
 
+    action set_dstaddr(bit<32> dst_addr) {
+        hdr.ipv4.dst_addr = dst_addr;
+    }
+
+    table dst_update {
+        key = {
+            meta.port_change    : exact;
+            meta.vport          : exact;
+        }
+        actions = {
+            set_dstaddr;
+        }
+    }
+
     // actions
 
     action skip() {}
@@ -59,7 +73,8 @@ control Ingress(
     }
 
     action set_port() {
-        ig_tm_md.ucast_egress_port = (bit<9>) hdr.meta.mbr;
+        meta.port_change = 1;
+        meta.vport = hdr.meta.mbr;
     }
 
     action complete() {
@@ -125,8 +140,37 @@ control Ingress(
         hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
     }
 
+    action mar_add_mbr2() {
+        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
+    }
+
+    action mbr_add_mbr2() {
+        hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
+    }
+
     action copy_acc_mbr() {
         hdr.ih.acc = hdr.meta.mbr;
+    }
+
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
+
+    action hash_5_tuple() {
+        hdr.meta.mbr = crc16.get({
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr,
+            hdr.ipv4.protocol,
+            hdr.tcp.src_port,
+            hdr.tcp.dst_port,
+            hdr.meta.mbr
+        });
+    }
+
+    action load_tcp_ctrl_flags() {
+        hdr.meta.mbr = (bit<16>) hdr.tcp.ctrl;
+    }
+
+    action load_salt() {
+        hdr.meta.mbr = CONST_SALT;
     }
 
     // GENERATED: ACTIONS
@@ -163,7 +207,7 @@ control Ingress(
         key     = {
             hdr.ih.fid              : exact;
             hdr.ih.flag_reqalloc    : exact;
-            meta.randnum            : range;
+            hdr.meta.randnum        : range;
         }
         actions = {
             set_quotas;
@@ -214,11 +258,13 @@ control Ingress(
         if(meta.is_active != 1) {
             bypass_egress();
         }
-        meta.randnum = rnd.get();
+        hdr.meta.randnum = rnd.get();
         quotas.apply();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
+            dst_update.apply();
             ipv4_host.apply();
         }
+        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

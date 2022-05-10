@@ -32,13 +32,13 @@ class ActiveApplication:
         self.offset = 0x0
         self.activesrc = {}
 
-    def filterActiveProgram(self, data):
+    def filterActiveProgram(self, data, truncationEnabled=False):
         ACTIVEP4_IH_LEN = 20
         ACTIVEP4_EOF = 0x0
         flag_complete = data[4] & 0x01
         if self.DEBUG:
             print(data)
-        if len(data) < ACTIVEP4_IH_LEN:
+        if (truncationEnabled and flag_complete == 1) or len(data) < ACTIVEP4_IH_LEN:
             if self.DEBUG:
                 print("Active program instructions not present.")
             return (data[:ACTIVEP4_IH_LEN], data[ACTIVEP4_IH_LEN:])

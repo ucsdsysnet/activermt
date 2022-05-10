@@ -46,6 +46,10 @@ action memory_write_s<stage-id>() {
     heap_write_s<stage-id>.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_count_s<stage-id>() {
+    hdr.meta.mbr = heap_count_s<stage-id>.execute((bit<32>)hdr.meta.mar);
+}
+
 action hash_s<stage-id>() {
     hdr.meta.mar = crc_16_s<stage-id>.get({hdr.meta.mbr});
 }

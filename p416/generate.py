@@ -16,7 +16,8 @@ ANNOTATION_INSTRCOUNT       = '<generated-count-instr>'
 
 class ActiveP4Generator:
 
-    def __init__(self):
+    def __init__(self, truncate=False):
+        self.truncate = truncate
         self.paths = {
             'actions'       : 'templates/actions.p4',
             'instruction'   : 'templates/instruction.p4',
@@ -101,13 +102,16 @@ class ActiveP4Generator:
                 action_code = action_code + tabledefs[2]
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
-                table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
+                if self.truncate:
+                    table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].setInvalid(); }' % (i, x, i)) for x in tabledefs[1]]
+                else:
+                    table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
             p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
         return p4code
 
-generator = ActiveP4Generator()
+generator = ActiveP4Generator(truncate=True)
 
 with open('ingress/control.p4', 'w') as f:
     f.write(generator.getGeneratedControl('ingress', 8))

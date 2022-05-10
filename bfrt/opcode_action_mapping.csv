@@ -3,7 +3,8 @@ NOP,skip
 RETURN,complete
 CRET,complete,1
 DROP,drop
-SET_PORT,set_port
+SET_DST,set_port
+LOAD_SALT,load_salt
 MARK_PACKET,mark_packet
 MARK_IF,mark_packet,1
 CJUMP,jump_s#,1
@@ -18,11 +19,14 @@ REVMIN,min_mbr2_mbr1
 MAR_ADD,mar_add_s#
 MBR_ADD,mbr_add_s#
 MAR_ADD_MBR,mar_add_mbr
+MAR_ADD_MBR2,mar_add_mbr2
+MBR_ADD_MBR2,mbr_add_mbr2
 MAR_LOAD,mar_load_s#
 MBR_LOAD,mbr1_load_s#
 MBR2_LOAD,mbr2_load_s#
 ACC2_LOAD,acc2_load
 ACC_LOAD,acc1_load
+TCP_CTRL_LOAD,load_tcp_ctrl_flags
 BIT_AND_MAR,bit_and_mar_s#
 BIT_AND_MBR,bit_and_mbr_s#
 BIT_AND_MAR_MBR,bit_and_mar_mbr
@@ -32,5 +36,7 @@ COPY_MAR_MBR,copy_mar_mbr
 COPY_MBR_MAR,copy_mbr_mar
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
+MEM_COUNT,memory_count_s#
 HASHMBR,hash_s#
+HASH5TUPLE,hash_5_tuple
 DUPLICATE,NULL

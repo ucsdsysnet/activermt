@@ -19,6 +19,7 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 #define MAX_INSTRUCTIONS_EG    10
 #define MAX_INSTRUCTIONS_STALE 10
 #define MAX_TCP_OPTIONS        10
+#define CONST_SALT             0x5093
 
 #include <core.p4>
 #include <tna.p4>

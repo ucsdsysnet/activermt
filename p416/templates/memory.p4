@@ -11,3 +11,10 @@ RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s<stage-id>) heap_read_s<stage-id
         rv = value;
     }
 };
+
+RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s<stage-id>) heap_count_s<stage-id> = {
+    void apply(inout bit<16> value, out bit<16> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
