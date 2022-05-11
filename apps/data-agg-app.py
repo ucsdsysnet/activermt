@@ -11,23 +11,9 @@ class ActiveP4AggClient(ActiveApplication):
         self.DEBUG = debug
         self.PORT = 1234
         self.fid = 1
-        self.mask = 0xFFFF
-        self.offset = 0x0
-        self.seq = 0
-        self.activesrc = {
-            'AGG'  : {
-                'file'  : [ 'cacheread.apo', 'cacheread.args.csv' ],
-                'code'  : None,
-                'args'  : {}
-            }
-        }
         self.th = None
 
     def send(self, hostname, filename):
-        args = [
-            ('MASK', self.mask),
-            ('OFFSET', self.offset)
-        ]
         with open(filename, 'w') as out:
             data = []
             for i in range(0, int(1E6)):
