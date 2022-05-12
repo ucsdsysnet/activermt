@@ -15,6 +15,10 @@ control Egress(
         eg_dprsr_md.drop_ctl = 1;
     }
 
+    action mark_termination() {
+        hdr.ih.flag_done = 1;
+    }
+
     action skip() {}
 
     action rts() {
@@ -159,13 +163,9 @@ control Egress(
     // control flow
     
     apply {
-        if(meta.eof == 1) {
-            hdr.ih.flag_done = 1;
-        }
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
         hdr.meta.setInvalid();
     }
 }

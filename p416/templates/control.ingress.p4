@@ -59,6 +59,10 @@ control Ingress(
 
     // actions
 
+    action mark_termination() {
+        hdr.ih.flag_done = 1;
+    }
+
     action skip() {}
 
     action rts() {
@@ -249,9 +253,6 @@ control Ingress(
     // control flow
 
     apply {
-        if(meta.eof == 1) {
-            hdr.ih.flag_done = 1;
-        }
         seq_vaddr.apply();
         seq_addr_translate();
         check_prior_exec();
@@ -265,6 +266,5 @@ control Ingress(
             dst_update.apply();
             ipv4_host.apply();
         }
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

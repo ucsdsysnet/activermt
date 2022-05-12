@@ -335,6 +335,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         eg_dprsr_md.drop_ctl = 1;
     }
 
+    action mark_termination() {
+        hdr.ih.flag_done = 1;
+    }
+
     action skip() {}
 
     action rts() {
@@ -1008,6 +1012,7 @@ table instruction_0 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1060,6 +1065,7 @@ table instruction_1 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1112,6 +1118,7 @@ table instruction_2 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1164,6 +1171,7 @@ table instruction_3 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1216,6 +1224,7 @@ table instruction_4 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1268,6 +1277,7 @@ table instruction_5 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1320,6 +1330,7 @@ table instruction_6 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1372,6 +1383,7 @@ table instruction_7 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1424,6 +1436,7 @@ table instruction_8 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1476,6 +1489,7 @@ table instruction_9 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1539,22 +1553,18 @@ hash_s9;
     // control flow
     
     apply {
-        if(meta.eof == 1) {
-            hdr.ih.flag_done = 1;
-        }
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].setInvalid(); }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].setInvalid(); }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].setInvalid(); }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].setInvalid(); }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].setInvalid(); }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].setInvalid(); }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].setInvalid(); }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].setInvalid(); }
-		if(hdr.instr[8].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_8.apply(); hdr.instr[8].setInvalid(); }
-		if(hdr.instr[9].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_9.apply(); hdr.instr[9].setInvalid(); }
+        if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
+		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
+		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
+		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].setInvalid(); }
+		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
+		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
+		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
+		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
+		if(hdr.instr[8].isValid()) { instruction_8.apply(); hdr.instr[8].setInvalid(); }
+		if(hdr.instr[9].isValid()) { instruction_9.apply(); hdr.instr[9].setInvalid(); }
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
         hdr.meta.setInvalid();
     }
 }

@@ -81,6 +81,8 @@ class ActiveP4Installer:
                     mbr_end = 0xFFFF if act['condition'] else 0
                     add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=mbr_start, mbr_end=mbr_end, mar_start=0, mar_end=0xFFFF)
                 else:
+                    if act['opcode'] == 0:
+                        add_method(fid=fid, opcode=act['opcode'], complete=1, disabled=0, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
                     add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
                 add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
         bfrt.complete_operations()

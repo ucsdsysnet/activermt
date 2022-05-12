@@ -1,4 +1,4 @@
-EOF,NULL
+EOF,mark_termination
 NOP,skip
 RETURN,complete
 CRET,complete,1

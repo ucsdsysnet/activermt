@@ -315,6 +315,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
 
     // actions
 
+    action mark_termination() {
+        hdr.ih.flag_done = 1;
+    }
+
     action skip() {}
 
     action rts() {
@@ -880,6 +884,7 @@ table instruction_0 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -932,6 +937,7 @@ table instruction_1 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -984,6 +990,7 @@ table instruction_2 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1036,6 +1043,7 @@ table instruction_3 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1088,6 +1096,7 @@ table instruction_4 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1140,6 +1149,7 @@ table instruction_5 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1192,6 +1202,7 @@ table instruction_6 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1244,6 +1255,7 @@ table instruction_7 {
     }
     actions = {
         drop;
+        mark_termination;
         skip;
         rts;
         set_port;
@@ -1353,9 +1365,6 @@ hash_s7;
     // control flow
 
     apply {
-        if(meta.eof == 1) {
-            hdr.ih.flag_done = 1;
-        }
         seq_vaddr.apply();
         seq_addr_translate();
         check_prior_exec();
@@ -1364,18 +1373,17 @@ hash_s7;
         }
         hdr.meta.randnum = rnd.get();
         quotas.apply();
-        if(hdr.instr[0].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_0.apply(); hdr.instr[0].setInvalid(); }
-		if(hdr.instr[1].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_1.apply(); hdr.instr[1].setInvalid(); }
-		if(hdr.instr[2].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_2.apply(); hdr.instr[2].setInvalid(); }
-		if(hdr.instr[3].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_3.apply(); hdr.instr[3].setInvalid(); }
-		if(hdr.instr[4].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_4.apply(); hdr.instr[4].setInvalid(); }
-		if(hdr.instr[5].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_5.apply(); hdr.instr[5].setInvalid(); }
-		if(hdr.instr[6].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_6.apply(); hdr.instr[6].setInvalid(); }
-		if(hdr.instr[7].isValid()) { meta.instr_count = meta.instr_count + 4; instruction_7.apply(); hdr.instr[7].setInvalid(); }
+        if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
+		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
+		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
+		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].setInvalid(); }
+		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
+		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
+		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
+		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
         if (hdr.ipv4.isValid()) {
             dst_update.apply();
             ipv4_host.apply();
         }
-        hdr.ipv4.total_len = hdr.ipv4.total_len - meta.instr_count;
     }
 }

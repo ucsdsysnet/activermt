@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <linux/if.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
 #include <linux/if_tun.h>
 
 #define DEBUG       1
@@ -61,6 +63,11 @@ typedef struct {
     uint16_t        fid;
 } activep4_t;
 
+typedef struct {
+    int             iface_index;
+    unsigned char   hwaddr[ETH_ALEN];
+} devinfo_t;
+
 int allocate_tun(char* dev, int flags) {
     struct ifreq ifr;
     int fd, err;
@@ -82,6 +89,32 @@ int allocate_tun(char* dev, int flags) {
     strcpy(dev, ifr.ifr_name);
 
     return fd;
+}
+
+void get_iface(devinfo_t* info, char* dev, int fd) {
+    struct ifreq ifr;
+    size_t if_name_len = strlen(dev);
+    if(if_name_len < sizeof(ifr.ifr_name)) {
+        memcpy(ifr.ifr_name, dev, if_name_len);
+        ifr.ifr_name[if_name_len] = 0;
+    } else {
+        fprintf(stderr, "interface name is too long\n");
+        exit(1);
+    }
+    if (ioctl(fd, SIOCGIFINDEX, &ifr) < 0) {
+        perror("ioctl");
+        exit(1);
+    }
+    info->iface_index = ifr.ifr_ifindex;
+    if(ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
+        perror("ioctl");
+        exit(1);
+    }
+    memcpy(info->hwaddr, (unsigned char*)ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+    #ifdef DEBUG
+    printf("Device %s has iface index %d\n", dev, info->iface_index);
+    #endif
+    printf("Device %s has hwaddr %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", dev, info->hwaddr[0], info->hwaddr[1], info->hwaddr[2], info->hwaddr[3], info->hwaddr[4], info->hwaddr[5]);
 }
 
 static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
@@ -188,6 +221,30 @@ static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char
     return offset;
 }
 
+static inline int get_active_eof(char* buf) {
+    int eof = 0;
+    activep4_instr* instr = (activep4_instr*) buf;
+    while(instr->opcode != 0) {
+        eof = eof + sizeof(activep4_instr);
+        instr++;
+    }
+    eof = eof + sizeof(activep4_instr);
+    return eof;
+}
+
+static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
+    return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
+}
+
+static inline void print_hwaddr(unsigned char* hwaddr) {
+    printf("hwaddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
+}
+
+static inline int is_activep4(char* buf) {
+    uint32_t* signature = (uint32_t*) buf;
+    return (ntohl(*signature) == ACTIVEP4SIG);
+}
+
 int main(int argc, char** argv) {
 
     if(argc < 3) {
@@ -195,10 +252,12 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    struct sockaddr_in sin;
+    struct sockaddr_in sin, tin;
 
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = inet_addr(argv[1]);
+
+    tin.sin_family = AF_INET;
 
     activep4_t      ap4;
     
@@ -211,6 +270,7 @@ int main(int argc, char** argv) {
 
     strcpy(dev, "tun0");
     
+    //int tunfd = allocate_tun(dev, IFF_TUN | IFF_NO_PI);
     int tunfd = allocate_tun(dev, IFF_TUN);
 
     if(tunfd < 0) {
@@ -219,37 +279,112 @@ int main(int argc, char** argv) {
     }
 
     int conn = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+    int sockfd;
+    if((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("raw socket");
+        exit(1);
+    }
 
+    devinfo_t dev_info;
+
+    get_iface(&dev_info, "eth1", sockfd);
+
+    struct sockaddr_ll addr = {0};
+    addr.sll_family = AF_PACKET;
+    addr.sll_ifindex = dev_info.iface_index;
+    addr.sll_protocol = htons(ETH_P_ALL);
+
+    if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+        perror("bind");
+        exit(1);
+    }
+
+    int maxfd = (sockfd > tunfd) ? sockfd : tunfd;
+
+    fd_set rd_set;
     char* pptr;
+    uint16_t ap4_flags;
 
+    struct ethhdr*  eth;
     struct iphdr*   iph;
     struct tcphdr*  tcph;
+
+    activep4_ih* ap4ih;
+
     char ipaddr[IPADDRSIZE];
 
-    int read_bytes, ap4_offset;
+    uint16_t pkt_size;
+    int read_bytes, ap4_offset, ret, offset;
     char recvbuf[BUFSIZE], sendbuf[BUFSIZE];
     while(TRUE) {
-        read_bytes = read(tunfd, recvbuf, sizeof(recvbuf));
-        if(read_bytes < 0) {
-            perror("Unable to read from TUN interface");
-            close(tunfd);
+        
+        FD_ZERO(&rd_set);
+        FD_SET(sockfd, &rd_set);
+        FD_SET(tunfd, &rd_set);
+        ret = select(maxfd + 1, &rd_set, NULL, NULL, NULL);
+
+        if(ret < 0 && errno == EINTR) continue;
+
+        if(ret < 0) {
+            perror("select()");
             exit(1);
-        } else {
-            memset(sendbuf, 0, BUFSIZE);
-            iph = (struct iphdr*) (recvbuf + TUNOFFSET);
-            pptr = sendbuf;
-            if(iph->protocol == IPPROTO_TCP) {
-                tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
-                ap4_offset = active_filter_tcp(iph, tcph, sendbuf, &ap4);
-                pptr += ap4_offset;
+        }
+
+        if(FD_ISSET(sockfd, &rd_set)) {
+            read_bytes = read(sockfd, recvbuf, sizeof(recvbuf));
+            eth = (struct ethhdr*)recvbuf;
+            if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {
+                #ifdef DEBUG
+                printf("<< FRAME: %d bytes from protocol %hd\n", read_bytes, eth->h_proto);
+                #endif
+                if(eth->h_proto == 8 && read_bytes > 34) {
+                    offset = 0;
+                    if(is_activep4(recvbuf + sizeof(struct ethhdr))) {
+                        ap4ih = (activep4_ih*) (recvbuf + sizeof(struct ethhdr));
+                        ap4_flags = ntohs(ap4ih->flags);
+                        if((ap4_flags & 0x0100) != 1) offset = get_active_eof(recvbuf + sizeof(struct ethhdr) + sizeof(activep4_ih));
+                        offset += sizeof(activep4_ih);
+                        iph = (struct iphdr*) (recvbuf + sizeof(struct ethhdr) + offset);
+                        #ifdef DEBUG
+                        inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
+                        printf("== RELAY: %d bytes to %s\n", ntohs(iph->tot_len), ipaddr);
+                        #endif
+                        tin.sin_addr.s_addr = (in_addr_t)iph->daddr;
+                        memset(sendbuf, 0, BUFSIZE);
+                        memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
+                        if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )
+                        perror("tunnel()");
+                    } else {
+                        // kernel will route
+                    }
+                }
             }
-            memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));
-            if( sendto(conn, sendbuf, ntohs(iph->tot_len) + ap4_offset, 0, (struct sockaddr*)&sin, sizeof(sin)) < 0 )
-                perror("Unable to tunnel packet");
-            #ifdef DEBUG
-            inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
-            printf("%d bytes read from packet to %s with IP length %d\n", read_bytes, ipaddr, ntohs(iph->tot_len));
-            #endif
+        }
+
+        if(FD_ISSET(tunfd, &rd_set)) {
+            read_bytes = read(tunfd, recvbuf, sizeof(recvbuf));
+            if(read_bytes < 0) {
+                perror("Unable to read from TUN interface");
+                close(tunfd);
+                exit(1);
+            } else {
+                memset(sendbuf, 0, BUFSIZE);
+                iph = (struct iphdr*) (recvbuf + TUNOFFSET);
+                pptr = sendbuf;
+                ap4_offset = 0;
+                if(iph->protocol == IPPROTO_TCP) {
+                    tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
+                    ap4_offset = active_filter_tcp(iph, tcph, sendbuf, &ap4);
+                    pptr += ap4_offset;
+                }
+                memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));
+                if( sendto(conn, sendbuf, ntohs(iph->tot_len) + ap4_offset, 0, (struct sockaddr*)&sin, sizeof(sin)) < 0 )
+                    perror("tunnel()");
+                #ifdef DEBUG
+                inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
+                printf(">> FRAME: %d bytes read from packet to %s with IP length %d\n", read_bytes, ipaddr, ntohs(iph->tot_len));
+                #endif
+            }
         }
     }
 

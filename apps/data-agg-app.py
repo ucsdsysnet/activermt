@@ -32,10 +32,10 @@ class ActiveP4AggClient(ActiveApplication):
             s.close()
             #data = s.recv(1024)
 
-    def recv(self):
+    def recv(self, bind_addr="0.0.0.0"):
         print('[Listening on %d]' % self.PORT)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("0.0.0.0", self.PORT))
+            s.bind((bind_addr, self.PORT))
             s.listen()
             while True:
                 conn, addr = s.accept()
@@ -64,7 +64,7 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 if sys.argv[1] == 'receiver':
-    client.recv()
+    client.recv(bind_addr="10.0.2.2")
 elif len(sys.argv) < 3:
     print('Usage: %s <hostname> <filename>' % sys.argv[0])
 else:

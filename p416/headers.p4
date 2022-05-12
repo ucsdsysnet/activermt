@@ -54,12 +54,6 @@ header tcp_h {
     bit<3>      res;
     bit<3>      ecn;
     bit<6>      ctrl;
-    /*bit<1>      ctrl_urgent;
-    bit<1>      ctrl_ack;
-    bit<1>      ctrl_push;
-    bit<1>      ctrl_rst;
-    bit<1>      ctrl_syn;
-    bit<1>      ctrl_fin;*/
     bit<16>     window;
     bit<16>     checksum;
     bit<16>     urgent_ptr;
@@ -102,10 +96,6 @@ header active_instruction_h {
     bit<16>     arg;
 }
 
-header executed_active_instruction_h {
-    bit<32>     data;
-}
-
 @flexible
 header bridged_metadata_h {
     bit<1>      duplicate;
@@ -136,7 +126,6 @@ struct ig_metadata_t {
     bit<8>      set_clr_seq;
     bit<8>      prev_exec;
     bit<16>     instr_count;
-    bit<16>     chksum_tcp;
     bit<16>     seq_offset;
     bit<16>     seq_addr;
     bit<16>     vport;
@@ -145,29 +134,26 @@ struct ig_metadata_t {
 struct eg_metadata_t {
     bit<1>      eof;
     bit<16>     instr_count;
-    bit<16>     chksum_tcp;
 }
 
 struct ingress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
+    active_initial_h                            ih;
+    active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
     tcp_h                                       tcp;
     tcp_option_h                                tcpopts;
-    active_initial_h                            ih;
-    active_instruction_h[MAX_INSTRUCTIONS_IG]   instr;
-    executed_active_instruction_h[MAX_INSTRUCTIONS_STALE]   stale;
 }
 
 struct egress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
+    active_initial_h                            ih;
+    active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
     tcp_h                                       tcp;
     tcp_option_h                                tcpopts;
-    active_initial_h                            ih;
-    active_instruction_h[MAX_INSTRUCTIONS_EG]   instr;
-    executed_active_instruction_h[MAX_INSTRUCTIONS_STALE]   stale;
 }
