@@ -30,15 +30,17 @@ function proto_activep4.dissector(buffer, pinfo, tree)
     payload_tree:add(field_res, buffer(18, 2))
 
     local flags = buffer(4, 2):uint()
+    local buffer_remainder = buffer:range(20, buffer:len() - 20):tvb()
 
     if (bit.band(flags, 0x0100)) == 0
     then
-        local buffer_remainder = buffer:range(20, buffer:len() - 20):tvb()
         proto_active_program.dissector:call(buffer_remainder, pinfo, tree)
+    else
+        DissectorTable.get("ethertype"):get_dissector(0x0800):call(buffer_remainder, pinfo, tree)
     end
 end
 
-local MAX_INSTR = 18
+local MAX_INSTR = 28
 local field_active_instruction = {}
 for i = 1,MAX_INSTR do
     field_active_instruction[i] = ProtoField.string(string.format("active_program.instruction_%d", i), string.format("Instruction[%d]", i), base.ASCII)

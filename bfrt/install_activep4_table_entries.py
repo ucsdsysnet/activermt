@@ -58,11 +58,11 @@ class ActiveP4Installer:
 
     def installForwardingTableEntries(self, dst_port_mapping, vport_dst_mapping):
         ipv4_host = self.p4.Ingress.ipv4_host
-        dst_update = self.p4.Ingress.dst_update
+        vroute = self.p4.Ingress.vroute
         for host in dst_port_mapping:
             ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host])
         for vport in vport_dst_mapping:
-            dst_update.add_with_set_dstaddr(port_change=1, vport=vport, dst_addr=IPAddress(vport_dst_mapping[vport]))
+            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]])
         bfrt.complete_operations()
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
@@ -160,13 +160,15 @@ dst_port_mapping = {
     '10.0.1.2'      : 1,
     '10.0.0.1'      : 2,
     '10.0.0.2'      : 3,
+    '10.0.2.1'      : 2,
+    '10.0.2.2'      : 3,
     '192.168.0.1'   : 188,
     '192.168.1.1'   : 184
 }
 
 vport_dst_mapping = {
-    0   : '10.0.1.1',
-    1   : '10.0.1.2'
+    0   : '10.0.2.2',
+    1   : '10.0.2.2'
 }
 
 sid_to_port_mapping = {

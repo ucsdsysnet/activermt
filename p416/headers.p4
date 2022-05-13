@@ -4,7 +4,7 @@ typedef bit<32> ipv4_addr_t;
 enum bit<16> ether_type_t {
     IPV4 = 0x0800,
     ARP  = 0x0806,
-    IPV6 = 0x86DD
+    AP4  = 0x83B2
 }
 
 enum bit<8> ipv4_protocol_t {
@@ -120,9 +120,7 @@ header eg_port_mirror_h {
 }
 
 struct ig_metadata_t {
-    bit<1>      is_active;
-    bit<1>      eof;
-    bit<1>      port_change;
+    bit<8>      port_change;
     bit<8>      set_clr_seq;
     bit<8>      prev_exec;
     bit<16>     instr_count;
@@ -132,7 +130,6 @@ struct ig_metadata_t {
 }
 
 struct eg_metadata_t {
-    bit<1>      eof;
     bit<16>     instr_count;
 }
 

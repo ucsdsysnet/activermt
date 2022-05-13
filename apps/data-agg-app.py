@@ -10,7 +10,7 @@ class ActiveP4AggClient(ActiveApplication):
         self.ACTIVE_EN = active_enable
         self.DEBUG = debug
         self.PORT = 1234
-        self.datasize = int(1E3)
+        self.datasize = int(100)
         self.fid = 1
         self.th = None
 

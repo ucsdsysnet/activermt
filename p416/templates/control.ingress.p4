@@ -20,7 +20,6 @@ control Ingress(
 
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-        overall_stats.count(0);
     }
 
     action drop() {
@@ -43,17 +42,13 @@ control Ingress(
 #endif
     }
 
-    action set_dstaddr(bit<32> dst_addr) {
-        hdr.ipv4.dst_addr = dst_addr;
-    }
-
-    table dst_update {
+    table vroute {
         key = {
             meta.port_change    : exact;
             meta.vport          : exact;
         }
         actions = {
-            set_dstaddr;
+            send;
         }
     }
 
@@ -253,18 +248,21 @@ control Ingress(
     // control flow
 
     apply {
+        meta.set_clr_seq = 1;
         seq_vaddr.apply();
         seq_addr_translate();
         check_prior_exec();
-        if(meta.is_active != 1) {
+        if(!hdr.ih.isValid()) {
             bypass_egress();
         }
         hdr.meta.randnum = rnd.get();
         quotas.apply();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
-            dst_update.apply();
-            ipv4_host.apply();
+            overall_stats.count(0);
+            if(vroute.apply().miss) {
+                ipv4_host.apply();
+            }
         }
     }
 }

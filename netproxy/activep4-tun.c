@@ -21,13 +21,16 @@
 #define TRUE        1
 #define BUFSIZE     16384
 #define MAXCONN     65536
+#define MAXARP      65536
+#define ARPMASK     0x0000FFFF
 #define IPADDRSIZE  16
 #define TUNOFFSET   4
 #define MAXARGS     10
 #define MAXPROGLEN  50
 #define MAXFILESIZE 1024
 #define ACTIVEP4SIG 0x12345678
-#define CRCPOLY_DNP 0x3D65 
+#define CRCPOLY_DNP 0x3D65
+#define ETHTYPE_AP4 0x83B2
 
 typedef struct {
     uint32_t    SIG;
@@ -72,6 +75,11 @@ typedef struct {
 } devinfo_t;
 
 typedef struct {
+    uint32_t        ip_addr;
+    unsigned char   eth_addr[ETH_ALEN];
+} arp_entry_t;
+
+typedef struct {
     uint32_t    ipv4_src_addr;
     uint32_t    ipv4_dst_addr;
     uint8_t     ipv4_protocol;
@@ -111,6 +119,14 @@ int allocate_tun(char* dev, int flags) {
     return fd;
 }
 
+static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
+    return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
+}
+
+static inline void print_hwaddr(unsigned char* hwaddr) {
+    printf("hwaddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
+}
+
 void get_iface(devinfo_t* info, char* dev, int fd) {
     struct ifreq ifr;
     size_t if_name_len = strlen(dev);
@@ -135,6 +151,41 @@ void get_iface(devinfo_t* info, char* dev, int fd) {
     printf("Device %s has iface index %d\n", dev, info->iface_index);
     #endif
     printf("Device %s has hwaddr %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", dev, info->hwaddr[0], info->hwaddr[1], info->hwaddr[2], info->hwaddr[3], info->hwaddr[4], info->hwaddr[5]);
+}
+
+int get_arp_cache(arp_entry_t* arp_cache) {
+    FILE* fp = fopen("/proc/net/arp", "r");
+    char buf[1024];
+    unsigned short hwaddr[ETH_ALEN];
+    const char* tok;
+    uint32_t ip_addr = 0;
+    uint32_t entry_idx = 0;
+    int num_entries = 0, i;
+    while( fgets(buf, 1024, fp) > 0 ) {
+        for(tok = strtok(buf, " "); tok && *tok; tok = strtok(NULL, " ")) {
+            if(ip_addr == 0) {
+                if(inet_pton(AF_INET, tok, &ip_addr) != 1) ip_addr = 0;
+            } else {
+                if(strlen(tok) == 17 && sscanf(tok, "%hx:%hx:%hx:%hx:%hx:%hx", &hwaddr[0], &hwaddr[1], &hwaddr[2], &hwaddr[3], &hwaddr[4], &hwaddr[5]) == ETH_ALEN) {
+                    entry_idx = ntohl(ip_addr) & ARPMASK;
+                    arp_cache[entry_idx].ip_addr = ip_addr;
+                    for(i = 0; i < ETH_ALEN; i++) arp_cache[entry_idx].eth_addr[i] = (unsigned char) hwaddr[i];
+                    ip_addr = 0;
+                    num_entries++;
+                    #ifdef DEBUG
+                    inet_ntop(AF_INET, &arp_cache[entry_idx].ip_addr, buf, IPADDRSIZE);
+                    printf("<ARP> (%d) %s has ", entry_idx, buf);
+                    print_hwaddr(arp_cache[entry_idx].eth_addr);
+                    #endif
+                }
+            }
+        }
+    }
+    fclose(fp);
+    #ifdef DEBUG
+    printf("Read %d ARP entries from cache.\n", num_entries);
+    #endif
+    return num_entries;
 }
 
 static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
@@ -216,6 +267,7 @@ static inline int read_active_args(activep4_t* ap4, char* arg_file) {
         printf("Active argument %s at index %d\n", argmap[argidx].argname, argidx);
         #endif
     }
+    fclose(fp);
     ap4->num_args = argidx;
     return argidx;
 }
@@ -279,6 +331,7 @@ static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char
         // other TCP segments
         ap4ih = (activep4_ih*)buf;
         ap4ih->SIG = htonl(ACTIVEP4SIG);
+        ap4ih->fid = htons(ap4->fid);
         ap4ih->flags = htons(0x0100);
         ap4ih->acc = htons(app[conn_id].cookie);
         offset = sizeof(activep4_ih);
@@ -327,14 +380,6 @@ static inline int get_active_eof(char* buf) {
     }
     eof = eof + sizeof(activep4_instr);
     return eof;
-}
-
-static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
-    return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
-}
-
-static inline void print_hwaddr(unsigned char* hwaddr) {
-    printf("hwaddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
 
 static inline int is_activep4(char* buf) {
@@ -387,6 +432,10 @@ int main(int argc, char** argv) {
 
     get_iface(&dev_info, "eth1", sockfd);
 
+    arp_entry_t arp_cache[MAXARP];
+
+    get_arp_cache(arp_cache);
+
     struct sockaddr_ll addr = {0};
     addr.sll_family = AF_PACKET;
     addr.sll_ifindex = dev_info.iface_index;
@@ -396,6 +445,12 @@ int main(int argc, char** argv) {
         perror("bind");
         exit(1);
     }
+
+    struct sockaddr_ll eth_dst_addr = {0};
+    eth_dst_addr.sll_family = AF_PACKET;
+    eth_dst_addr.sll_ifindex = dev_info.iface_index;
+    eth_dst_addr.sll_protocol = htons(ETHTYPE_AP4);
+    eth_dst_addr.sll_halen = ETH_ALEN;
 
     int maxfd = (sockfd > tunfd) ? sockfd : tunfd;
 
@@ -412,6 +467,7 @@ int main(int argc, char** argv) {
     char ipaddr[IPADDRSIZE];
 
     uint16_t pkt_size;
+    uint32_t arp_idx;
     int read_bytes, ap4_offset, ret, offset;
     char recvbuf[BUFSIZE], sendbuf[BUFSIZE];
     while(TRUE) {
@@ -433,9 +489,9 @@ int main(int argc, char** argv) {
             eth = (struct ethhdr*)recvbuf;
             if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {
                 #ifdef DEBUG
-                printf("<< FRAME: %d bytes from protocol %hd\n", read_bytes, eth->h_proto);
+                printf("<< FRAME: %d bytes from protocol 0x%hx\n", read_bytes, ntohs(eth->h_proto));
                 #endif
-                if(eth->h_proto == 8 && read_bytes > 34) {
+                if(ntohs(eth->h_proto) == ETHTYPE_AP4 && read_bytes > 34) {
                     offset = 0;
                     ap4ih = NULL;
                     if(is_activep4(recvbuf + sizeof(struct ethhdr))) {
@@ -475,14 +531,22 @@ int main(int argc, char** argv) {
                 iph = (struct iphdr*) (recvbuf + TUNOFFSET);
                 pptr = sendbuf;
                 ap4_offset = 0;
+                eth = (struct ethhdr*)pptr;
+                inet_ntop(AF_INET, &sin.sin_addr.s_addr, ipaddr, IPADDRSIZE);
+                arp_idx = ntohl(sin.sin_addr.s_addr) & ARPMASK;
+                memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
+                memcpy(&eth->h_dest, arp_cache[arp_idx].eth_addr, ETH_ALEN);
+                memcpy(eth_dst_addr.sll_addr, arp_cache[arp_idx].eth_addr, ETH_ALEN);
+                eth->h_proto = htons(ETHTYPE_AP4);
+                pptr += sizeof(struct ethhdr);
                 if(iph->protocol == IPPROTO_TCP) {
                     tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
-                    ap4_offset = active_filter_tcp(iph, tcph, sendbuf, &ap4, app);
+                    ap4_offset = active_filter_tcp(iph, tcph, pptr, &ap4, app);
                     pptr += ap4_offset;
                 }
                 memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));
-                if( sendto(conn, sendbuf, ntohs(iph->tot_len) + ap4_offset, 0, (struct sockaddr*)&sin, sizeof(sin)) < 0 )
-                    perror("tunnel()");
+                if( sendto(sockfd, sendbuf, sizeof(struct ethhdr) + ntohs(iph->tot_len) + ap4_offset, 0, (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr)) < 0 )
+                    perror("sendto()");
                 #ifdef DEBUG
                 inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
                 printf(">> FRAME: %d bytes read from packet to %s with IP length %d\n", read_bytes, ipaddr, ntohs(iph->tot_len));

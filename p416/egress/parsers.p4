@@ -17,18 +17,16 @@ parser EgressParser(
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        transition select(pkt.lookahead<bit<32>>()) {
+        transition select(hdr.ethernet.ether_type) {
+            ether_type_t.IPV4   : parse_ipv4;
+            ether_type_t.AP4    : parse_active_ih;
+            _                   : accept;
+        }
+        /*transition select(pkt.lookahead<bit<32>>()) {
             0x12345678  : parse_active_ih;
             default     : parse_ipv4;
-        }
+        }*/
     }
-
-    /*state parse_l3 {
-        transition select(hdr.ethernet.ether_type) {
-            ether_type_t.IPV4 :  parse_ipv4;
-            default: accept;
-        }
-    }*/
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
@@ -63,7 +61,7 @@ parser EgressParser(
     state parse_active_ih {
         pkt.extract(hdr.ih);
         transition select(hdr.ih.flag_done) {
-            1   : accept;
+            1   : parse_ipv4;
             _   : parse_active_instruction;
         }
     }
