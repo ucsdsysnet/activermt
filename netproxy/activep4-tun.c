@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <malloc.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -19,12 +20,14 @@
 
 #define TRUE        1
 #define BUFSIZE     16384
+#define MAXCONN     65536
 #define IPADDRSIZE  16
 #define TUNOFFSET   4
 #define MAXARGS     10
 #define MAXPROGLEN  50
 #define MAXFILESIZE 1024
 #define ACTIVEP4SIG 0x12345678
+#define CRCPOLY_DNP 0x3D65 
 
 typedef struct {
     uint32_t    SIG;
@@ -67,6 +70,23 @@ typedef struct {
     int             iface_index;
     unsigned char   hwaddr[ETH_ALEN];
 } devinfo_t;
+
+typedef struct {
+    uint32_t    ipv4_src_addr;
+    uint32_t    ipv4_dst_addr;
+    uint8_t     ipv4_protocol;
+    uint16_t    tcp_src_port;
+    uint16_t    tcp_dst_port;
+} inet_5tuple_t;
+
+// APPLICATIONS
+
+typedef struct {
+    uint8_t         active;
+    uint8_t         awterm;
+    uint16_t        cookie;
+    inet_5tuple_t   conn;
+} cheetah_lb_t;
 
 int allocate_tun(char* dev, int flags) {
     struct ifreq ifr;
@@ -200,11 +220,47 @@ static inline int read_active_args(activep4_t* ap4, char* arg_file) {
     return argidx;
 }
 
-static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char* buf, activep4_t* ap4) {
+static inline uint16_t hash_5tuple(inet_5tuple_t* conn) {
+    uint16_t crc16 = 0;
+    int i, j, num_bytes = sizeof(inet_5tuple_t);
+    char* buf = (char*)malloc(num_bytes);
+    memcpy(buf, (char*)conn, num_bytes);
+    for(i = 0; i < num_bytes; i++) {
+        crc16 = crc16 ^ (buf[i] << 8);
+        for(j = 0; j < 8; j++) {
+            if(crc16 & 0x8000) crc16 = (crc16 << 1) ^ CRCPOLY_DNP;
+            else crc16 = crc16 << 1;
+        }
+    }
+    return crc16;
+}
+
+static inline uint16_t cksum_5tuple(inet_5tuple_t* conn) {
+    return ~(
+        (uint16_t)(conn->ipv4_src_addr & 0xFFFF) +
+        (uint16_t)(conn->ipv4_src_addr & 0xFFFF >> 16) + 
+        (uint16_t)(conn->ipv4_dst_addr & 0xFFFF) +
+        (uint16_t)(conn->ipv4_dst_addr & 0xFFFF >> 16) +
+        (uint16_t)conn->ipv4_protocol +
+        conn->tcp_src_port +
+        conn->tcp_dst_port
+    );
+}
+
+static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char* buf, activep4_t* ap4, cheetah_lb_t* app) {
     int numargs = 2, offset = 0;
-    uint16_t vip_addr;
+    uint16_t vip_addr, conn_id;
+    inet_5tuple_t conn = {
+        iph->saddr,
+        iph->daddr,
+        iph->protocol,
+        tcph->source,
+        tcph->dest
+    };
+    activep4_ih* ap4ih;
+    conn_id = cksum_5tuple(&conn);
     if(tcph->syn == 1 && tcph->ack == 0) {
-        // connection initiator
+        // SYN packet
         #ifdef DEBUG
         printf("TCP connection initiation.\n");
         #endif
@@ -215,10 +271,51 @@ static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char
             {"VIP_ADDR", vip_addr}
         };
         offset = insert_active_program(buf, ap4, args, numargs);
+        app[conn_id].active = 1;
+        app[conn_id].cookie = 0;
+        app[conn_id].awterm = 0;
+        memcpy(&app[conn_id].conn, &conn, sizeof(inet_5tuple_t));
     } else {
-        // regular segment
+        // other TCP segments
+        ap4ih = (activep4_ih*)buf;
+        ap4ih->SIG = htonl(ACTIVEP4SIG);
+        ap4ih->flags = htons(0x0100);
+        ap4ih->acc = htons(app[conn_id].cookie);
+        offset = sizeof(activep4_ih);
+    }
+    if(tcph->fin == 1) {
+        // FIN packet
+        app[conn_id].awterm = 1;
     }
     return offset;
+}
+
+static inline void active_update(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih, cheetah_lb_t* app) {
+    inet_5tuple_t conn = {
+        iph->saddr,
+        iph->daddr,
+        iph->protocol,
+        tcph->source,
+        tcph->dest
+    };
+    uint16_t conn_id = cksum_5tuple(&conn);
+    if(tcph->syn == 1) {
+        // SYN packet (either way)
+        app[conn_id].active = 1;
+        app[conn_id].cookie = ntohs(ap4ih->acc);
+        memcpy(&app[conn_id].conn, &conn, sizeof(inet_5tuple_t));
+        #ifdef DEBUG
+        printf("SYN: setting (for connection %u) cookie to %u\n", conn_id, app[conn_id].cookie);
+        #endif
+    } else if(tcph->ack == 1 && app[conn_id].awterm == 1) {
+        #ifdef DEBUG
+        printf("FIN: terminating connection %u\n", conn_id);
+        #endif
+        app[conn_id].active = 0;
+        app[conn_id].cookie = 0;
+        app[conn_id].awterm = 0;
+        memset(&app[conn_id].conn, 0, sizeof(inet_5tuple_t));
+    }
 }
 
 static inline int get_active_eof(char* buf) {
@@ -260,6 +357,7 @@ int main(int argc, char** argv) {
     tin.sin_family = AF_INET;
 
     activep4_t      ap4;
+    cheetah_lb_t    app[MAXCONN];
     
     int ap4_len = read_active_program(&ap4, argv[2]);
     int num_args = (argc > 3) ? read_active_args(&ap4, argv[3]) : 0;
@@ -339,10 +437,11 @@ int main(int argc, char** argv) {
                 #endif
                 if(eth->h_proto == 8 && read_bytes > 34) {
                     offset = 0;
+                    ap4ih = NULL;
                     if(is_activep4(recvbuf + sizeof(struct ethhdr))) {
                         ap4ih = (activep4_ih*) (recvbuf + sizeof(struct ethhdr));
                         ap4_flags = ntohs(ap4ih->flags);
-                        if((ap4_flags & 0x0100) != 1) offset = get_active_eof(recvbuf + sizeof(struct ethhdr) + sizeof(activep4_ih));
+                        if(((ap4_flags & 0x0100) >> 8) == 0) offset = get_active_eof(recvbuf + sizeof(struct ethhdr) + sizeof(activep4_ih));
                         offset += sizeof(activep4_ih);
                         iph = (struct iphdr*) (recvbuf + sizeof(struct ethhdr) + offset);
                         #ifdef DEBUG
@@ -354,6 +453,10 @@ int main(int argc, char** argv) {
                         memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
                         if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )
                         perror("tunnel()");
+                        if(iph->protocol == IPPROTO_TCP) {
+                            tcph = (struct tcphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
+                            active_update(iph, tcph, ap4ih, app);
+                        }
                     } else {
                         // kernel will route
                     }
@@ -374,7 +477,7 @@ int main(int argc, char** argv) {
                 ap4_offset = 0;
                 if(iph->protocol == IPPROTO_TCP) {
                     tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
-                    ap4_offset = active_filter_tcp(iph, tcph, sendbuf, &ap4);
+                    ap4_offset = active_filter_tcp(iph, tcph, sendbuf, &ap4, app);
                     pptr += ap4_offset;
                 }
                 memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));

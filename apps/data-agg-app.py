@@ -10,13 +10,14 @@ class ActiveP4AggClient(ActiveApplication):
         self.ACTIVE_EN = active_enable
         self.DEBUG = debug
         self.PORT = 1234
+        self.datasize = int(1E3)
         self.fid = 1
         self.th = None
 
     def send(self, hostname, filename):
         with open(filename, 'w') as out:
             data = []
-            for i in range(0, int(1E6)):
+            for i in range(0, self.datasize):
                 data.append('record %d' % i)
             out.write("\n".join(data))
             out.close()
