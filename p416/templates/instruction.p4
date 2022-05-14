@@ -30,6 +30,7 @@ table instruction_<stage-id> {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;

@@ -56,7 +56,20 @@ class ActiveP4Installer:
                     if verbose:
                         print('Done')
 
-    def installForwardingTableEntries(self, dst_port_mapping, vport_dst_mapping):
+    def installForwardingTableEntries(self, config='ptf'):
+        dst_port_mapping = {}
+        vport_dst_mapping = {}
+        with open(os.path.join(self.base_path, 'config', 'ip_routing_%s.csv' % config)) as f:
+            entries = f.read().splitlines()
+            for row in entries:
+                record = row.split(",")
+                ip_addr = record[0]
+                dport = int(record[1])
+                vport = record[2]
+                dst_port_mapping[ip_addr] = dport
+                if vport != '':
+                    vport_dst_mapping[int(vport)] = ip_addr
+            f.close()
         ipv4_host = self.p4.Ingress.ipv4_host
         vroute = self.p4.Ingress.vroute
         for host in dst_port_mapping:
@@ -155,22 +168,6 @@ class ActiveP4Installer:
 
 installer = ActiveP4Installer()
 
-dst_port_mapping = {
-    '10.0.1.1'      : 0,
-    '10.0.1.2'      : 1,
-    '10.0.0.1'      : 2,
-    '10.0.0.2'      : 3,
-    '10.0.2.1'      : 2,
-    '10.0.2.2'      : 3,
-    '192.168.0.1'   : 188,
-    '192.168.1.1'   : 184
-}
-
-vport_dst_mapping = {
-    0   : '10.0.2.2',
-    1   : '10.0.2.2'
-}
-
 sid_to_port_mapping = {
     1   : 0,
     2   : 1
@@ -179,7 +176,7 @@ sid_to_port_mapping = {
 fids = [1]
 
 installer.clear_all()
-installer.installForwardingTableEntries(dst_port_mapping, vport_dst_mapping)
+installer.installForwardingTableEntries(config='ptf')
 installer.installInstructionTableEntries(1)
 installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)

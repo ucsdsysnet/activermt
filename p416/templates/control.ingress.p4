@@ -147,6 +147,10 @@ control Ingress(
         hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
     }
 
+    action mar_mbr_add_mbr2() {
+        hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
+    }
+
     action copy_acc_mbr() {
         hdr.ih.acc = hdr.meta.mbr;
     }

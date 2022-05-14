@@ -21,6 +21,7 @@ MBR_ADD,mbr_add_s#
 MAR_ADD_MBR,mar_add_mbr
 MAR_ADD_MBR2,mar_add_mbr2
 MBR_ADD_MBR2,mbr_add_mbr2
+MAR_MBR_ADD_MBR2,mar_mbr_add_mbr2
 MAR_LOAD,mar_load_s#
 MBR_LOAD,mbr1_load_s#
 MBR2_LOAD,mbr2_load_s#

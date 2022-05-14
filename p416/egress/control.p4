@@ -428,6 +428,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
     }
 
+    action mar_mbr_add_mbr2() {
+        hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
+    }
+
     action copy_acc_mbr() {
         hdr.ih.acc = hdr.meta.mbr;
     }
@@ -1033,6 +1037,7 @@ table instruction_0 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1086,6 +1091,7 @@ table instruction_1 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1139,6 +1145,7 @@ table instruction_2 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1192,6 +1199,7 @@ table instruction_3 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1245,6 +1253,7 @@ table instruction_4 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1298,6 +1307,7 @@ table instruction_5 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1351,6 +1361,7 @@ table instruction_6 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1404,6 +1415,7 @@ table instruction_7 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1457,6 +1469,7 @@ table instruction_8 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
@@ -1510,6 +1523,7 @@ table instruction_9 {
         mar_add_mbr;
         mar_add_mbr2;
         mbr_add_mbr2;
+        mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
         load_tcp_ctrl_flags;
