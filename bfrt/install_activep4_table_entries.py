@@ -27,7 +27,7 @@ class ActiveP4Installer:
             }
         }
         self.opcode_action = {}
-        with open('%s/bfrt/opcode_action_mapping.csv' % self.base_path) as f:
+        with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
             mapping = f.read().strip().splitlines()
             for opcode in range(0, len(mapping)):
                 m = mapping[opcode].split(',')

@@ -17,7 +17,7 @@ class ActiveInstruction:
 class ActiveProgram:
     def __init__(self, program):
         self.OPCODES = {}
-        opcodeList = open('../bfrt/opcode_action_mapping.csv').read().strip().splitlines()
+        opcodeList = open(os.path.join(os.environ['ACTIVEP4_SRC'], 'config', 'opcode_action_mapping.csv')).read().strip().splitlines()
         for opcode in range(0, len(opcodeList)):
             m = opcodeList[opcode].split(',')
             pnemonic = m[0]

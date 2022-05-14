@@ -24,16 +24,19 @@ class ActiveP4RedisClient(ActiveApplication):
         self.truncated = truncated
         self.activesrc = {
             'READ'  : {
+                'dir'   : 'cache',
                 'file'  : [ 'cacheread.apo', 'cacheread.args.csv' ],
                 'code'  : None,
                 'args'  : {}
             },
             'WRITE' : {
+                'dir'   : 'cache',
                 'file'  : [ 'cachewrite.apo', 'cachewrite.args.csv' ],
                 'code'  : None,
                 'args'  : {}
             },
             'DUMMY' : {
+                'dir'   : 'dummy',
                 'file'  : [ 'dummy.apo', 'dummy.args.csv' ],
                 'code'  : None,
                 'args'  : {}

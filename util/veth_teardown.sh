@@ -1,5 +1,5 @@
 #!/bin/bash
-noOfVeths=148
+noOfVeths=8
 if [ $# -eq 1 ]; then 
     noOfVeths=$1
 fi

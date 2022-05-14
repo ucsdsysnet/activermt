@@ -1,3 +1,4 @@
+import os
 from scapy.packet import Packet
 from scapy.fields import *
 
@@ -53,10 +54,11 @@ class ActiveApplication:
         if program not in self.activesrc:
             return None
         if self.activesrc[program]['code'] == None:
-            with open(self.activesrc[program]['file'][0]) as f:
+            basepath = os.path.join(os.environ['ACTIVEP4_SRC'], 'apps', 'activep4', self.activesrc[program]['dir'])
+            with open(os.path.join(basepath, self.activesrc[program]['file'][0])) as f:
                 self.activesrc[program]['code'] = bytes(f.read(), 'utf-8')
                 f.close()
-            with open(self.activesrc[program]['file'][1]) as f:
+            with open(os.path.join(basepath, self.activesrc[program]['file'][1])) as f:
                 args = f.read().strip().splitlines()
                 for a in args:
                     arg = a.split(',')
