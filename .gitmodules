@@ -1,3 +1,6 @@
 [submodule "dpdk-pktgen-activep4-client"]
 	path = dpdk-pktgen-activep4-client
 	url = git@github.com:dasrajdeep/Pktgen-DPDK.git
+[submodule "ref/cheetah-p4"]
+	path = ref/cheetah-p4
+	url = https://github.com/cheetahlb/cheetah-p4.git
