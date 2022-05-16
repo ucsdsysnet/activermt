@@ -4,3 +4,6 @@
 [submodule "ref/cheetah-p4"]
 	path = ref/cheetah-p4
 	url = https://github.com/cheetahlb/cheetah-p4.git
+[submodule "ref/Open-Tofino"]
+	path = ref/Open-Tofino
+	url = https://github.com/barefootnetworks/Open-Tofino.git
