@@ -3,9 +3,8 @@ util/csync.sh
 util/upload.sh
 
 pcaps/
-eval/
-ica/
-Open-Tofino/
+_eval/
+_ica/
 
 *.pcap
 *.pyc

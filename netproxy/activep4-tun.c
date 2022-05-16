@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -299,6 +300,16 @@ static inline uint16_t cksum_5tuple(inet_5tuple_t* conn) {
     );
 }
 
+static inline int active_filter_udp(struct iphdr* iph, struct udphdr* udph, char* buf, activep4_t* ap4) {
+    int offset = 0;
+    activep4_ih* ap4ih = (activep4_ih*)buf;
+    ap4ih->SIG = htonl(ACTIVEP4SIG);
+    ap4ih->fid = htons(ap4->fid);
+    ap4ih->flags = htons(0x0100);
+    offset = sizeof(activep4_ih);
+    return offset;
+}
+
 static inline int active_filter_tcp(struct iphdr* iph, struct tcphdr* tcph, char* buf, activep4_t* ap4, cheetah_lb_t* app) {
     int numargs = 2, offset = 0;
     uint16_t vip_addr, conn_id;
@@ -389,8 +400,8 @@ static inline int is_activep4(char* buf) {
 
 int main(int argc, char** argv) {
 
-    if(argc < 3) {
-        printf("usage: %s <remote_addr> <active_program> [active_args] [fid=1]\n", argv[0]);
+    if(argc < 2) {
+        printf("usage: %s <remote_addr> [<active_program> [active_args]] [fid=1]\n", argv[0]);
         exit(1);
     }
 
@@ -403,8 +414,10 @@ int main(int argc, char** argv) {
 
     activep4_t      ap4;
     cheetah_lb_t    app[MAXCONN];
+
+    ap4.ap4_len = 0;
     
-    int ap4_len = read_active_program(&ap4, argv[2]);
+    int ap4_len = (argc > 2) ? read_active_program(&ap4, argv[2]) : 0;
     int num_args = (argc > 3) ? read_active_args(&ap4, argv[3]) : 0;
 
     ap4.fid = (argc > 4) ? atoi(argv[4]) : 1;
@@ -460,6 +473,7 @@ int main(int argc, char** argv) {
 
     struct ethhdr*  eth;
     struct iphdr*   iph;
+    struct udphdr*  udph;
     struct tcphdr*  tcph;
 
     activep4_ih* ap4ih;
@@ -542,6 +556,10 @@ int main(int argc, char** argv) {
                 if(iph->protocol == IPPROTO_TCP) {
                     tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
                     ap4_offset = active_filter_tcp(iph, tcph, pptr, &ap4, app);
+                    pptr += ap4_offset;
+                } else if(iph->protocol == IPPROTO_UDP) {
+                    udph = (struct udphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
+                    ap4_offset = active_filter_udp(iph, udph, pptr, &ap4);
                     pptr += ap4_offset;
                 }
                 memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));
