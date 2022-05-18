@@ -109,10 +109,14 @@ int main(int argc, char** argv) {
         for(i = 0; i < MAXCONN; i++) {
             if(FD_ISSET(conn[i], &fd_rd)) {
                 if( (received = recv(conn[i], recvbuf, BUFSIZE, 0)) < 0 ) {
-                    //perror("recv");
-                    stats.num_abrupt_terminations++;
-                    close(conn[i]);
-                    conn[i] = 0;
+                    if(errno == ECONNRESET) {
+                        stats.num_abrupt_terminations++;
+                        close(conn[i]);
+                        conn[i] = 0;
+                    } else {
+                        perror("recv");
+                        exit(1);
+                    }
                 } else if(received == 0) {
                     stats.num_graceful_terminations++;
                     close(conn[i]);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
@@ -17,6 +18,7 @@
 #define MAXMSGSIZE      8192
 #define MAXCONN         1
 #define LINGER_TO       0
+#define STATSLOGSIZE    1000
 #define STATSINTVL_MS   1000
 
 typedef struct {
@@ -32,12 +34,30 @@ typedef struct {
 } conn_t;
 
 typedef struct {
+    long        ts;
     int         num_new_conns;
     int         num_active_conns;
     int         num_abrupt_terminations;
     int         num_graceful_terminations;
     int         num_errors;
 } stats_t;
+
+stats_t stats_log[STATSLOGSIZE];
+int stats_idx = 0;
+
+static void interrupt_handler(int sig) {
+    printf("Writing %d stats records to /tmp/conngen-stats-client.csv...\n", stats_idx);
+    FILE* fp = fopen("/tmp/conngen-stats-client.csv", "w");
+    int i;
+    stats_t* stats = stats_log;
+    for(i = 0; i < stats_idx; i++) {
+        fprintf(fp, "%ld,%d,%d,%d,%d,%d\n", stats->ts, stats->num_new_conns, stats->num_active_conns, stats->num_graceful_terminations, stats->num_abrupt_terminations, stats->num_errors);
+        stats++;
+    }
+    fclose(fp);
+    printf("Done.\n");
+    exit(0);
+}
 
 static inline int read_flowdist(char* filename, flowdist_t* fdist) {
     FILE* fp = fopen(filename, "r");
@@ -93,6 +113,8 @@ static inline void re_connect(conn_t* conn, stats_t* stats) {
 
 int main(int argc, char** argv) {
 
+    signal(SIGINT, interrupt_handler);
+
     if(argc < 3) {
         printf("Usage %s <server_addr> <port> [flowdist_file]\n", argv[0]);
         exit(1);
@@ -107,9 +129,15 @@ int main(int argc, char** argv) {
     int     i, maxfd, outgoing_conn, idx, msg_size, received, sent;
     char    sendbuf[BUFSIZE], recvbuf[BUFSIZE], ipaddr[15];
     conn_t  conn[MAXCONN];
+    
     fd_set  fd_rd, fd_wr;
 
-    stats_t stats = {0, 0, 0, 0, 0};
+    stats_t* stats = stats_log;
+
+    stats->num_new_conns = 0;
+    stats->num_abrupt_terminations = 0;
+    stats->num_graceful_terminations = 0;
+    stats->num_errors = 0;
 
     struct timespec ts_then, ts_now;
     uint64_t elapsed_ms;
@@ -124,7 +152,7 @@ int main(int argc, char** argv) {
         conn[i].conn_addr.sin_family = AF_INET;
         conn[i].conn_addr.sin_port = htons(port);
         conn[i].conn_addr.sin_addr.s_addr = inet_addr(argv[1]);
-        re_connect(&conn[i], &stats);
+        re_connect(&conn[i], stats);
     }
 
     if( clock_gettime(CLOCK_MONOTONIC, &ts_then) < 0 ) {
@@ -149,17 +177,22 @@ int main(int argc, char** argv) {
         if(elapsed_ms >= STATSINTVL_MS) {
             ts_then.tv_sec = ts_now.tv_sec;
             ts_then.tv_nsec = ts_now.tv_nsec;
+            stats->num_active_conns = 0;
             for(i = 0; i < MAXCONN; i++) {
-                if(conn[i].sockfd > 0) stats.num_active_conns++;
+                if(conn[i].sockfd > 0) stats->num_active_conns++;
             }
+            stats->ts = (long)(ts_now.tv_sec * 1E9 + ts_now.tv_nsec);
             #ifdef DEBUG
-            printf("[STATS] %d new, %d active, %d graceful, %d abrupt, %d errors\n", stats.num_new_conns, stats.num_active_conns, stats.num_graceful_terminations, stats.num_abrupt_terminations, stats.num_errors);
+            printf("[STATS] %d new, %d active, %d graceful, %d abrupt, %d errors\n", stats->num_new_conns, stats->num_active_conns, stats->num_graceful_terminations, stats->num_abrupt_terminations, stats->num_errors);
             #endif
-            stats.num_new_conns = 0;
-            stats.num_active_conns = 0;
-            stats.num_abrupt_terminations = 0;
-            stats.num_graceful_terminations = 0;
-            stats.num_errors = 0;
+            if(stats_idx < STATSLOGSIZE) {
+                stats_idx++;
+                stats++;
+            }
+            stats->num_new_conns = 0;
+            stats->num_abrupt_terminations = 0;
+            stats->num_graceful_terminations = 0;
+            stats->num_errors = 0;
         }
 
         maxfd = 0;
@@ -169,7 +202,7 @@ int main(int argc, char** argv) {
                 FD_SET(conn[i].sockfd, &fd_rd);
                 FD_SET(conn[i].sockfd, &fd_wr);
             } else {
-                re_connect(&conn[i], &stats);
+                re_connect(&conn[i], stats);
             }
             maxfd = (conn[i].sockfd > maxfd) ? conn[i].sockfd : maxfd;
         }
@@ -183,12 +216,15 @@ int main(int argc, char** argv) {
 
             if(FD_ISSET(conn[i].sockfd, &fd_rd)) {
                 if( (received = recv(conn[i].sockfd, recvbuf, BUFSIZE, 0)) < 0 && errno != ENOTCONN ) {
-                    perror("recv");
-                    re_connect(&conn[i], &stats);
-                    stats.num_abrupt_terminations++;
+                    if(errno == ECONNRESET) {
+                        stats->num_abrupt_terminations++;
+                    } else {
+                        perror("recv");
+                    }
+                    re_connect(&conn[i], stats);
                 } else if(received == 0) {
-                    re_connect(&conn[i], &stats);
-                    stats.num_graceful_terminations++;
+                    re_connect(&conn[i], stats);
+                    stats->num_graceful_terminations++;
                 }
             }
 
@@ -209,10 +245,13 @@ int main(int argc, char** argv) {
             }
 
             if(conn[i].bytes_sent >= conn[i].bytes_to_send) {
-                re_connect(&conn[i], &stats);
-                //idx = rand() % fdist.dist_size;
-                //conn[i].bytes_to_send = fdist.dist[idx];
-                conn[i].bytes_to_send = MAXMSGSIZE;
+                re_connect(&conn[i], stats);
+                if(argc > 3) {
+                    idx = rand() % fdist.dist_size;
+                    conn[i].bytes_to_send = fdist.dist[idx];
+                } else {
+                    conn[i].bytes_to_send = MAXMSGSIZE;
+                }
                 conn[i].bytes_sent = 0;
             }
         }
