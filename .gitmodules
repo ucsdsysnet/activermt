@@ -7,3 +7,6 @@
 [submodule "ref/Open-Tofino"]
 	path = ref/Open-Tofino
 	url = https://github.com/barefootnetworks/Open-Tofino.git
+[submodule "apps/_common/redis-client/hiredis"]
+	path = apps/_common/redis-client/hiredis
+	url = https://github.com/redis/hiredis.git
