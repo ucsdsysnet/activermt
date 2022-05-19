@@ -3,11 +3,14 @@ util/csync.sh
 util/upload.sh
 
 pcaps/
-eval/
-ica/
-CMakeFiles/
+_eval/
+_ica/
+.vscode/
 
 bf_drivers*
 *.pcap
 *.pyc
 *.log
+*.o
+
+bf_drivers*

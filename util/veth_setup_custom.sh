@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # set number of veths
-noOfVeths=148
+noOfVeths=8
 if [ $# -eq 1 ]; then 
     noOfVeths=$1
 fi
@@ -12,7 +12,7 @@ last=`expr $vethpairs - 1`
 veths=`seq 0 1 $last`
 
 # add CPU port
-veths+=" 125"
+# veths+=" 125"
 
 for i in $veths; do
     # if [ $i -lt 8 ]
