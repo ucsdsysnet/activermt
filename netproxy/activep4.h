@@ -103,11 +103,17 @@ static inline int read_active_program(activep4_t* ap4, char* prog_file) {
     fclose(fp);
     int i = 0, j = 0;
     uint16_t arg;
+    #ifdef DEBUG
+    printf("[Active Program]\n");
+    #endif
     while(i < MAXPROGLEN && j < ap4_size) {
         arg = fbuf[j + 2] << 8 + fbuf[j + 3];
         prog[i].flags = fbuf[j];
         prog[i].opcode = fbuf[j + 1];
         prog[i].arg = htons(arg);
+        #ifdef DEBUG
+        printf("%d,%d,%d\n", prog[i].flags, prog[i].opcode, prog[i].arg);
+        #endif
         i++;
         j += 4;
     }

@@ -2,7 +2,6 @@
 #define ACTIVEP4_TUNNEL_H
 
 #define BUFSIZE         16384
-#define MAXCONN         65536
 #define MAXARP          65536
 #define ARPMASK         0x0000FFFF
 #define IPADDRSIZE      16

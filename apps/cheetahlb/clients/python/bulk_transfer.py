@@ -3,6 +3,8 @@ import os
 import sys
 import signal
 
+sys.path.append(os.path.join(os.environ['ACTIVEP4_SRC'], 'apps', '_common'))
+
 from active_app_base import *
 
 class ActiveP4AggClient(ActiveApplication):
