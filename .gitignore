@@ -5,9 +5,11 @@ util/upload.sh
 pcaps/
 _eval/
 _ica/
+.vscode/
 
 *.pcap
 *.pyc
 *.log
+*.o
 
 bf_drivers*
