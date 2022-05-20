@@ -15,6 +15,14 @@
         {
             "device_port": 3, 
             "if": "veth6"
+        },
+        {
+            "device_port": 4, 
+            "if": "veth8"
+        }, 
+        {
+            "device_port": 5, 
+            "if": "veth10"
         }
     ]
 }

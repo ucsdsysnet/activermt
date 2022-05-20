@@ -68,7 +68,8 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 if sys.argv[1] == 'receiver':
-    client.recv(bind_addr="10.0.2.2")
+    bind_addr = "10.0.3.2" if len(sys.argv) < 3 else sys.argv[2]
+    client.recv(bind_addr=bind_addr)
 elif len(sys.argv) < 3:
     print('Usage: %s <hostname> <filename>' % sys.argv[0])
 else:

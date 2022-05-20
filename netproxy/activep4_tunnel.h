@@ -4,6 +4,7 @@
 #define BUFSIZE         16384
 #define MAXARP          65536
 #define ARPMASK         0x0000FFFF
+#define TUN_NETMASK     0xFFFFFF00
 #define IPADDRSIZE      16
 #define TUNOFFSET       4
 #define CRCPOLY_DNP     0x3D65
@@ -28,6 +29,7 @@
 typedef struct {
     int             iface_index;
     unsigned char   hwaddr[ETH_ALEN];
+    uint32_t        ipv4addr;
 } devinfo_t;
 
 typedef struct {
@@ -112,6 +114,7 @@ static int allocate_tun(char* dev, int flags) {
 static void get_iface(devinfo_t* info, char* dev, int fd) {
     struct ifreq ifr;
     size_t if_name_len = strlen(dev);
+    char ip_addr[IPADDRSIZE];
     if(if_name_len < sizeof(ifr.ifr_name)) {
         memcpy(ifr.ifr_name, dev, if_name_len);
         ifr.ifr_name[if_name_len] = 0;
@@ -129,10 +132,18 @@ static void get_iface(devinfo_t* info, char* dev, int fd) {
         exit(1);
     }
     memcpy(info->hwaddr, (unsigned char*)ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+    ifr.ifr_addr.sa_family = AF_INET;
+    if(ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
+        perror("ioctl");
+        exit(1);
+    }
+    memcpy(&info->ipv4addr, &((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr, sizeof(uint32_t));
     #ifdef DEBUG
     printf("Device %s has iface index %d\n", dev, info->iface_index);
     #endif
     printf("Device %s has hwaddr %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", dev, info->hwaddr[0], info->hwaddr[1], info->hwaddr[2], info->hwaddr[3], info->hwaddr[4], info->hwaddr[5]);
+    inet_ntop(AF_INET, &info->ipv4addr, ip_addr, IPADDRSIZE);
+    printf("Device %s has ipv4 addr %s\n", dev, ip_addr);
 }
 
 static int get_arp_cache(arp_entry_t* arp_cache) {
@@ -197,9 +208,17 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
         exit(1);
     }
 
-    devinfo_t dev_info;
+    devinfo_t dev_info, tun_info;
 
     get_iface(&dev_info, eth_iface, sockfd);
+
+    int sock_tun;
+    if((sock_tun = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("socket");
+        exit(1);
+    }
+    get_iface(&tun_info, tun_iface, sock_tun);
+    close(sock_tun);
 
     arp_entry_t arp_cache[MAXARP];
 
@@ -277,7 +296,10 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
                         inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
                         printf("== RELAY: %d bytes to %s\n", ntohs(iph->tot_len), ipaddr);
                         #endif
-                        tin.sin_addr.s_addr = (in_addr_t)iph->daddr;
+                        if(iph->daddr & TUN_NETMASK == tun_info.ipv4addr & TUN_NETMASK)
+                            tin.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
+                        else
+                            tin.sin_addr.s_addr = (in_addr_t)iph->daddr;
                         memset(sendbuf, 0, BUFSIZE);
                         memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
                         if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )

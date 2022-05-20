@@ -1,6 +1,6 @@
 import os
 
-routing_file = '/usr/local/home/rajdeepd/activep4/config/ip_routing.csv'
+routing_file = '/usr/local/home/rajdeepd/activep4/config/ip_routing_lxc.csv'
 
 routes = {}
 with open(routing_file) as f:
@@ -22,7 +22,8 @@ num_dips = len(routes.keys())
 vips = {}
 
 for ip in routes:
-    ip_pfx = ".".join(ip.split(".")[:3])
+    ip_pfx = ip.split(".")[1:3]
+    ip_pfx = (int(ip_pfx[0]) << 8) + int(ip_pfx[1])
     if ip_pfx not in vips:
         vips[ip_pfx] = []
     vips[ip_pfx].append(routes[ip])
