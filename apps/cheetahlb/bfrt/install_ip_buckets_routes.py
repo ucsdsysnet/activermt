@@ -1,6 +1,6 @@
 import os
 
-routing_file = '/usr/local/home/rajdeepd/activep4/config/ip_routing_lxc.csv'
+routing_file = '/usr/local/home/rajdeepd/activep4/apps/cheetahlb/env/ip_routing.csv'
 
 routes = {}
 with open(routing_file) as f:

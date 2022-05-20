@@ -123,7 +123,7 @@ do
     sleep 10
 
     lxc-attach -n ap4-server-$SID -- apt-get update
-    lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump
+    lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump screen
     lxc-attach -n ap4-server-$SID -- pip3 install --pre scapy
 
     LXC_PID_SERVER=$(sudo lxc-info -pHn ap4-server-$SID)
@@ -138,6 +138,7 @@ do
     sudo lxc-attach -n ap4-server-$SID -- openvpn --mktun --dev tun0
     sudo lxc-attach -n ap4-server-$SID -- ip link set tun0 up
     sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_TUN/24 dev tun0
+    sudo lxc-attach -n ap4-server-$SID -- echo "export ACTIVEP4_SRC=/root/activep4" > ~/.bash_profile
 done
 
 echo "setting up arp cache..."

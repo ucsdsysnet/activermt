@@ -22,10 +22,6 @@ parser EgressParser(
             ether_type_t.AP4    : parse_active_ih;
             _                   : accept;
         }
-        /*transition select(pkt.lookahead<bit<32>>()) {
-            0x12345678  : parse_active_ih;
-            default     : parse_ipv4;
-        }*/
     }
 
     state parse_ipv4 {
