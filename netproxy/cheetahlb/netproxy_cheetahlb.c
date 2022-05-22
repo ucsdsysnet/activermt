@@ -16,7 +16,7 @@ cheetah_lb_t    app[MAXCONN];
 activep4_t      ap4_conn, ap4_data;
 
 int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf) { return 0; }
-void active_filter_udp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih) {}
+void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih) {}
 
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
     int numargs, offset = 0;
@@ -37,7 +37,7 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         vip_addr = (uint16_t) (ntohl(iph->daddr) & 0x0000FF00) >> 8;
         // TODO apply mask and offset
         activep4_argval args[] = {
-            {"BUCKET_SIZE", 2},
+            {"BUCKET_SIZE", 0},
             {"VIP_ADDR", vip_addr}
         };
         numargs = 2;
@@ -103,8 +103,6 @@ int main(int argc, char** argv) {
     sprintf(ap4_conn_args_file, "%s/cheetahlb-syn.args.csv", argv[4]);
     sprintf(ap4_data_bytecode_file, "%s/cheetahlb-default.apo", argv[4]);
     sprintf(ap4_data_args_file, "%s/cheetahlb-default.args.csv", argv[4]);
-
-    printf("Bytecode: %s\n", ap4_conn_bytecode_file);
 
     read_active_program(&ap4_conn, ap4_conn_bytecode_file);
     read_active_args(&ap4_conn, ap4_conn_args_file);

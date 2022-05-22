@@ -274,8 +274,9 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
         hdr.meta.setInvalid();
     }
 
-    action send(PortId_t port) {
+    action send(PortId_t port, mac_addr_t mac) {
         ig_tm_md.ucast_egress_port = port;
+        hdr.ethernet.dst_addr = mac;
     }
 
     action drop() {

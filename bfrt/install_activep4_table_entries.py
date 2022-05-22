@@ -59,6 +59,7 @@ class ActiveP4Installer:
     def installForwardingTableEntries(self, config='ptf'):
         dst_port_mapping = {}
         vport_dst_mapping = {}
+        port_to_mac = {}
         with open(os.path.join(self.base_path, 'config', 'ip_routing_%s.csv' % config)) as f:
             entries = f.read().splitlines()
             for row in entries:
@@ -70,12 +71,21 @@ class ActiveP4Installer:
                 if vport != '':
                     vport_dst_mapping[int(vport)] = ip_addr
             f.close()
+        with open(os.path.join(self.base_path, 'config', 'arp_table.csv')) as f:
+            entries = f.read().strip().splitlines()
+            for row in entries:
+                record = row.split(",")
+                ip_addr = record[0]
+                mac_addr = record[1]
+                dport = int(record[2])
+                port_to_mac[dport] = mac_addr
+            f.close()
         ipv4_host = self.p4.Ingress.ipv4_host
         vroute = self.p4.Ingress.vroute
         for host in dst_port_mapping:
-            ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host])
+            ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host], mac=port_to_mac[dst_port_mapping[host]])
         for vport in vport_dst_mapping:
-            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]])
+            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]], mac=port_to_mac[dst_port_mapping[vport_dst_mapping[vport]]])
         bfrt.complete_operations()
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
@@ -176,7 +186,7 @@ sid_to_port_mapping = {
 fids = [1]
 
 installer.clear_all()
-installer.installForwardingTableEntries(config='cheetahlb')
+installer.installForwardingTableEntries(config='default')
 installer.installInstructionTableEntries(1)
 installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)

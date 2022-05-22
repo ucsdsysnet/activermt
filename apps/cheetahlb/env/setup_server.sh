@@ -1,7 +1,6 @@
 #!/bin/bash
 
 NUM_SERVERS=6
-VETH_OFFSET=2
 
 if [ "$EUID" -ne 0 ]
 then
@@ -33,8 +32,7 @@ fi
 noOfVeths=$(($NUM_SERVERS * 2))
 echo "No of Veths is $noOfVeths"
 
-idx=$VETH_OFFSET
-noOfVeths=$(($noOfVeths + 2*$VETH_OFFSET))
+idx=0
 while [ $idx -lt $noOfVeths ]
 do
     intf="veth$(($idx*2))"
@@ -46,7 +44,7 @@ done
 
 let "vethpairs=$noOfVeths/2"
 last=`expr $vethpairs - 1`
-veths=`seq $VETH_OFFSET 1 $last`
+veths=`seq 0 1 $last`
 
 for i in $veths; do
     echo "setting veth link "$i
@@ -129,7 +127,7 @@ do
     LXC_PID_SERVER=$(sudo lxc-info -pHn ap4-server-$SID)
     IPADDR_TUN=10.0.2.$(($SID + 1))
     IPADDR_ETH=10.0.0.$(($SID + 1))
-    VETHIDX=$(($SID*2 + 1 + 2*$VETH_OFFSET))
+    VETHIDX=$(($SID*2 + 1))
 
     sudo ip link set dev veth$VETHIDX netns $LXC_PID_SERVER name eth1
 
@@ -138,7 +136,9 @@ do
     sudo lxc-attach -n ap4-server-$SID -- openvpn --mktun --dev tun0
     sudo lxc-attach -n ap4-server-$SID -- ip link set tun0 up
     sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_TUN/24 dev tun0
-    sudo lxc-attach -n ap4-server-$SID -- echo "export ACTIVEP4_SRC=/root/activep4" > ~/.bash_profile
+    sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -F
+    sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -A OUTPUT -p tcp -d 10.0.2.0/24 -j DNAT --to-destination $IPADDR_TUN
+    sudo lxc-attach -n ap4-server-$SID -- echo "export ACTIVEP4_SRC=/root/activep4" > /root/.bash_profile
 done
 
 echo "setting up arp cache..."

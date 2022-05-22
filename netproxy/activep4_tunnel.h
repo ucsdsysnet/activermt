@@ -4,7 +4,7 @@
 #define BUFSIZE         16384
 #define MAXARP          65536
 #define ARPMASK         0x0000FFFF
-#define TUN_NETMASK     0xFFFFFF00
+#define TUN_NETMASK     0x00FFFFFF
 #define IPADDRSIZE      16
 #define TUNOFFSET       4
 #define CRCPOLY_DNP     0x3D65
@@ -49,7 +49,7 @@ int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf);
 
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf);
 
-void active_filter_udp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih);
+void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih);
 
 void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih);
 
@@ -86,6 +86,18 @@ static inline uint16_t cksum_5tuple(inet_5tuple_t* conn) {
         conn->tcp_src_port +
         conn->tcp_dst_port
     );
+}
+
+static inline uint16_t update_checksum(uint16_t chksum, uint32_t old_ipv4_dstaddr, uint32_t new_ipv4_dstaddr) {
+    uint32_t diffsum = 0;
+    diffsum += chksum;
+    diffsum += -(uint16_t)(old_ipv4_dstaddr & 0xFFFF);
+    diffsum += -(uint16_t)(old_ipv4_dstaddr >> 16);
+    diffsum += (uint16_t)(new_ipv4_dstaddr & 0xFFFF);
+    diffsum += (uint16_t)(new_ipv4_dstaddr >> 16);
+    diffsum = (diffsum >> 16) + (diffsum & 0xFFFF);
+    diffsum = (diffsum >> 16) + diffsum;
+    return (uint16_t)~diffsum;
 }
 
 static int allocate_tun(char* dev, int flags) {
@@ -224,6 +236,11 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
 
     get_arp_cache(arp_cache);
 
+    uint16_t ipv4_nat[65536];
+
+    int i;
+    for(i = 0; i < 65536; i++) ipv4_nat[i] = 0;
+
     struct sockaddr_ll addr = {0};
     addr.sll_family = AF_PACKET;
     addr.sll_ifindex = dev_info.iface_index;
@@ -252,11 +269,10 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
 
     activep4_ih* ap4ih;
 
-    uint16_t ap4_flags;
+    uint16_t ap4_flags, pkt_size, ip_masked_src, ip_masked_dst;
 
     char ipaddr[IPADDRSIZE];
 
-    uint16_t pkt_size;
     uint32_t arp_idx;
 
     int read_bytes, ap4_offset, ret, offset;
@@ -292,21 +308,25 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
                         if(((ap4_flags & AP4FLAGS_DONE) >> 8) == 0) offset = get_active_eof(recvbuf + sizeof(struct ethhdr) + sizeof(activep4_ih));
                         offset += sizeof(activep4_ih);
                         iph = (struct iphdr*) (recvbuf + sizeof(struct ethhdr) + offset);
-                        #ifdef DEBUG
-                        inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
-                        printf("== RELAY: %d bytes to %s\n", ntohs(iph->tot_len), ipaddr);
-                        #endif
-                        if(iph->daddr & TUN_NETMASK == tun_info.ipv4addr & TUN_NETMASK)
+                        if((iph->daddr & TUN_NETMASK) == (tun_info.ipv4addr & TUN_NETMASK)) {
+                            #ifdef DEBUG
+                            inet_ntop(AF_INET, &tun_info.ipv4addr, ipaddr, IPADDRSIZE);
+                            printf("== RELAY: %d bytes to %s\n", ntohs(iph->tot_len), ipaddr);
+                            #endif
+                            if(iph->protocol == IPPROTO_TCP) {
+                                tcph = (struct tcphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
+                                active_filter_tcp_rx(iph, tcph, ap4ih);
+                            } else if(iph->protocol == IPPROTO_UDP) {
+                                udph = (struct udphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
+                                active_filter_udp_rx(iph, udph, ap4ih);
+                            }
+                            memset(sendbuf, 0, BUFSIZE);
+                            memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
                             tin.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
-                        else
-                            tin.sin_addr.s_addr = (in_addr_t)iph->daddr;
-                        memset(sendbuf, 0, BUFSIZE);
-                        memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
-                        if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )
-                        perror("sendto");
-                        if(iph->protocol == IPPROTO_TCP) {
-                            tcph = (struct tcphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
-                            active_filter_tcp_rx(iph, tcph, ap4ih);
+                            if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )
+                            perror("sendto");
+                        } else {
+                            printf("xx Destination unknown!\n");
                         }
                     } else {
                         // kernel will route
@@ -348,7 +368,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
                     perror("sendto");
                 #ifdef DEBUG
                 inet_ntop(AF_INET, &iph->daddr, ipaddr, IPADDRSIZE);
-                printf(">> FRAME: %d bytes read from packet to %s with IP length %d\n", read_bytes, ipaddr, ntohs(iph->tot_len));
+                printf(">> FRAME: sending %d bytes to %s with IP length %d\n", read_bytes, ipaddr, ntohs(iph->tot_len));
                 #endif
             }
         }

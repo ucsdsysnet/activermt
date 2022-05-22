@@ -4,6 +4,7 @@
 #define TRUE            1
 #define MAXARGS         10
 #define MAXPROGLEN      50
+#define MAXPROGSIZE     512
 #define MAXFILESIZE     1024
 #define ACTIVEP4SIG     0x12345678
 #define AP4FLAGS_DONE   0x0100
@@ -34,8 +35,8 @@ typedef struct {
 
 typedef struct {
     char        argname[20];
-    uint8_t     valid;
     int         idx;
+    int         value_idx;
 } activep4_arg;
 
 typedef struct {
@@ -45,11 +46,21 @@ typedef struct {
 
 typedef struct {
     activep4_instr  ap4_prog[MAXPROGLEN];
-    activep4_arg    ap4_argmap[MAXARGS];
-    int             ap4_len;
+    activep4_arg    ap4_args[MAXARGS];
     int             num_args;
+    uint8_t         args_mapped;
+    int             ap4_len;
     uint16_t        fid;
 } activep4_t;
+
+static inline void print_active_program_bytes(char* buf, int buf_size) {
+    int i, instr_len = sizeof(activep4_instr);
+    for(i = 0; i < buf_size; i++) {
+        if(i % instr_len == 0) printf("\n");
+        printf("%x ", buf[i]);
+    }
+    printf("\n");
+}
 
 static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
     activep4_ih* ap4ih = (activep4_ih*)buf;
@@ -60,35 +71,33 @@ static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t
 }
 
 static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
-    int offset = 0, i;
+    int offset = 0, i, j;
+    int ap4_buf_size = ap4->ap4_len * sizeof(activep4_instr);
     char* bufptr = buf;
     activep4_instr* prog = ap4->ap4_prog;
-    activep4_arg* argmap = ap4->ap4_argmap;
     activep4_instr* instr;
     int numinstr = ap4->ap4_len;
     offset += insert_active_initial_header(buf, ap4->fid, 0);
     bufptr += offset;
-    int j;
-    for(i = 0; i < MAXARGS; i++) {
-        if(argmap[i].valid == 1) {
-            argmap[i].idx = -1;
+    memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
+    offset += ap4_buf_size;
+    if(ap4->args_mapped == 0) {
+        for(i = 0; i < ap4->num_args; i++) {
             for(j = 0; j < numargs; j++) {
-                if(strcmp(args[j].argname, argmap[i].argname) == 0)
-                    argmap[i].idx = j;
+                if(strcmp(args[j].argname, ap4->ap4_args[i].argname) == 0) {
+                    ap4->ap4_args[i].value_idx = j;
+                }
             }
         }
+        ap4->args_mapped = 1;
     }
-    for(i = 0; i < numinstr; i++) {
-        instr = (activep4_instr*) bufptr;
-        instr->flags = prog[i].flags;
-        instr->opcode = prog[i].opcode;
-        instr->arg = (argmap[i].valid == 1) ? htons(args[argmap[i].idx].argval) : 0;
-        #ifdef DEBUG
-        printf("AP4: %d,%d,%d\n", instr->flags, instr->opcode, instr->arg);
-        #endif
-        offset += sizeof(activep4_instr);
-        bufptr += sizeof(activep4_instr);
+    for(i = 0; i < ap4->num_args; i++) {
+        instr = (activep4_instr*)bufptr + ap4->ap4_args[i].idx;
+        instr->arg = htons(args[ap4->ap4_args[i].value_idx].argval);
     }
+    #ifdef DEBUG
+    print_active_program_bytes(bufptr, ap4_buf_size);
+    #endif
     return offset;
 }
 
@@ -123,26 +132,26 @@ static inline int read_active_program(activep4_t* ap4, char* prog_file) {
 
 static inline int read_active_args(activep4_t* ap4, char* arg_file) {
     FILE* fp = fopen(arg_file, "r");
-    activep4_arg* argmap = ap4->ap4_argmap;
     char buf[50];
     const char* tok;
     char argname[50];
-    int i, argidx;
-    for(i = 0; i < MAXARGS; i++) argmap[i].valid = 0;
+    int i, argidx, j, num_args = 0;
     while( fgets(buf, 50, fp) > 0 ) {
         for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, "\n"), i++) {
             if(i == 0) strcpy(argname, tok);
             else argidx = atoi(tok);
         }
-        strcpy(argmap[argidx].argname, argname);
-        argmap[argidx].valid = 1;
-        #ifdef DEBUG
-        printf("Active argument %s at index %d\n", argmap[argidx].argname, argidx);
-        #endif
+        ap4->ap4_args[num_args].idx = argidx;
+        strcpy(ap4->ap4_args[num_args].argname, argname);
+        num_args++;
     }
+    ap4->num_args = num_args;
+    ap4->args_mapped = 0;
     fclose(fp);
-    ap4->num_args = argidx;
-    return argidx;
+    #ifdef DEBUG
+    printf("%d active program arguments read.\n", ap4->num_args);
+    #endif
+    return ap4->num_args;
 }
 
 static inline int get_active_eof(char* buf) {

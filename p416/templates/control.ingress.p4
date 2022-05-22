@@ -18,8 +18,9 @@ control Ingress(
         hdr.meta.setInvalid();
     }
 
-    action send(PortId_t port) {
+    action send(PortId_t port, mac_addr_t mac) {
         ig_tm_md.ucast_egress_port = port;
+        hdr.ethernet.dst_addr = mac;
     }
 
     action drop() {
