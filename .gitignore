@@ -12,5 +12,6 @@ bf_drivers*
 *.pyc
 *.log
 *.o
+*.json
 
 bf_drivers*

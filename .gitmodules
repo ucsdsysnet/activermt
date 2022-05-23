@@ -1,6 +1,3 @@
-[submodule "dpdk-pktgen-activep4-client"]
-	path = dpdk-pktgen-activep4-client
-	url = git@github.com:dasrajdeep/Pktgen-DPDK.git
 [submodule "ref/cheetah-p4"]
 	path = ref/cheetah-p4
 	url = https://github.com/cheetahlb/cheetah-p4.git
@@ -10,3 +7,6 @@
 [submodule "apps/_common/redis-client/hiredis"]
 	path = apps/_common/redis-client/hiredis
 	url = https://github.com/redis/hiredis.git
+[submodule "util/tofino-logviz"]
+	path = util/tofino-logviz
+	url = git@github.com:dasrajdeep/tofino-logviz.git
