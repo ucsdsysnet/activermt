@@ -13,5 +13,7 @@ bf_drivers*
 *.log
 *.o
 *.json
+*DS_Store
+.*
 
 bf_drivers*
