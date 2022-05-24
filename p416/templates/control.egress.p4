@@ -22,14 +22,6 @@ control Egress(
     action skip() {}
 
     action rts() {
-        mac_addr_t  tmp_mac;
-        ipv4_addr_t tmp_ipv4;
-        tmp_mac = hdr.ethernet.src_addr;
-        hdr.ethernet.src_addr = hdr.ethernet.dst_addr;
-        hdr.ethernet.dst_addr = tmp_mac;
-        tmp_ipv4 = hdr.ipv4.src_addr;
-        hdr.ipv4.src_addr = hdr.ipv4.dst_addr;
-        hdr.ipv4.dst_addr = tmp_ipv4;
         // TODO re-circulate
     }
 
@@ -120,17 +112,13 @@ control Egress(
 
     action hash_5_tuple() {
         hdr.meta.mbr = crc16.get({
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr,
-            hdr.ipv4.protocol,
-            hdr.tcp.src_port,
-            hdr.tcp.dst_port,
+            hdr.meta.ipv4_src,
+            hdr.meta.ipv4_dst,
+            hdr.meta.ipv4_protocol,
+            hdr.meta.l4_src,
+            hdr.meta.l4_dst,
             hdr.meta.mbr
         });
-    }
-
-    action load_tcp_ctrl_flags() {
-        hdr.meta.mbr = (bit<16>) hdr.tcp.ctrl;
     }
 
     action load_salt() {

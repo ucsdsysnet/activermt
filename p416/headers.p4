@@ -113,6 +113,11 @@ header bridged_metadata_h {
     bit<2>      padding;
     bit<16>     randnum;
     bit<16>     tcp_length;
+    bit<32>     ipv4_src;
+    bit<32>     ipv4_dst;
+    bit<8>      ipv4_protocol;
+    bit<16>     l4_src;
+    bit<16>     l4_dst;
 }
 
 header eg_port_mirror_h {
@@ -149,8 +154,4 @@ struct egress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
-    ipv4_h                                      ipv4;
-    udp_h                                       udp;
-    tcp_h                                       tcp;
-    tcp_option_h                                tcpopts;
 }

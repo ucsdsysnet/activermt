@@ -33,7 +33,6 @@ table instruction_<stage-id> {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         <generated-actions>
     }

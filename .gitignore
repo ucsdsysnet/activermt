@@ -2,7 +2,9 @@
 util/csync.sh
 util/upload.sh
 
+pcap_output/
 pcaps/
+logs/
 _eval/
 _ica/
 .vscode/
@@ -14,6 +16,7 @@ bf_drivers*
 *.log
 *.o
 *.json
+*.ffs_db
 *DS_Store
 .*
 

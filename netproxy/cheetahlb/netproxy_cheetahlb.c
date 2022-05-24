@@ -53,6 +53,7 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         };
         numargs = 1;
         offset = insert_active_program(buf, &ap4_data, args, numargs);
+        ((activep4_ih*)buf)->acc = htons(app[conn_id].cookie);
     }
     if(tcph->fin == 1) {
         // FIN packet

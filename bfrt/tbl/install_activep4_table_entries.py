@@ -90,8 +90,8 @@ class ActiveP4Installer:
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
 
-    def installInstructionTableEntriesGress(self, fid, gress, num_stages):
-        for i in range(0, num_stages):
+    def installInstructionTableEntriesGress(self, fid, gress, num_stages, offset=0):
+        for i in range(offset, num_stages + offset):
             instr_table = getattr(gress, 'instruction_%d' % i)
             for a in self.opcode_action:
                 act = self.opcode_action[a]

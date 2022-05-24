@@ -342,14 +342,6 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
     action skip() {}
 
     action rts() {
-        mac_addr_t  tmp_mac;
-        ipv4_addr_t tmp_ipv4;
-        tmp_mac = hdr.ethernet.src_addr;
-        hdr.ethernet.src_addr = hdr.ethernet.dst_addr;
-        hdr.ethernet.dst_addr = tmp_mac;
-        tmp_ipv4 = hdr.ipv4.src_addr;
-        hdr.ipv4.src_addr = hdr.ipv4.dst_addr;
-        hdr.ipv4.dst_addr = tmp_ipv4;
         // TODO re-circulate
     }
 
@@ -440,17 +432,13 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
 
     action hash_5_tuple() {
         hdr.meta.mbr = crc16.get({
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr,
-            hdr.ipv4.protocol,
-            hdr.tcp.src_port,
-            hdr.tcp.dst_port,
+            hdr.meta.ipv4_src,
+            hdr.meta.ipv4_dst,
+            hdr.meta.ipv4_protocol,
+            hdr.meta.l4_src,
+            hdr.meta.l4_dst,
             hdr.meta.mbr
         });
-    }
-
-    action load_tcp_ctrl_flags() {
-        hdr.meta.mbr = (bit<16>) hdr.tcp.ctrl;
     }
 
     action load_salt() {
@@ -1040,7 +1028,6 @@ table instruction_0 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s0;
 mbr1_load_s0;
@@ -1094,7 +1081,6 @@ table instruction_1 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s1;
 mbr1_load_s1;
@@ -1148,7 +1134,6 @@ table instruction_2 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s2;
 mbr1_load_s2;
@@ -1202,7 +1187,6 @@ table instruction_3 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s3;
 mbr1_load_s3;
@@ -1256,7 +1240,6 @@ table instruction_4 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s4;
 mbr1_load_s4;
@@ -1310,7 +1293,6 @@ table instruction_5 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s5;
 mbr1_load_s5;
@@ -1364,7 +1346,6 @@ table instruction_6 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s6;
 mbr1_load_s6;
@@ -1418,7 +1399,6 @@ table instruction_7 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s7;
 mbr1_load_s7;
@@ -1472,7 +1452,6 @@ table instruction_8 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s8;
 mbr1_load_s8;
@@ -1526,7 +1505,6 @@ table instruction_9 {
         mar_mbr_add_mbr2;
         copy_acc_mbr;
         hash_5_tuple;
-        load_tcp_ctrl_flags;
         load_salt;
         mar_load_s9;
 mbr1_load_s9;

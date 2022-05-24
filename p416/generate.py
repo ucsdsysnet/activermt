@@ -91,7 +91,7 @@ class ActiveP4Generator:
             table_names = []
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
-            for i in range(offset, num_stages):
+            for i in range(offset, num_stages + offset):
                 instr_id = i
                 tabledefs = self.getGeneratedTable(i)
                 registerdefs = self.getGeneratedRegister(i)

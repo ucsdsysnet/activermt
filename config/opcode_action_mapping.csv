@@ -27,7 +27,6 @@ MBR_LOAD,mbr1_load_s#
 MBR2_LOAD,mbr2_load_s#
 ACC2_LOAD,acc2_load
 ACC_LOAD,acc1_load
-TCP_CTRL_LOAD,load_tcp_ctrl_flags
 BIT_AND_MAR,bit_and_mar_s#
 BIT_AND_MBR,bit_and_mbr_s#
 BIT_AND_MAR_MBR,bit_and_mar_mbr
