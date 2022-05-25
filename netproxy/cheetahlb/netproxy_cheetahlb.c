@@ -7,8 +7,8 @@
 
 typedef struct {
     uint8_t         active;
-    uint8_t         awterm;
     uint16_t        cookie;
+    uint64_t        fin_ts;
     inet_5tuple_t   conn;
 } cheetah_lb_t;
 
@@ -37,14 +37,13 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         vip_addr = (uint16_t) (ntohl(iph->daddr) & 0x0000FF00) >> 8;
         // TODO apply mask and offset
         activep4_argval args[] = {
-            {"BUCKET_SIZE", 0},
+            {"BUCKET_SIZE", 1},
             {"VIP_ADDR", vip_addr}
         };
         numargs = 2;
         offset = insert_active_program(buf, &ap4_conn, args, numargs);
         app[conn_id].active = 1;
         app[conn_id].cookie = 0;
-        app[conn_id].awterm = 0;
         memcpy(&app[conn_id].conn, &conn, sizeof(inet_5tuple_t));
     } else {
         // other TCP segments
@@ -54,10 +53,9 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         numargs = 1;
         offset = insert_active_program(buf, &ap4_data, args, numargs);
         ((activep4_ih*)buf)->acc = htons(app[conn_id].cookie);
-    }
-    if(tcph->fin == 1) {
-        // FIN packet
-        app[conn_id].awterm = 1;
+        #ifdef DEBUG
+        printf("Cookie: %d\n", app[conn_id].cookie);
+        #endif
     }
     return offset;
 }
@@ -79,14 +77,6 @@ void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* a
         #ifdef DEBUG
         printf("SYN: setting (for connection %u) cookie to %u\n", conn_id, app[conn_id].cookie);
         #endif
-    } else if(tcph->ack == 1 && app[conn_id].awterm == 1) {
-        #ifdef DEBUG
-        printf("FIN: terminating connection %u\n", conn_id);
-        #endif
-        app[conn_id].active = 0;
-        app[conn_id].cookie = 0;
-        app[conn_id].awterm = 0;
-        memset(&app[conn_id].conn, 0, sizeof(inet_5tuple_t));
     }
 }
 

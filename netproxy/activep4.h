@@ -95,9 +95,6 @@ static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_arg
         instr = (activep4_instr*)bufptr + ap4->ap4_args[i].idx;
         instr->arg = htons(args[ap4->ap4_args[i].value_idx].argval);
     }
-    #ifdef DEBUG
-    print_active_program_bytes(bufptr, ap4_buf_size);
-    #endif
     return offset;
 }
 
