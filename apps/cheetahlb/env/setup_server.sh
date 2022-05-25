@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NUM_SERVERS=6
+NUM_SERVERS=1
 
 if [ "$EUID" -ne 0 ]
 then
@@ -162,7 +162,7 @@ do
         if [ $SID -ne $I ]
         then
             echo "Setting MAC (Server $SID): ${ADDRS_IPV4[I]} -> ${ADDRS_MAC[I]}"
-            sudo lxc-attach ap4-server-$SID -- arp -s "${ADDRS_IPV4[I]}" "${ADDRS_MAC[I]}" -i eth1
+            sudo lxc-attach -n ap4-server-$SID -- arp -s "${ADDRS_IPV4[I]}" "${ADDRS_MAC[I]}" -i eth1
         fi
     done
 done

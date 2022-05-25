@@ -3,7 +3,7 @@
 
 #include "../activep4_tunnel.h"
 
-//#define EXPERIMENTAL
+#define EXPERIMENTAL
 
 #define MAXCONN         65536
 #define MAXFILENAME     128
@@ -25,9 +25,6 @@ void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* a
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
     int numargs, offset = 0;
     uint16_t vip_addr, conn_id, cookie;
-    #ifdef EXPERIMENTAL
-    if(rand() % 2 == 0) app[conn_id].insert_cookie = 0;
-    #endif
     inet_5tuple_t conn = {
         iph->saddr,
         iph->daddr,
@@ -36,6 +33,7 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         tcph->dest
     };
     conn_id = cksum_5tuple(&conn);
+    if(tcph->syn == 1) app[conn_id].insert_cookie = 1;
     if(tcph->syn == 1 && tcph->ack == 0) {
         // SYN packet
         #ifdef DEBUG
@@ -51,11 +49,11 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         offset = insert_active_program(buf, &ap4_conn, args, numargs);
         app[conn_id].active = 1;
         app[conn_id].cookie = 0;
-        app[conn_id].insert_cookie = 1;
         memcpy(&app[conn_id].conn, &conn, sizeof(inet_5tuple_t));
     } else {
         // other TCP segments
         #ifdef EXPERIMENTAL
+        if(rand() % 16 == 0) app[conn_id].insert_cookie = 0;
         cookie = (app[conn_id].insert_cookie == 1) ? app[conn_id].cookie : 0;
         #else
         cookie = app[conn_id].cookie;
@@ -65,9 +63,9 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         };
         numargs = 1;
         offset = insert_active_program(buf, &ap4_data, args, numargs);
-        ((activep4_ih*)buf)->acc = htons(app[conn_id].cookie);
+        ((activep4_ih*)buf)->acc = htons(cookie);
         #ifdef DEBUG
-        printf("Cookie: %d\n", app[conn_id].cookie);
+        printf("Cookie: %d\n", cookie);
         #endif
     }
     return offset;

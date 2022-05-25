@@ -116,7 +116,12 @@ do
         if [ $SID -ne $I ]
         then
             echo "Setting MAC (Server $SID): ${ADDRS_IPV4[I]} -> ${ADDRS_MAC[I]}"
-            lxc-attach ap4-server-$SID -- arp -s "${ADDRS_IPV4[I]}" "${ADDRS_MAC[I]}" -i eth1
+            lxc-attach -n ap4-server-$SID -- arp -s "${ADDRS_IPV4[I]}" "${ADDRS_MAC[I]}" -i eth1
         fi
     done
+done
+
+for (( SID = 0; SID < $NUM_SERVERS; SID++ ))
+do
+    lxc-attach -v ACTIVEP4_SRC=/root/activep4 -n ap4-server-$SID -- $ACTIVEP4_SRC/apps/cheetahlb/env/run_app.sh
 done
