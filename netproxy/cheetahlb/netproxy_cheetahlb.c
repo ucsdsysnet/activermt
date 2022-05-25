@@ -37,7 +37,7 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         vip_addr = (uint16_t) (ntohl(iph->daddr) & 0x0000FF00) >> 8;
         // TODO apply mask and offset
         activep4_argval args[] = {
-            {"BUCKET_SIZE", 1},
+            {"BUCKET_SIZE", 3},
             {"VIP_ADDR", vip_addr}
         };
         numargs = 2;

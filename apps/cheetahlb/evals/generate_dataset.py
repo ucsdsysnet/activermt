@@ -13,13 +13,13 @@ requests = {}
 servers = []
 
 min_ts = 0
-for file in glob.glob("server-*.csv"):
-    server_id = re.search('server-(\d).csv', file)
+for file in glob.glob("ap4-server-*.csv"):
+    server_id = re.search('ap4-server-(\d).csv', file)
     server_id = server_id.group(1) if server_id is not None else None
     if server_id not in servers:
         servers.append(server_id)
     with open(file) as f:
-        data = f.read().splitlines()
+        data = f.read().strip().splitlines()
         for line in data:
             row = line.split(",")
             ts = row[0]
