@@ -109,6 +109,7 @@ do
             echo "lxc.cgroup.devices.allow = c 10:200 rwm" >> $LXC_CONFIG_FILE
             echo "lxc.mount.entry = $ACTIVEP4_SRC $GUEST_SRC_PATH none bind 0 0" >> $LXC_CONFIG_FILE
             echo "lxc.mount.entry = /dev/net/tun /var/lib/lxc/ap4-server-$SID/rootfs/dev/net/tun none bind,create=file" >> $LXC_CONFIG_FILE
+            echo "export ACTIVEP4_SRC=/root/activep4" >> /var/lib/lxc/ap4-server-$SID/rootfs/root/.bash_profile
         fi
     fi
 
@@ -121,8 +122,9 @@ do
     sleep 10
 
     lxc-attach -n ap4-server-$SID -- apt-get update
-    lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump screen
+    lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump screen iptables
     lxc-attach -n ap4-server-$SID -- pip3 install --pre scapy
+    lxc-attach -n ap4-server-$SID -- pip3 install --pre requests
 
     LXC_PID_SERVER=$(sudo lxc-info -pHn ap4-server-$SID)
     IPADDR_TUN=10.0.2.$(($SID + 1))
@@ -138,7 +140,6 @@ do
     sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_TUN/24 dev tun0
     sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -F
     sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -A OUTPUT -p tcp -d 10.0.2.0/24 -j DNAT --to-destination $IPADDR_TUN
-    sudo lxc-attach -n ap4-server-$SID -- echo "export ACTIVEP4_SRC=/root/activep4" > /root/.bash_profile
 done
 
 echo "setting up arp cache..."

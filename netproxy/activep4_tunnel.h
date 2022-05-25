@@ -3,7 +3,7 @@
 
 #define BUFSIZE         16384
 #define MAXARP          65536
-#define ARPMASK         0x0000FFFF
+#define ARPMASK         0x000000FF
 #define TUN_NETMASK     0x00FFFFFF
 #define IPADDRSIZE      16
 #define TUNOFFSET       4
@@ -158,32 +158,39 @@ static void get_iface(devinfo_t* info, char* dev, int fd) {
     printf("Device %s has ipv4 addr %s\n", dev, ip_addr);
 }
 
-static int get_arp_cache(arp_entry_t* arp_cache) {
+static int get_arp_cache(arp_entry_t* arp_cache, char* dev) {
     FILE* fp = fopen("/proc/net/arp", "r");
     char buf[1024];
     unsigned short hwaddr[ETH_ALEN];
     const char* tok;
     uint32_t ip_addr = 0;
     uint32_t entry_idx = 0;
-    int num_entries = 0, i;
+    int num_entries = 0, i, valid;
+    arp_entry_t arp_entry;
     while( fgets(buf, 1024, fp) > 0 ) {
-        for(tok = strtok(buf, " "); tok && *tok; tok = strtok(NULL, " ")) {
+        valid = 0;
+        for(tok = strtok(buf, " "); tok && *tok; tok = strtok(NULL, " \n")) {
+            if(strcmp(tok, dev) == 0) {
+                valid = 1;
+            } 
             if(ip_addr == 0) {
                 if(inet_pton(AF_INET, tok, &ip_addr) != 1) ip_addr = 0;
-            } else {
-                if(strlen(tok) == 17 && sscanf(tok, "%hx:%hx:%hx:%hx:%hx:%hx", &hwaddr[0], &hwaddr[1], &hwaddr[2], &hwaddr[3], &hwaddr[4], &hwaddr[5]) == ETH_ALEN) {
-                    entry_idx = ntohl(ip_addr) & ARPMASK;
-                    arp_cache[entry_idx].ip_addr = ip_addr;
-                    for(i = 0; i < ETH_ALEN; i++) arp_cache[entry_idx].eth_addr[i] = (unsigned char) hwaddr[i];
+            } else if(strlen(tok) == 17 && sscanf(tok, "%hx:%hx:%hx:%hx:%hx:%hx", &hwaddr[0], &hwaddr[1], &hwaddr[2], &hwaddr[3], &hwaddr[4], &hwaddr[5]) == ETH_ALEN) {
+                    arp_entry.ip_addr = ip_addr;
+                    for(i = 0; i < ETH_ALEN; i++) arp_entry.eth_addr[i] = (unsigned char) hwaddr[i];
                     ip_addr = 0;
-                    num_entries++;
-                    #ifdef DEBUG
-                    inet_ntop(AF_INET, &arp_cache[entry_idx].ip_addr, buf, IPADDRSIZE);
-                    printf("<ARP> (%d) %s has ", entry_idx, buf);
-                    print_hwaddr(arp_cache[entry_idx].eth_addr);
-                    #endif
-                }
             }
+        }
+        if(valid == 1) {
+            entry_idx = ntohl(arp_entry.ip_addr) & ARPMASK;
+            arp_cache[entry_idx].ip_addr = arp_entry.ip_addr;
+            memcpy(arp_cache[entry_idx].eth_addr, arp_entry.eth_addr, ETH_ALEN);
+            num_entries++;
+            #ifdef DEBUG
+            inet_ntop(AF_INET, &arp_cache[entry_idx].ip_addr, buf, IPADDRSIZE);
+            printf("<ARP> (%d) %s has ", entry_idx, buf);
+            print_hwaddr(arp_cache[entry_idx].eth_addr);
+            #endif
         }
     }
     fclose(fp);
@@ -193,12 +200,9 @@ static int get_arp_cache(arp_entry_t* arp_cache) {
     return num_entries;
 }
 
-static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
+static void run_tunnel(char* tun_iface, char* eth_iface) {
 
-    struct sockaddr_in sin, tin;
-
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = inet_addr(dst_eth_addr);
+    struct sockaddr_in tin;
 
     tin.sin_family = AF_INET;
 
@@ -234,7 +238,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
 
     arp_entry_t arp_cache[MAXARP];
 
-    get_arp_cache(arp_cache);
+    get_arp_cache(arp_cache, eth_iface);
 
     uint16_t ipv4_nat[65536];
 
@@ -347,8 +351,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface, char* dst_eth_addr) {
                 pptr = sendbuf;
                 ap4_offset = 0;
                 eth = (struct ethhdr*)pptr;
-                inet_ntop(AF_INET, &sin.sin_addr.s_addr, ipaddr, IPADDRSIZE);
-                arp_idx = ntohl(sin.sin_addr.s_addr) & ARPMASK;
+                arp_idx = ntohl(iph->daddr) & ARPMASK;
                 memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
                 memcpy(&eth->h_dest, arp_cache[arp_idx].eth_addr, ETH_ALEN);
                 memcpy(eth_dst_addr.sll_addr, arp_cache[arp_idx].eth_addr, ETH_ALEN);
