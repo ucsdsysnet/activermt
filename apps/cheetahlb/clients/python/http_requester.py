@@ -41,7 +41,7 @@ def send_http_requests(thread_id, args):
         req_rate = req_rate + 1
         elapsed_sec = ts_end - ts_then
         if elapsed_sec >= 1:
-            print("[STATS] (T%d) %d requests/sec." % (thread_id, req_rate))
+            print("[STATS] (T%d) %d req/sec, %d complete, %d failed." % (thread_id, req_rate, complete, errors))
             stats.append({
                 'ts'        : ts_end,
                 'complete'  : complete,
