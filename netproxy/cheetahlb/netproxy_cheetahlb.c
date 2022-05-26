@@ -53,7 +53,7 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
     } else {
         // other TCP segments
         #ifdef EXPERIMENTAL
-        if(rand() % 16 == 0) app[conn_id].insert_cookie = 0;
+        if(rand() % 10 == 0) app[conn_id].insert_cookie = 0;
         cookie = (app[conn_id].insert_cookie == 1) ? app[conn_id].cookie : 0;
         #else
         cookie = app[conn_id].cookie;
