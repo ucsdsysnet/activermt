@@ -4,6 +4,7 @@
 #include "../activep4_tunnel.h"
 
 //#define EXPERIMENTAL
+#define ALT_HASHED
 
 #define MAXCONN         65536
 #define MAXFILENAME     128
@@ -24,7 +25,7 @@ void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* a
 
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
     int numargs, offset = 0;
-    uint16_t vip_addr, conn_id, cookie;
+    uint16_t vip_addr, conn_id, cookie = 0;
     inet_5tuple_t conn = {
         iph->saddr,
         iph->daddr,
@@ -33,6 +34,21 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         tcph->dest
     };
     conn_id = cksum_5tuple(&conn);
+    #ifdef ALT_HASHED
+    if(tcph->syn == 1 && tcph->ack == 0) {
+        app[conn_id].active = 1;
+    }
+    if(app[conn_id].active == 1) {
+        activep4_argval args[] = {
+            {"BUCKET_SIZE", 3},
+            {"BUCKET_OFFSET", 0}
+        };
+        numargs = 2;
+        offset = insert_active_program(buf, &ap4_conn, args, numargs);
+    } else {
+        offset = insert_active_initial_header(buf, ap4_conn.fid, AP4FLAGS_DONE);
+    }
+    #else
     if(tcph->syn == 1) app[conn_id].insert_cookie = 1;
     if(tcph->syn == 1 && tcph->ack == 0) {
         // SYN packet
@@ -58,16 +74,21 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf) {
         #else
         cookie = app[conn_id].cookie;
         #endif
-        activep4_argval args[] = {
-            {"COOKIE", cookie}
-        };
-        numargs = 1;
-        offset = insert_active_program(buf, &ap4_data, args, numargs);
+        if(app[conn_id].active == 1) {
+            activep4_argval args[] = {
+                {"COOKIE", cookie}
+            };
+            numargs = 1;
+            offset = insert_active_program(buf, &ap4_data, args, numargs);
+        } else {
+            offset = insert_active_initial_header(buf, ap4_conn.fid, AP4FLAGS_DONE);
+        }
         ((activep4_ih*)buf)->acc = htons(cookie);
         #ifdef DEBUG
         printf("Cookie: %d\n", cookie);
         #endif
     }
+    #endif
     return offset;
 }
 
@@ -80,15 +101,16 @@ void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* a
         tcph->dest
     };
     uint16_t conn_id = cksum_5tuple(&conn);
+    #ifndef ALT_HASHED
     if(tcph->syn == 1) {
         // SYN packet (either way)
-        app[conn_id].active = 1;
         app[conn_id].cookie = ntohs(ap4ih->acc);
         memcpy(&app[conn_id].conn, &conn, sizeof(inet_5tuple_t));
         #ifdef DEBUG
         printf("SYN: setting (for connection %u) cookie to %u\n", conn_id, app[conn_id].cookie);
         #endif
     }
+    #endif
 }
 
 int main(int argc, char** argv) {
@@ -98,9 +120,18 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    int i;
+    for(i = 0; i < MAXCONN; i++) app[i].active = 0;
+
     char ap4_conn_bytecode_file[MAXFILENAME], ap4_conn_args_file[MAXFILENAME];
     char ap4_data_bytecode_file[MAXFILENAME], ap4_data_args_file[MAXFILENAME];
 
+    #ifdef ALT_HASHED
+    sprintf(ap4_conn_bytecode_file, "%s/lb-hashed.apo", argv[3]);
+    sprintf(ap4_conn_args_file, "%s/lb-hashed.args.csv", argv[3]);
+    read_active_program(&ap4_conn, ap4_conn_bytecode_file);
+    read_active_args(&ap4_conn, ap4_conn_args_file);
+    #else
     sprintf(ap4_conn_bytecode_file, "%s/cheetahlb-syn.apo", argv[3]);
     sprintf(ap4_conn_args_file, "%s/cheetahlb-syn.args.csv", argv[3]);
     sprintf(ap4_data_bytecode_file, "%s/cheetahlb-default.apo", argv[3]);
@@ -110,6 +141,7 @@ int main(int argc, char** argv) {
     read_active_args(&ap4_conn, ap4_conn_args_file);
     read_active_program(&ap4_data, ap4_data_bytecode_file);
     read_active_args(&ap4_data, ap4_data_args_file);
+    #endif
 
     ap4_conn.fid = (argc > 4) ? atoi(argv[4]) : 1;
     ap4_data.fid = ap4_conn.fid;

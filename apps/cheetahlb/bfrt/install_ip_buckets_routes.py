@@ -38,8 +38,8 @@ idx = 0
 for vip in vips:
     BUCKET_SIZE = len(vips[vip])
     offset = idx * BUCKET_SIZE
-    p4.Ingress.heap_s1.add(REGISTER_INDEX=idx, f1=0) # bucket counter
-    p4.Ingress.heap_s4.add(REGISTER_INDEX=idx, f1=offset) # bucket offset
+    p4.Ingress.heap_s1.add(REGISTER_INDEX=vip, f1=0) # bucket counter
+    p4.Ingress.heap_s4.add(REGISTER_INDEX=vip, f1=offset) # bucket offset
     for dst in range(0, BUCKET_SIZE):
         dst_idx = offset + dst
         p4.Ingress.heap_s6.add(REGISTER_INDEX=dst_idx, f1=vips[vip][dst]) # DIP vport

@@ -3,7 +3,7 @@ import time
 import itertools
 
 routing_file = '/usr/local/home/rajdeepd/activep4/apps/cheetahlb/env/ip_routing.csv'
-sleep_time_sec = 1
+sleep_time_sec = 0.01
 duration_sec = 60
 
 routes = {}
@@ -55,8 +55,8 @@ while(elapsed_sec < duration_sec):
         #print(bucket)
         BUCKET_SIZE = len(bucket)
         offset = idx * BUCKET_SIZE
-        p4.Ingress.heap_s1.add(REGISTER_INDEX=idx, f1=0) # bucket counter
-        p4.Ingress.heap_s4.add(REGISTER_INDEX=idx, f1=offset) # bucket offset
+        p4.Ingress.heap_s1.add(REGISTER_INDEX=vip, f1=0) # bucket counter
+        p4.Ingress.heap_s4.add(REGISTER_INDEX=vip, f1=offset) # bucket offset
         for dst in range(0, BUCKET_SIZE):
             dst_idx = offset + dst
             p4.Ingress.heap_s6.add(REGISTER_INDEX=dst_idx, f1=bucket[dst]) # DIP vport
