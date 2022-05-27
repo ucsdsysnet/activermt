@@ -51,6 +51,8 @@ typedef struct {
     uint8_t         args_mapped;
     int             ap4_len;
     uint16_t        fid;
+    uint16_t        addr_mask;
+    uint16_t        addr_offset;
 } activep4_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {

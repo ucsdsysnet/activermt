@@ -132,6 +132,7 @@ struct ig_metadata_t {
     bit<16>     seq_offset;
     bit<16>     seq_addr;
     bit<16>     vport;
+    bit<16>     chksum_tcp;
 }
 
 struct eg_metadata_t {

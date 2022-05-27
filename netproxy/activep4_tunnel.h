@@ -45,9 +45,9 @@ typedef struct {
     uint16_t    tcp_dst_port;
 } inet_5tuple_t;
 
-int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf);
+int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf, char* payload);
 
-int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf);
+int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf, char* payload);
 
 void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih);
 
@@ -270,6 +270,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
     struct iphdr*   iph;
     struct udphdr*  udph;
     struct tcphdr*  tcph;
+    char*           payload;
 
     activep4_ih* ap4ih;
 
@@ -359,11 +360,13 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
                 pptr += sizeof(struct ethhdr);
                 if(iph->protocol == IPPROTO_TCP) {
                     tcph = (struct tcphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
-                    ap4_offset = active_filter_tcp_tx(iph, tcph, pptr);
+                    payload = recvbuf + TUNOFFSET + sizeof(struct iphdr) + (4 * tcph->doff);
+                    ap4_offset = active_filter_tcp_tx(iph, tcph, pptr, payload);
                     pptr += ap4_offset;
                 } else if(iph->protocol == IPPROTO_UDP) {
                     udph = (struct udphdr*) (recvbuf + TUNOFFSET + sizeof(struct iphdr));
-                    ap4_offset = active_filter_udp_tx(iph, udph, pptr);
+                    payload = recvbuf + TUNOFFSET + sizeof(struct iphdr) + sizeof(struct udphdr);
+                    ap4_offset = active_filter_udp_tx(iph, udph, pptr, payload);
                     pptr += ap4_offset;
                 }
                 memcpy(pptr, recvbuf + TUNOFFSET, ntohs(iph->tot_len));
