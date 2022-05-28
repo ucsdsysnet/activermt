@@ -67,6 +67,31 @@ for i in $veths; do
     done
 done
 
+ip link set ap4br0 down
+brctl delbr ap4br0
+if [ -z "$(brctl show | grep ap4br0)" ]
+then
+    echo "Setting up bridged network..."
+    brctl addbr ap4br0
+    brctl addif ap4br0 ens4
+    for (( SID = 0; SID < $NUM_SERVERS; SID++ ))
+    do
+        VETHIDX=veth$(($SID*2))
+        echo "Adding $VETHIDX to ap4br0..."
+        brctl addif ap4br0 $VETHIDX
+    done
+    ip link set ap4br0 up
+    if [ -d "/proc/sys/net/bridge" ]
+    then
+        BR_FILTERS=$(ls /proc/sys/net/bridge | grep bridge-nf)
+        for BRF in $BR_FILTERS
+        do
+            echo "Disabling filter $BRF"
+            echo 0 > /proc/sys/net/bridge/$BRF
+        done
+    fi
+fi
+
 for (( SID = 0; SID < $NUM_SERVERS; SID++ ))
 do
     if [ -z "$(lxc-ls --active | grep ap4-server-$SID)" ]

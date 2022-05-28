@@ -111,58 +111,34 @@ do
             echo "lxc.mount.entry = /dev/net/tun /var/lib/lxc/ap4-server-$SID/rootfs/dev/net/tun none bind,create=file" >> $LXC_CONFIG_FILE
             echo "export ACTIVEP4_SRC=/root/activep4" >> /var/lib/lxc/ap4-server-$SID/rootfs/root/.bash_profile
         fi
+
+        sudo lxc-start -n ap4-server-$SID
+        sudo lxc-wait -n ap4-server-$SID -s RUNNING
+
+        echo "preparing ap4-server-$SID..."
+
+        sleep 10
+
+        lxc-attach -n ap4-server-$SID -- apt-get update
+        lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump screen iptables
+        lxc-attach -n ap4-server-$SID -- pip3 install --pre scapy
+        lxc-attach -n ap4-server-$SID -- pip3 install --pre requests
+
+        LXC_PID_SERVER=$(sudo lxc-info -pHn ap4-server-$SID)
+        IPADDR_TUN=10.0.2.$(($SID + 1))
+        IPADDR_ETH=10.0.0.$(($SID + 1))
+        VETHIDX=$(($SID*2 + 1))
+
+        sudo ip link set dev veth$VETHIDX netns $LXC_PID_SERVER name eth1
+
+        sudo lxc-attach -n ap4-server-$SID -- ip link set eth1 up
+        sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_ETH/24 dev eth1
+        sudo lxc-attach -n ap4-server-$SID -- openvpn --mktun --dev tun0
+        sudo lxc-attach -n ap4-server-$SID -- ip link set tun0 up
+        sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_TUN/24 dev tun0
+        sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -F
+        sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -A OUTPUT -p tcp -d 10.0.2.0/24 -j DNAT --to-destination $IPADDR_TUN
+
+        sudo lxc-stop -n ap4-server-$SID
     fi
-
-    sudo lxc-stop -n ap4-server-$SID
-    sudo lxc-start -n ap4-server-$SID
-    sudo lxc-wait -n ap4-server-$SID -s RUNNING
-
-    echo "preparing ap4-server-$SID..."
-
-    sleep 10
-
-    lxc-attach -n ap4-server-$SID -- apt-get update
-    lxc-attach -n ap4-server-$SID -- apt-get install -y net-tools openvpn python python3-pip tcpdump screen iptables
-    lxc-attach -n ap4-server-$SID -- pip3 install --pre scapy
-    lxc-attach -n ap4-server-$SID -- pip3 install --pre requests
-
-    LXC_PID_SERVER=$(sudo lxc-info -pHn ap4-server-$SID)
-    IPADDR_TUN=10.0.2.$(($SID + 1))
-    IPADDR_ETH=10.0.0.$(($SID + 1))
-    VETHIDX=$(($SID*2 + 1))
-
-    sudo ip link set dev veth$VETHIDX netns $LXC_PID_SERVER name eth1
-
-    sudo lxc-attach -n ap4-server-$SID -- ip link set eth1 up
-    sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_ETH/24 dev eth1
-    sudo lxc-attach -n ap4-server-$SID -- openvpn --mktun --dev tun0
-    sudo lxc-attach -n ap4-server-$SID -- ip link set tun0 up
-    sudo lxc-attach -n ap4-server-$SID -- ip addr add $IPADDR_TUN/24 dev tun0
-    sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -F
-    sudo lxc-attach -n ap4-server-$SID -- iptables -t nat -A OUTPUT -p tcp -d 10.0.2.0/24 -j DNAT --to-destination $IPADDR_TUN
-done
-
-echo "setting up arp cache..."
-
-ADDRS_IPV4=()
-ADDRS_MAC=()
-
-for (( SID = 0; SID < $NUM_SERVERS; SID++ ))
-do
-    IP_ADDR=$(sudo lxc-attach -n ap4-server-$SID -- ifconfig eth1 | grep 'inet ' | tr -s ' ' | cut -f3 -d' ')
-    HW_ADDR=$(sudo lxc-attach -n ap4-server-$SID -- ifconfig eth1 | grep 'ether' | tr -s ' ' | cut -f3 -d' ')
-    ADDRS_IPV4[$SID]=$IP_ADDR
-    ADDRS_MAC[$SID]=$HW_ADDR
-done
-
-for (( SID = 0; SID < $NUM_SERVERS; SID++ ))
-do
-    for (( I = 0; I < $NUM_SERVERS; I++ ))
-    do
-        if [ $SID -ne $I ]
-        then
-            echo "Setting MAC (Server $SID): ${ADDRS_IPV4[I]} -> ${ADDRS_MAC[I]}"
-            sudo lxc-attach -n ap4-server-$SID -- arp -s "${ADDRS_IPV4[I]}" "${ADDRS_MAC[I]}" -i eth1
-        fi
-    done
 done
