@@ -1377,8 +1377,10 @@ hash_s7;
 		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
 		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
 		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
-		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
+		//if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
         if (hdr.ipv4.isValid()) {
+            rts();
+            hdr.tcp.ctrl = 0x10;
             overall_stats.count(0);
             if(vroute.apply().miss) {
                 ipv4_host.apply();

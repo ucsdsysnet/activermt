@@ -47,7 +47,6 @@ control EgressDeparser(
     
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md
 ) {
-    Checksum() ipv4_checksum;
     Mirror() mirror;
     apply {
         if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {

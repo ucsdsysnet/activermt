@@ -25,13 +25,10 @@ parser IngressParser(
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
+        tcp_checksum.subtract({ hdr.ipv4.src_addr, hdr.ipv4.dst_addr });
         hdr.meta.ipv4_src = hdr.ipv4.src_addr;
         hdr.meta.ipv4_dst = hdr.ipv4.dst_addr;
         hdr.meta.ipv4_protocol = hdr.ipv4.protocol;
-        tcp_checksum.subtract({
-            hdr.ipv4.src_addr,
-            hdr.ipv4.dst_addr
-        });
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -53,15 +50,8 @@ parser IngressParser(
         pkt.extract(hdr.tcp);
         hdr.meta.l4_src = hdr.tcp.src_port;
         hdr.meta.l4_dst = hdr.tcp.dst_port;
-        tcp_checksum.subtract({
-            hdr.tcp.seq_no,
-            hdr.tcp.ack_no,
-            hdr.tcp.data_offset,
-            hdr.tcp.res,
-            hdr.tcp.ecn,
-            hdr.tcp.ctrl,
-            hdr.tcp.checksum
-        });
+        tcp_checksum.subtract({ hdr.tcp.checksum });
+        tcp_checksum.subtract({ hdr.tcp.data_offset, hdr.tcp.res, hdr.tcp.ecn, hdr.tcp.ctrl });
         tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
         transition select(hdr.tcp.data_offset) {
             5..15   : parse_tcp_options;
@@ -117,17 +107,15 @@ control IngressDeparser(
             });
         }
         if(hdr.tcp.isValid()) {
-            /*hdr.tcp.checksum = tcp_checksum.update({
+            hdr.tcp.checksum = tcp_checksum.update({
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
-                hdr.tcp.seq_no,
-                hdr.tcp.ack_no,
                 hdr.tcp.data_offset,
                 hdr.tcp.res,
                 hdr.tcp.ecn,
                 hdr.tcp.ctrl,
                 meta.chksum_tcp
-            });*/
+            });
         }
         pkt.emit(hdr);
     }
