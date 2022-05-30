@@ -51,18 +51,20 @@ parser IngressParser(
         hdr.meta.l4_src = hdr.tcp.src_port;
         hdr.meta.l4_dst = hdr.tcp.dst_port;
         tcp_checksum.subtract({ hdr.tcp.checksum });
-        tcp_checksum.subtract({ hdr.tcp.data_offset, hdr.tcp.res, hdr.tcp.ecn, hdr.tcp.ctrl });
+        tcp_checksum.subtract({ hdr.tcp.flags });
+        //tcp_checksum.subtract({ hdr.tcp.data_offset, hdr.tcp.res, hdr.tcp.ecn, hdr.tcp.ctrl });
         tcp_checksum.subtract_all_and_deposit(meta.chksum_tcp);
-        transition select(hdr.tcp.data_offset) {
+        transition accept;
+        /*transition select(hdr.tcp.data_offset) {
             5..15   : parse_tcp_options;
             default : accept;
-        }
+        }*/
     }
 
-    state parse_tcp_options {
+    /*state parse_tcp_options {
         pkt.extract(hdr.tcpopts, (bit<32>)(hdr.tcp.data_offset - 5) * 32);
         transition accept;
-    }
+    }*/
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
@@ -110,10 +112,7 @@ control IngressDeparser(
             hdr.tcp.checksum = tcp_checksum.update({
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr,
-                hdr.tcp.data_offset,
-                hdr.tcp.res,
-                hdr.tcp.ecn,
-                hdr.tcp.ctrl,
+                hdr.tcp.flags,
                 meta.chksum_tcp
             });
         }

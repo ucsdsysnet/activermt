@@ -50,18 +50,19 @@ header tcp_h {
     bit<16>     dst_port;
     bit<32>     seq_no;
     bit<32>     ack_no;
-    bit<4>      data_offset;
+    bit<16>     flags;
+    /*bit<4>      data_offset;
     bit<3>      res;
     bit<3>      ecn;
-    bit<6>      ctrl;
+    bit<6>      ctrl;*/
     bit<16>     window;
     bit<16>     checksum;
     bit<16>     urgent_ptr;
 }
 
-header tcp_option_h {
+/*header tcp_option_h {
     varbit<320> data;
-}
+}*/
 
 header active_initial_h {
     bit<32>     ACTIVEP4;
@@ -147,7 +148,7 @@ struct ingress_headers_t {
     ipv4_h                                      ipv4;
     udp_h                                       udp;
     tcp_h                                       tcp;
-    tcp_option_h                                tcpopts;
+    //tcp_option_h                                tcpopts;
 }
 
 struct egress_headers_t {

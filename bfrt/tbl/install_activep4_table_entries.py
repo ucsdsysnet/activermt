@@ -14,7 +14,7 @@ class ActiveP4Installer:
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
-        self.num_stages_ingress = 7
+        self.num_stages_ingress = 8
         self.num_stages_egress = 10
         self.recirculation_enabled = False
         self.base_path = "/usr/local/home/rajdeepd/activep4"
@@ -186,7 +186,7 @@ sid_to_port_mapping = {
 fids = [1]
 
 installer.clear_all()
-installer.installForwardingTableEntries(config='default')
+installer.installForwardingTableEntries(config='cheetahlb')
 installer.installInstructionTableEntries(1)
 installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)
