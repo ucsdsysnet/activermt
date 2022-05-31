@@ -66,8 +66,8 @@ header tcp_h {
 
 header active_initial_h {
     bit<32>     ACTIVEP4;
-    bit<1>      flag_redirect;
-    bit<1>      flag_igclone;
+    bit<1>      opt_arg;
+    bit<1>      opt_data;
     bit<1>      flag_bypasseg;
     bit<1>      flag_rts;
     bit<1>      flag_marked;
@@ -91,12 +91,34 @@ header active_data_h {
     bit<32>     data_2;
     bit<32>     data_3;
     bit<32>     data_4;
+    bit<32>     data_5;
 }
 
 header active_instruction_h {
     bit<7>      flags;
     bit<1>      goto;
     bit<8>      opcode;
+}
+
+header active_bulk_data_h {
+    bit<32>     data_0;
+    bit<32>     data_1;
+    bit<32>     data_2;
+    bit<32>     data_3;
+    bit<32>     data_4;
+    bit<32>     data_5;
+    bit<32>     data_6;
+    bit<32>     data_7;
+    bit<32>     data_8;
+    bit<32>     data_9;
+    bit<32>     data_10;
+    bit<32>     data_11;
+    bit<32>     data_12;
+    bit<32>     data_13;
+    bit<32>     data_14;
+    bit<32>     data_15;
+    bit<32>     data_16;
+    bit<32>     data_17;
 }
 
 @flexible
@@ -149,6 +171,7 @@ struct ingress_headers_t {
     active_initial_h                            ih;
     active_data_h                               data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
+    active_bulk_data_h                          bulk_data;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
     tcp_h                                       tcp;
@@ -161,4 +184,5 @@ struct egress_headers_t {
     active_initial_h                            ih;
     active_data_h                               data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
+    active_bulk_data_h                          bulk_data;
 }

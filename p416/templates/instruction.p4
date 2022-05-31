@@ -15,4 +15,5 @@ table instruction_<stage-id> {
         set_port;
         <generated-actions>
     }
+    size = 512;
 }

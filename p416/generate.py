@@ -23,6 +23,7 @@ class ActiveP4Generator:
             'common-actions': 'templates/actions.common.p4',
             'data-actions'  : 'templates/actions.data.p4',
             'instruction'   : 'templates/instruction.p4',
+            'p1-instruction': 'templates/instruction.p1.p4',
             'memory'        : 'templates/memory.p4',
             'hashing'       : 'templates/hashing.p4',
             'ingress'       : 'templates/control.ingress.p4',
@@ -134,7 +135,8 @@ class ActiveP4Generator:
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
                 if self.truncate:
-                    table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); hdr.instr[%d].setInvalid(); }' % (i, x, i)) for x in tabledefs[1]]
+                    set_tables = " ".join([ "%s.apply();" % x for x in tabledefs[1] ])
+                    table_names.append('if(hdr.instr[%d].isValid()) { %s hdr.instr[%d].setInvalid(); }' % (i, set_tables, i))
                 else:
                     table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); }' % (i, x)) for x in tabledefs[1]]
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]

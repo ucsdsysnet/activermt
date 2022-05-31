@@ -17,6 +17,12 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_write_s0 = {
     }
 };
 
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_bulk_write_s0 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_0;
+    }
+};
+
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_read_s0 = {
     void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
@@ -35,6 +41,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s1;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_write_s1 = {
     void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_bulk_write_s1 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_1;
     }
 };
 
@@ -59,6 +71,12 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_write_s2 = {
     }
 };
 
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_bulk_write_s2 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_2;
+    }
+};
+
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_read_s2 = {
     void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
@@ -77,6 +95,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s3;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_write_s3 = {
     void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_bulk_write_s3 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_3;
     }
 };
 
@@ -101,6 +125,12 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_write_s4 = {
     }
 };
 
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_bulk_write_s4 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_4;
+    }
+};
+
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_read_s4 = {
     void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
@@ -119,6 +149,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s5;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_write_s5 = {
     void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_bulk_write_s5 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_5;
     }
 };
 
@@ -143,6 +179,12 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_write_s6 = {
     }
 };
 
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_bulk_write_s6 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_6;
+    }
+};
+
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_read_s6 = {
     void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
@@ -161,6 +203,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s7;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_write_s7 = {
     void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_bulk_write_s7 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_7;
     }
 };
 
@@ -185,6 +233,12 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_write_s8 = {
     }
 };
 
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_bulk_write_s8 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_8;
+    }
+};
+
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_read_s8 = {
     void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
@@ -203,6 +257,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s9;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_write_s9 = {
     void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_bulk_write_s9 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_9;
     }
 };
 
@@ -730,8 +790,16 @@ action memory_read_s0() {
     hdr.meta.mbr = heap_read_s0.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s0() {
+    hdr.bulk_data.data_0 = heap_read_s0.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s0() {
     heap_write_s0.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s0() {
+    heap_bulk_write_s0.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s0() {
@@ -752,8 +820,16 @@ action memory_read_s1() {
     hdr.meta.mbr = heap_read_s1.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s1() {
+    hdr.bulk_data.data_1 = heap_read_s1.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s1() {
     heap_write_s1.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s1() {
+    heap_bulk_write_s1.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s1() {
@@ -774,8 +850,16 @@ action memory_read_s2() {
     hdr.meta.mbr = heap_read_s2.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s2() {
+    hdr.bulk_data.data_2 = heap_read_s2.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s2() {
     heap_write_s2.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s2() {
+    heap_bulk_write_s2.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s2() {
@@ -796,8 +880,16 @@ action memory_read_s3() {
     hdr.meta.mbr = heap_read_s3.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s3() {
+    hdr.bulk_data.data_3 = heap_read_s3.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s3() {
     heap_write_s3.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s3() {
+    heap_bulk_write_s3.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s3() {
@@ -818,8 +910,16 @@ action memory_read_s4() {
     hdr.meta.mbr = heap_read_s4.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s4() {
+    hdr.bulk_data.data_4 = heap_read_s4.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s4() {
     heap_write_s4.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s4() {
+    heap_bulk_write_s4.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s4() {
@@ -840,8 +940,16 @@ action memory_read_s5() {
     hdr.meta.mbr = heap_read_s5.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s5() {
+    hdr.bulk_data.data_5 = heap_read_s5.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s5() {
     heap_write_s5.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s5() {
+    heap_bulk_write_s5.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s5() {
@@ -862,8 +970,16 @@ action memory_read_s6() {
     hdr.meta.mbr = heap_read_s6.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s6() {
+    hdr.bulk_data.data_6 = heap_read_s6.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s6() {
     heap_write_s6.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s6() {
+    heap_bulk_write_s6.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s6() {
@@ -884,8 +1000,16 @@ action memory_read_s7() {
     hdr.meta.mbr = heap_read_s7.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s7() {
+    hdr.bulk_data.data_7 = heap_read_s7.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s7() {
     heap_write_s7.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s7() {
+    heap_bulk_write_s7.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s7() {
@@ -906,8 +1030,16 @@ action memory_read_s8() {
     hdr.meta.mbr = heap_read_s8.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s8() {
+    hdr.bulk_data.data_8 = heap_read_s8.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s8() {
     heap_write_s8.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s8() {
+    heap_bulk_write_s8.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s8() {
@@ -928,8 +1060,16 @@ action memory_read_s9() {
     hdr.meta.mbr = heap_read_s9.execute((bit<32>)hdr.meta.mar);
 }
 
+action memory_bulk_read_s9() {
+    hdr.bulk_data.data_9 = heap_read_s9.execute((bit<32>)hdr.meta.mar);
+}
+
 action memory_write_s9() {
     heap_write_s9.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s9() {
+    heap_bulk_write_s9.execute((bit<32>)hdr.meta.mar);
 }
 
 action memory_count_s9() {
@@ -1010,10 +1150,13 @@ d4_load_mbr2;
 jump_s0;
 attempt_rejoin_s0;
 memory_read_s0;
+memory_bulk_read_s0;
 memory_write_s0;
+memory_bulk_write_s0;
 memory_count_s0;
 hash_s0;
     }
+    size = 512;
 }
 
 table instruction_1 {
@@ -1082,10 +1225,13 @@ d4_load_mbr2;
 jump_s1;
 attempt_rejoin_s1;
 memory_read_s1;
+memory_bulk_read_s1;
 memory_write_s1;
+memory_bulk_write_s1;
 memory_count_s1;
 hash_s1;
     }
+    size = 512;
 }
 
 table instruction_2 {
@@ -1154,10 +1300,13 @@ d4_load_mbr2;
 jump_s2;
 attempt_rejoin_s2;
 memory_read_s2;
+memory_bulk_read_s2;
 memory_write_s2;
+memory_bulk_write_s2;
 memory_count_s2;
 hash_s2;
     }
+    size = 512;
 }
 
 table instruction_3 {
@@ -1226,10 +1375,13 @@ d4_load_mbr2;
 jump_s3;
 attempt_rejoin_s3;
 memory_read_s3;
+memory_bulk_read_s3;
 memory_write_s3;
+memory_bulk_write_s3;
 memory_count_s3;
 hash_s3;
     }
+    size = 512;
 }
 
 table instruction_4 {
@@ -1298,10 +1450,13 @@ d4_load_mbr2;
 jump_s4;
 attempt_rejoin_s4;
 memory_read_s4;
+memory_bulk_read_s4;
 memory_write_s4;
+memory_bulk_write_s4;
 memory_count_s4;
 hash_s4;
     }
+    size = 512;
 }
 
 table instruction_5 {
@@ -1370,10 +1525,13 @@ d4_load_mbr2;
 jump_s5;
 attempt_rejoin_s5;
 memory_read_s5;
+memory_bulk_read_s5;
 memory_write_s5;
+memory_bulk_write_s5;
 memory_count_s5;
 hash_s5;
     }
+    size = 512;
 }
 
 table instruction_6 {
@@ -1442,10 +1600,13 @@ d4_load_mbr2;
 jump_s6;
 attempt_rejoin_s6;
 memory_read_s6;
+memory_bulk_read_s6;
 memory_write_s6;
+memory_bulk_write_s6;
 memory_count_s6;
 hash_s6;
     }
+    size = 512;
 }
 
 table instruction_7 {
@@ -1514,10 +1675,13 @@ d4_load_mbr2;
 jump_s7;
 attempt_rejoin_s7;
 memory_read_s7;
+memory_bulk_read_s7;
 memory_write_s7;
+memory_bulk_write_s7;
 memory_count_s7;
 hash_s7;
     }
+    size = 512;
 }
 
 table instruction_8 {
@@ -1586,10 +1750,13 @@ d4_load_mbr2;
 jump_s8;
 attempt_rejoin_s8;
 memory_read_s8;
+memory_bulk_read_s8;
 memory_write_s8;
+memory_bulk_write_s8;
 memory_count_s8;
 hash_s8;
     }
+    size = 512;
 }
 
 table instruction_9 {
@@ -1658,10 +1825,13 @@ d4_load_mbr2;
 jump_s9;
 attempt_rejoin_s9;
 memory_read_s9;
+memory_bulk_read_s9;
 memory_write_s9;
+memory_bulk_write_s9;
 memory_count_s9;
 hash_s9;
     }
+    size = 512;
 }
 
     Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
