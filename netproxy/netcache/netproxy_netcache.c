@@ -113,6 +113,15 @@ static inline void deserialize_redis_data(char* buf, int buflen, redis_command_t
     }
 }
 
+static inline int serialize_redis_data(char* buf, uint16_t response, int len) {
+    int buflen = 8;
+    response = ntohs(response);
+    sprintf(buf, "$2\r\n%c%c\r\n", (char)(response >> 8), (char)response);
+    buf[buflen] = '\0';
+    while(buflen++ < len) buf[buflen] = '\0';
+    return buflen;
+}
+
 static inline uint16_t get_object_address(redis_command_t* redis, activep4_t* ap4) {
     uint16_t addr = 0, i = 0;
     char addrbuf[UINT16_LEN];
@@ -127,11 +136,11 @@ static inline uint16_t get_object_address(redis_command_t* redis, activep4_t* ap
 }
 
 int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf, char* payload) { return 0; }
-void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih) {}
+void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih, char* payload) {}
 
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf, char* payload) {
     
-    int numargs, offset = 0;
+    int numargs, offset = 0, payload_size;
     uint16_t addr = 0, conn_id;
     redis_command_t redis;
 
@@ -148,7 +157,8 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf, char
         #ifdef DEBUG
         printf("TCP PUSH TX (conn %d)\n", conn_id);
         #endif
-        deserialize_redis_data(payload, ntohs(iph->tot_len) - (iph->ihl * 4) - (tcph->doff * 4), &redis);
+        payload_size = ntohs(iph->tot_len) - (iph->ihl * 4) - (tcph->doff * 4);
+        deserialize_redis_data(payload, payload_size, &redis);
         if(redis.cmd_get == 1) {
             if(redis.response[0] == '\0') {
                 // towards server
@@ -192,8 +202,12 @@ int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf, char
     return offset;
 }
 
-void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih) {
-    uint16_t conn_id;
+void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih, char* payload) {
+    uint16_t conn_id, swap_port, prev_iplen;
+    int payload_size, updated_size;
+    uint32_t prev_seq, chksum = 0;
+    char tcp_chksum_buffer[BUFSIZE];
+    tcp_pseudo_hdr_t psh;
     if(tcph->psh == 1) {
         inet_5tuple_t conn = {
             iph->saddr,
@@ -206,8 +220,27 @@ void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* a
         #ifdef DEBUG
         printf("TCP PUSH RX (conn %d)\n", conn_id);
         #endif
+        payload_size = ntohs(iph->tot_len) - (iph->ihl * 4) - (tcph->doff * 4);
         app[conn_id].sw_key = ap4ih->acc;
         app[conn_id].addr = ap4ih->acc2;
+        prev_seq = ntohl(tcph->seq);
+        tcph->seq = tcph->ack_seq;
+        tcph->ack_seq = htonl(prev_seq + payload_size);
+        swap_port = tcph->source;
+        tcph->source = tcph->dest;
+        tcph->dest = swap_port;
+        updated_size = serialize_redis_data(payload, ap4ih->acc, payload_size);
+        psh.src_addr = iph->saddr;
+        psh.dst_addr = iph->daddr;
+        psh.padding = 0;
+        psh.protocol = IPPROTO_TCP;
+        psh.segment_length = htons(payload_size + tcph->doff * 4);
+        tcph->check = 0;
+        memcpy(tcp_chksum_buffer, &psh, sizeof(psh));
+        memcpy(tcp_chksum_buffer + sizeof(psh), tcph, tcph->doff * 4);
+        memcpy(tcp_chksum_buffer + sizeof(psh) + tcph->doff * 4, payload, payload_size);
+        tcph->check = compute_checksum((uint16_t*)tcp_chksum_buffer, payload_size + sizeof(psh) + tcph->doff * 4);
+        printf("RTS packet (seq %u, ack %u) [%d bytes]\n", tcph->seq, tcph->ack_seq, payload_size);
     }
 }
 

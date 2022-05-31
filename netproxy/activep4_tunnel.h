@@ -45,13 +45,21 @@ typedef struct {
     uint16_t    tcp_dst_port;
 } inet_5tuple_t;
 
+typedef struct {
+    uint32_t    src_addr;
+    uint32_t    dst_addr;
+    uint8_t     padding;
+    uint8_t     protocol;
+    uint16_t    segment_length;
+} tcp_pseudo_hdr_t;
+
 int active_filter_udp_tx(struct iphdr* iph, struct udphdr* udph, char* buf, char* payload);
 
 int active_filter_tcp_tx(struct iphdr* iph, struct tcphdr* tcph, char* buf, char* payload);
 
-void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih);
+void active_filter_udp_rx(struct iphdr* iph, struct udphdr* udph, activep4_ih* ap4ih, char* payload);
 
-void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih);
+void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* ap4ih, char* payload);
 
 static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
     return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
@@ -88,16 +96,26 @@ static inline uint16_t cksum_5tuple(inet_5tuple_t* conn) {
     );
 }
 
-static inline uint16_t update_checksum(uint16_t chksum, uint32_t old_ipv4_dstaddr, uint32_t new_ipv4_dstaddr) {
+static inline uint16_t update_checksum(uint16_t chksum, uint32_t old_value, uint32_t new_value) {
     uint32_t diffsum = 0;
-    diffsum += chksum;
-    diffsum += -(uint16_t)(old_ipv4_dstaddr & 0xFFFF);
-    diffsum += -(uint16_t)(old_ipv4_dstaddr >> 16);
-    diffsum += (uint16_t)(new_ipv4_dstaddr & 0xFFFF);
-    diffsum += (uint16_t)(new_ipv4_dstaddr >> 16);
+    diffsum += ~chksum;
+    diffsum += -(uint16_t)(old_value & 0xFFFF);
+    diffsum += -(uint16_t)(old_value >> 16);
+    diffsum += (uint16_t)(new_value & 0xFFFF);
+    diffsum += (uint16_t)(new_value >> 16);
     diffsum = (diffsum >> 16) + (diffsum & 0xFFFF);
     diffsum = (diffsum >> 16) + diffsum;
     return (uint16_t)~diffsum;
+}
+
+static inline uint16_t compute_checksum(uint16_t* buf, int num_bytes) {
+    uint32_t chksum = 0;
+    int i;
+    for(i = num_bytes; i > 1; i -= 2) chksum += *buf++;
+    if(i == 1) chksum += (*buf & 0xFF00);
+    chksum = (chksum >> 16) + (chksum & 0xFFFF);
+    chksum = (chksum >> 16) + chksum;
+    return (uint16_t)~chksum;
 }
 
 static int allocate_tun(char* dev, int flags) {
@@ -320,10 +338,12 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
                             #endif
                             if(iph->protocol == IPPROTO_TCP) {
                                 tcph = (struct tcphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
-                                active_filter_tcp_rx(iph, tcph, ap4ih);
+                                payload = recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr) + (4 * tcph->doff);
+                                active_filter_tcp_rx(iph, tcph, ap4ih, payload);
                             } else if(iph->protocol == IPPROTO_UDP) {
                                 udph = (struct udphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
-                                active_filter_udp_rx(iph, udph, ap4ih);
+                                payload = recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr) + sizeof(struct udphdr);
+                                active_filter_udp_rx(iph, udph, ap4ih, payload);
                             }
                             memset(sendbuf, 0, BUFSIZE);
                             memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));

@@ -125,6 +125,7 @@ header eg_port_mirror_h {
     pkt_type_t  pkt_type;
 }
 
+@flexible
 struct ig_metadata_t {
     bit<8>      port_change;
     bit<8>      set_clr_seq;
