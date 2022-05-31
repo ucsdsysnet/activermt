@@ -20,6 +20,8 @@ class ActiveP4Generator:
         self.truncate = truncate
         self.paths = {
             'actions'       : 'templates/actions.p4',
+            'common-actions': 'templates/actions.common.p4',
+            'data-actions'  : 'templates/actions.data.p4',
             'instruction'   : 'templates/instruction.p4',
             'memory'        : 'templates/memory.p4',
             'hashing'       : 'templates/hashing.p4',
@@ -29,31 +31,59 @@ class ActiveP4Generator:
         self.crc_16_params = {
             'crc_16'        : ('0x18005', 'true', '0x0000', '0x0000')
         }
+        self.registers = ('mar', 'mbr', 'mbr2')
+        self.num_data = 5
 
-    def getGeneratedActions(self, stage_id):
-        p4code = None
+    def getActionDefinitions(self, code):
         actions = []
-        with open(self.paths['actions']) as f:
-            template = f.read()
-            instruction_id = stage_id
-            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id))
-            f.close()
-        lines = p4code.splitlines()
-        for line in lines:
+        for line in code:
             if line.startswith('action'):
                 tokens = line.split(' ')
                 action = tokens[1]
                 action = action[:action.index('(')]
                 actions.append(action)
+        return actions
+
+    def getStagewiseActions(self, stage_id):
+        p4code = None
+        with open(self.paths['actions']) as f:
+            template = f.read()
+            instruction_id = stage_id
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id))
+            f.close()
+        actions = self.getActionDefinitions(p4code.splitlines())
+        return (p4code, actions)
+
+    def getCommonActions(self):
+        p4code = []
+        with open(self.paths['common-actions']) as f:
+            actions_code = f.read()
+            p4code.append(actions_code)
+            f.close()
+        with open(self.paths['data-actions']) as f:
+            template = f.read()
+            for i in range(0, len(self.registers)):
+                reg = self.registers[i]
+                for j in range(0, self.num_data):
+                    data = "data_%d" % j
+                    p4code.append(template.replace('<reg>', reg).replace('<data>', data).replace('<data-id>', str(j)))
+            f.close()
+        p4code = "\r\n".join(p4code)
+        actions = self.getActionDefinitions(p4code.splitlines())
         return (p4code, actions)
 
     def getGeneratedTable(self, stage_id):
         p4code = None
-        p4code_actions = self.getGeneratedActions(stage_id)
+        actions = []
+        gen = self.getCommonActions()
+        actions = actions + gen[1]
+        gen = self.getStagewiseActions(stage_id)
+        actions = actions + gen[1]
+        p4code_actions = gen[0]
         with open(self.paths['instruction']) as f:
             template = f.read()
             instruction_id = stage_id
-            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n".join([ x + ';' for x in p4code_actions[1] ]))
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n".join([ x + ';' for x in actions ]))
             f.close()
         lines = p4code.splitlines()
         tables = []
@@ -61,7 +91,7 @@ class ActiveP4Generator:
             if line.startswith('table'):
                 tokens = line.split(' ')
                 tables.append(tokens[1])
-        return (p4code, tables, p4code_actions[0])
+        return (p4code, tables, p4code_actions)
 
     def getGeneratedRegister(self, stage_id):
         p4code = None
@@ -84,8 +114,9 @@ class ActiveP4Generator:
         p4code = None
         with open(self.paths[eg_ig]) as f:
             template = f.read()
+            gen_common_actions = self.getCommonActions()
             table_code = ""
-            action_code = ""
+            action_code = gen_common_actions[0] + "\r\n"
             register_code = ""
             hashing_code = ""
             table_names = []

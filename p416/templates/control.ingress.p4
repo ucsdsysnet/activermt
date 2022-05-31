@@ -74,103 +74,7 @@ control Ingress(
 
     action set_port() {
         meta.port_change = 1;
-        meta.vport = hdr.meta.mbr;
-    }
-
-    action complete() {
-        hdr.meta.complete = 1;
-    }
-
-    action uncomplete() {
-        hdr.meta.complete = 0;
-    }
-
-    action acc1_load() {
-        hdr.ih.acc = hdr.meta.mbr;
-    }
-
-    action acc2_load() {
-        hdr.ih.acc2 = hdr.meta.mbr;
-    }
-
-    action copy_mbr2_mbr1() {
-        hdr.meta.mbr2 = hdr.meta.mbr;
-    }
-
-    action copy_mbr1_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr2;
-    }
-
-    action mark_packet() {
-        hdr.ih.flag_marked = 1;
-    }
-
-    action memfault() {
-        hdr.ih.flag_mfault = 1;
-        hdr.ih.acc = hdr.meta.mar;
-        complete();
-        rts();
-    }
-
-    action min_mbr1_mbr2() {
-        hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
-    }
-
-    action min_mbr2_mbr1() {
-        hdr.meta.mbr2 = (hdr.meta.mbr2 <= hdr.meta.mbr ? hdr.meta.mbr2 : hdr.meta.mbr);
-    }
-
-    action mbr1_equals_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr ^ hdr.meta.mbr2;
-    }
-
-    action copy_mar_mbr() {
-        hdr.meta.mar = hdr.meta.mbr;
-    }
-
-    action copy_mbr_mar() {
-        hdr.meta.mbr = hdr.meta.mar;
-    }
-
-    action bit_and_mar_mbr() {
-        hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
-    }
-
-    action mar_add_mbr() {
-        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
-    }
-
-    action mar_add_mbr2() {
-        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
-    }
-
-    action mbr_add_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
-    }
-
-    action mar_mbr_add_mbr2() {
-        hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
-    }
-
-    action copy_acc_mbr() {
-        hdr.ih.acc = hdr.meta.mbr;
-    }
-
-    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
-
-    action hash_5_tuple() {
-        hdr.meta.mbr = crc16.get({
-            hdr.meta.ipv4_src,
-            hdr.meta.ipv4_dst,
-            hdr.meta.ipv4_protocol,
-            hdr.meta.l4_src,
-            hdr.meta.l4_dst,
-            hdr.meta.mbr
-        });
-    }
-
-    action load_salt() {
-        hdr.meta.mbr = CONST_SALT;
+        meta.vport = (bit<16>)hdr.meta.mbr;
     }
 
     // GENERATED: ACTIONS
@@ -193,11 +97,11 @@ control Ingress(
         activep4_stats.count((bit<32>)hdr.ih.fid);
     }
 
-    action get_quotas(bit<16> alloc_id, bit<16> mem_start, bit<16> mem_end, bit<16> curr_bw) {
-        hdr.ih.acc = mem_start;
-        hdr.ih.acc2 = mem_end;
-        hdr.ih.data = curr_bw;
-        hdr.ih.data2 = alloc_id;
+    action get_quotas(bit<32> alloc_id, bit<32> mem_start, bit<32> mem_end, bit<32> curr_bw) {
+        hdr.data.data_0 = mem_start;
+        hdr.data.data_1 = mem_end;
+        hdr.data.data_2 = curr_bw;
+        hdr.data.data_3 = alloc_id;
         hdr.ih.flag_allocated = 1;
         rts();
         bypass_egress();

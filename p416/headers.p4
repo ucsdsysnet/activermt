@@ -83,18 +83,20 @@ header active_initial_h {
     bit<2>      padding;
     bit<16>     fid;
     bit<16>     seq;
-    bit<16>     acc;
-    bit<16>     acc2;
-    bit<16>     data;
-    bit<16>     data2;
-    bit<16>     res;
+}
+
+header active_data_h {
+    bit<32>     data_0;
+    bit<32>     data_1;
+    bit<32>     data_2;
+    bit<32>     data_3;
+    bit<32>     data_4;
 }
 
 header active_instruction_h {
     bit<7>      flags;
     bit<1>      goto;
     bit<8>      opcode;
-    bit<16>     arg;
 }
 
 @flexible
@@ -106,9 +108,9 @@ header bridged_metadata_h {
     bit<8>      cycles;
     bit<16>     rtsid;
     bit<16>     fwdid;
-    bit<16>     mar;
-    bit<16>     mbr;
-    bit<16>     mbr2;
+    bit<32>     mar;
+    bit<32>     mbr;
+    bit<32>     mbr2;
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
     bit<2>      padding;
@@ -145,6 +147,7 @@ struct ingress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
+    active_data_h                               data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
@@ -156,5 +159,6 @@ struct egress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
+    active_data_h                               data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
 }

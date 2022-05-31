@@ -9,169 +9,169 @@ control Ingress(
 ) {
     
 
-Register<bit<16>, bit<32>>(32w65536) heap_s0;
+Register<bit<32>, bit<32>>(32w65536) heap_s0;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s0) heap_write_s0 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_write_s0 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s0) heap_read_s0 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_read_s0 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s0) heap_count_s0 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_count_s0 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s1;
+Register<bit<32>, bit<32>>(32w65536) heap_s1;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_write_s1 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_write_s1 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_read_s1 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_read_s1 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s1) heap_count_s1 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_count_s1 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s2;
+Register<bit<32>, bit<32>>(32w65536) heap_s2;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_write_s2 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_write_s2 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_read_s2 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_read_s2 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s2) heap_count_s2 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_count_s2 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s3;
+Register<bit<32>, bit<32>>(32w65536) heap_s3;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_write_s3 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_write_s3 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_read_s3 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_read_s3 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s3) heap_count_s3 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_count_s3 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s4;
+Register<bit<32>, bit<32>>(32w65536) heap_s4;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_write_s4 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_write_s4 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_read_s4 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_read_s4 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s4) heap_count_s4 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_count_s4 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s5;
+Register<bit<32>, bit<32>>(32w65536) heap_s5;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_write_s5 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_write_s5 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_read_s5 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_read_s5 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s5) heap_count_s5 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_count_s5 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s6;
+Register<bit<32>, bit<32>>(32w65536) heap_s6;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_write_s6 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_write_s6 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_read_s6 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_read_s6 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s6) heap_count_s6 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_count_s6 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
 };
 
-Register<bit<16>, bit<32>>(32w65536) heap_s7;
+Register<bit<32>, bit<32>>(32w65536) heap_s7;
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_write_s7 = {
-    void apply(inout bit<16> value) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_write_s7 = {
+    void apply(inout bit<32> value) {
         value = hdr.meta.mbr;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_read_s7 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_read_s7 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
     }
 };
 
-RegisterAction<bit<16>, bit<32>, bit<16>>(heap_s7) heap_count_s7 = {
-    void apply(inout bit<16> value, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_count_s7 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
         rv = value;
         value = value + 1;
     }
@@ -330,145 +330,384 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
 
     action set_port() {
         meta.port_change = 1;
-        meta.vport = hdr.meta.mbr;
-    }
-
-    action complete() {
-        hdr.meta.complete = 1;
-    }
-
-    action uncomplete() {
-        hdr.meta.complete = 0;
-    }
-
-    action acc1_load() {
-        hdr.ih.acc = hdr.meta.mbr;
-    }
-
-    action acc2_load() {
-        hdr.ih.acc2 = hdr.meta.mbr;
-    }
-
-    action copy_mbr2_mbr1() {
-        hdr.meta.mbr2 = hdr.meta.mbr;
-    }
-
-    action copy_mbr1_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr2;
-    }
-
-    action mark_packet() {
-        hdr.ih.flag_marked = 1;
-    }
-
-    action memfault() {
-        hdr.ih.flag_mfault = 1;
-        hdr.ih.acc = hdr.meta.mar;
-        complete();
-        rts();
-    }
-
-    action min_mbr1_mbr2() {
-        hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
-    }
-
-    action min_mbr2_mbr1() {
-        hdr.meta.mbr2 = (hdr.meta.mbr2 <= hdr.meta.mbr ? hdr.meta.mbr2 : hdr.meta.mbr);
-    }
-
-    action mbr1_equals_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr ^ hdr.meta.mbr2;
-    }
-
-    action copy_mar_mbr() {
-        hdr.meta.mar = hdr.meta.mbr;
-    }
-
-    action copy_mbr_mar() {
-        hdr.meta.mbr = hdr.meta.mar;
-    }
-
-    action bit_and_mar_mbr() {
-        hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
-    }
-
-    action mar_add_mbr() {
-        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
-    }
-
-    action mar_add_mbr2() {
-        hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
-    }
-
-    action mbr_add_mbr2() {
-        hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
-    }
-
-    action mar_mbr_add_mbr2() {
-        hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
-    }
-
-    action copy_acc_mbr() {
-        hdr.ih.acc = hdr.meta.mbr;
-    }
-
-    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
-
-    action hash_5_tuple() {
-        hdr.meta.mbr = crc16.get({
-            hdr.meta.ipv4_src,
-            hdr.meta.ipv4_dst,
-            hdr.meta.ipv4_protocol,
-            hdr.meta.l4_src,
-            hdr.meta.l4_dst,
-            hdr.meta.mbr
-        });
-    }
-
-    action load_salt() {
-        hdr.meta.mbr = CONST_SALT;
+        meta.vport = (bit<16>)hdr.meta.mbr;
     }
 
     // GENERATED: ACTIONS
 
-    action mar_load_s0() {
-    hdr.meta.mar = hdr.instr[0].arg;
+    action complete() {
+    hdr.meta.complete = 1;
 }
 
-action mbr1_load_s0() {
-    hdr.meta.mbr = hdr.instr[0].arg;
+action uncomplete() {
+    hdr.meta.complete = 0;
 }
 
-action mbr2_load_s0() {
-    hdr.meta.mbr2 = hdr.instr[0].arg;
+action copy_mbr2_mbr1() {
+    hdr.meta.mbr2 = hdr.meta.mbr;
 }
 
-action mbr_add_s0() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[0].arg;
+action copy_mbr1_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr2;
 }
 
-action mar_add_s0() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[0].arg;
+action mark_packet() {
+    hdr.ih.flag_marked = 1;
 }
 
+action memfault() {
+    hdr.ih.flag_mfault = 1;
+    complete();
+    rts();
+}
+
+action min_mbr1_mbr2() {
+    hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
+}
+
+action min_mbr2_mbr1() {
+    hdr.meta.mbr2 = (hdr.meta.mbr2 <= hdr.meta.mbr ? hdr.meta.mbr2 : hdr.meta.mbr);
+}
+
+action mbr1_equals_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.meta.mbr2;
+}
+
+action copy_mar_mbr() {
+    hdr.meta.mar = hdr.meta.mbr;
+}
+
+action copy_mbr_mar() {
+    hdr.meta.mbr = hdr.meta.mar;
+}
+
+action bit_and_mar_mbr() {
+    hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
+}
+
+action mar_add_mbr() {
+    hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr;
+}
+
+action mar_add_mbr2() {
+    hdr.meta.mar = hdr.meta.mar + hdr.meta.mbr2;
+}
+
+action mbr_add_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.meta.mbr2;
+}
+
+action mar_mbr_add_mbr2() {
+    hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
+}
+
+Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
+
+action hash_5_tuple() {
+    hdr.meta.mbr = (bit<32>)crc16.get({
+        hdr.meta.ipv4_src,
+        hdr.meta.ipv4_dst,
+        hdr.meta.ipv4_protocol,
+        hdr.meta.l4_src,
+        hdr.meta.l4_dst,
+        hdr.meta.mbr
+    });
+}
+
+action load_salt() {
+    hdr.meta.mbr = CONST_SALT;
+}
+action mar_load_d0() {
+    hdr.meta.mar = hdr.data.data_0;
+}
+
+action d0_load_mar() {
+    hdr.data.data_0 = hdr.meta.mar;
+}
+
+/*action mar_add_d0() {
+    hdr.meta.mar = hdr.meta.mar + hdr.data.data_0;
+}*/
+
+/*action bit_and_mar_d0() {
+    hdr.meta.mar = hdr.meta.mar & hdr.data.data_0;
+}*/
+
+/*action mar_equals_d0() {
+    hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_0;
+}*/
+action mar_load_d1() {
+    hdr.meta.mar = hdr.data.data_1;
+}
+
+action d1_load_mar() {
+    hdr.data.data_1 = hdr.meta.mar;
+}
+
+/*action mar_add_d1() {
+    hdr.meta.mar = hdr.meta.mar + hdr.data.data_1;
+}*/
+
+/*action bit_and_mar_d1() {
+    hdr.meta.mar = hdr.meta.mar & hdr.data.data_1;
+}*/
+
+/*action mar_equals_d1() {
+    hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_1;
+}*/
+action mar_load_d2() {
+    hdr.meta.mar = hdr.data.data_2;
+}
+
+action d2_load_mar() {
+    hdr.data.data_2 = hdr.meta.mar;
+}
+
+/*action mar_add_d2() {
+    hdr.meta.mar = hdr.meta.mar + hdr.data.data_2;
+}*/
+
+/*action bit_and_mar_d2() {
+    hdr.meta.mar = hdr.meta.mar & hdr.data.data_2;
+}*/
+
+/*action mar_equals_d2() {
+    hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_2;
+}*/
+action mar_load_d3() {
+    hdr.meta.mar = hdr.data.data_3;
+}
+
+action d3_load_mar() {
+    hdr.data.data_3 = hdr.meta.mar;
+}
+
+/*action mar_add_d3() {
+    hdr.meta.mar = hdr.meta.mar + hdr.data.data_3;
+}*/
+
+/*action bit_and_mar_d3() {
+    hdr.meta.mar = hdr.meta.mar & hdr.data.data_3;
+}*/
+
+/*action mar_equals_d3() {
+    hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_3;
+}*/
+action mar_load_d4() {
+    hdr.meta.mar = hdr.data.data_4;
+}
+
+action d4_load_mar() {
+    hdr.data.data_4 = hdr.meta.mar;
+}
+
+/*action mar_add_d4() {
+    hdr.meta.mar = hdr.meta.mar + hdr.data.data_4;
+}*/
+
+/*action bit_and_mar_d4() {
+    hdr.meta.mar = hdr.meta.mar & hdr.data.data_4;
+}*/
+
+/*action mar_equals_d4() {
+    hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_4;
+}*/
+action mbr_load_d0() {
+    hdr.meta.mbr = hdr.data.data_0;
+}
+
+action d0_load_mbr() {
+    hdr.data.data_0 = hdr.meta.mbr;
+}
+
+/*action mbr_add_d0() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.data.data_0;
+}*/
+
+/*action bit_and_mbr_d0() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.data.data_0;
+}*/
+
+/*action mbr_equals_d0() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_0;
+}*/
+action mbr_load_d1() {
+    hdr.meta.mbr = hdr.data.data_1;
+}
+
+action d1_load_mbr() {
+    hdr.data.data_1 = hdr.meta.mbr;
+}
+
+/*action mbr_add_d1() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.data.data_1;
+}*/
+
+/*action bit_and_mbr_d1() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.data.data_1;
+}*/
+
+/*action mbr_equals_d1() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_1;
+}*/
+action mbr_load_d2() {
+    hdr.meta.mbr = hdr.data.data_2;
+}
+
+action d2_load_mbr() {
+    hdr.data.data_2 = hdr.meta.mbr;
+}
+
+/*action mbr_add_d2() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.data.data_2;
+}*/
+
+/*action bit_and_mbr_d2() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.data.data_2;
+}*/
+
+/*action mbr_equals_d2() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_2;
+}*/
+action mbr_load_d3() {
+    hdr.meta.mbr = hdr.data.data_3;
+}
+
+action d3_load_mbr() {
+    hdr.data.data_3 = hdr.meta.mbr;
+}
+
+/*action mbr_add_d3() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.data.data_3;
+}*/
+
+/*action bit_and_mbr_d3() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.data.data_3;
+}*/
+
+/*action mbr_equals_d3() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_3;
+}*/
+action mbr_load_d4() {
+    hdr.meta.mbr = hdr.data.data_4;
+}
+
+action d4_load_mbr() {
+    hdr.data.data_4 = hdr.meta.mbr;
+}
+
+/*action mbr_add_d4() {
+    hdr.meta.mbr = hdr.meta.mbr + hdr.data.data_4;
+}*/
+
+/*action bit_and_mbr_d4() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.data.data_4;
+}*/
+
+/*action mbr_equals_d4() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_4;
+}*/
+action mbr2_load_d0() {
+    hdr.meta.mbr2 = hdr.data.data_0;
+}
+
+action d0_load_mbr2() {
+    hdr.data.data_0 = hdr.meta.mbr2;
+}
+
+/*action mbr2_add_d0() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 + hdr.data.data_0;
+}*/
+
+/*action bit_and_mbr2_d0() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 & hdr.data.data_0;
+}*/
+
+/*action mbr2_equals_d0() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 ^ hdr.data.data_0;
+}*/
+action mbr2_load_d1() {
+    hdr.meta.mbr2 = hdr.data.data_1;
+}
+
+action d1_load_mbr2() {
+    hdr.data.data_1 = hdr.meta.mbr2;
+}
+
+/*action mbr2_add_d1() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 + hdr.data.data_1;
+}*/
+
+/*action bit_and_mbr2_d1() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 & hdr.data.data_1;
+}*/
+
+/*action mbr2_equals_d1() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 ^ hdr.data.data_1;
+}*/
+action mbr2_load_d2() {
+    hdr.meta.mbr2 = hdr.data.data_2;
+}
+
+action d2_load_mbr2() {
+    hdr.data.data_2 = hdr.meta.mbr2;
+}
+
+/*action mbr2_add_d2() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 + hdr.data.data_2;
+}*/
+
+/*action bit_and_mbr2_d2() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 & hdr.data.data_2;
+}*/
+
+/*action mbr2_equals_d2() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 ^ hdr.data.data_2;
+}*/
+action mbr2_load_d3() {
+    hdr.meta.mbr2 = hdr.data.data_3;
+}
+
+action d3_load_mbr2() {
+    hdr.data.data_3 = hdr.meta.mbr2;
+}
+
+/*action mbr2_add_d3() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 + hdr.data.data_3;
+}*/
+
+/*action bit_and_mbr2_d3() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 & hdr.data.data_3;
+}*/
+
+/*action mbr2_equals_d3() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 ^ hdr.data.data_3;
+}*/
+action mbr2_load_d4() {
+    hdr.meta.mbr2 = hdr.data.data_4;
+}
+
+action d4_load_mbr2() {
+    hdr.data.data_4 = hdr.meta.mbr2;
+}
+
+/*action mbr2_add_d4() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 + hdr.data.data_4;
+}*/
+
+/*action bit_and_mbr2_d4() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 & hdr.data.data_4;
+}*/
+
+/*action mbr2_equals_d4() {
+    hdr.meta.mbr2 = hdr.meta.mbr2 ^ hdr.data.data_4;
+}*/
 action jump_s0() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s0() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[0].goto);
-}
-
-action bit_and_mbr_s0() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[0].arg;
-}
-
-action bit_and_mar_s0() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[0].arg;
-}
-
-action mbr_equals_arg_s0() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[0].arg;
 }
 
 action memory_read_s0() {
@@ -480,49 +719,17 @@ action memory_write_s0() {
 }
 
 action memory_count_s0() {
-    hdr.meta.mbr = heap_count_s0.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s0.execute(hdr.meta.mar);
 }
 
 action hash_s0() {
-    hdr.meta.mar = crc_16_s0.get({hdr.meta.mbr});
-}action mar_load_s1() {
-    hdr.meta.mar = hdr.instr[1].arg;
-}
-
-action mbr1_load_s1() {
-    hdr.meta.mbr = hdr.instr[1].arg;
-}
-
-action mbr2_load_s1() {
-    hdr.meta.mbr2 = hdr.instr[1].arg;
-}
-
-action mbr_add_s1() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[1].arg;
-}
-
-action mar_add_s1() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[1].arg;
-}
-
-action jump_s1() {
+    //hdr.meta.mar = (bit<32>)crc_16_s0.get({hdr.meta.mbr});
+}action jump_s1() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s1() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[1].goto);
-}
-
-action bit_and_mbr_s1() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[1].arg;
-}
-
-action bit_and_mar_s1() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[1].arg;
-}
-
-action mbr_equals_arg_s1() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[1].arg;
 }
 
 action memory_read_s1() {
@@ -534,49 +741,17 @@ action memory_write_s1() {
 }
 
 action memory_count_s1() {
-    hdr.meta.mbr = heap_count_s1.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s1.execute(hdr.meta.mar);
 }
 
 action hash_s1() {
-    hdr.meta.mar = crc_16_s1.get({hdr.meta.mbr});
-}action mar_load_s2() {
-    hdr.meta.mar = hdr.instr[2].arg;
-}
-
-action mbr1_load_s2() {
-    hdr.meta.mbr = hdr.instr[2].arg;
-}
-
-action mbr2_load_s2() {
-    hdr.meta.mbr2 = hdr.instr[2].arg;
-}
-
-action mbr_add_s2() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[2].arg;
-}
-
-action mar_add_s2() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[2].arg;
-}
-
-action jump_s2() {
+    //hdr.meta.mar = (bit<32>)crc_16_s1.get({hdr.meta.mbr});
+}action jump_s2() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s2() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[2].goto);
-}
-
-action bit_and_mbr_s2() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[2].arg;
-}
-
-action bit_and_mar_s2() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[2].arg;
-}
-
-action mbr_equals_arg_s2() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[2].arg;
 }
 
 action memory_read_s2() {
@@ -588,49 +763,17 @@ action memory_write_s2() {
 }
 
 action memory_count_s2() {
-    hdr.meta.mbr = heap_count_s2.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s2.execute(hdr.meta.mar);
 }
 
 action hash_s2() {
-    hdr.meta.mar = crc_16_s2.get({hdr.meta.mbr});
-}action mar_load_s3() {
-    hdr.meta.mar = hdr.instr[3].arg;
-}
-
-action mbr1_load_s3() {
-    hdr.meta.mbr = hdr.instr[3].arg;
-}
-
-action mbr2_load_s3() {
-    hdr.meta.mbr2 = hdr.instr[3].arg;
-}
-
-action mbr_add_s3() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[3].arg;
-}
-
-action mar_add_s3() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[3].arg;
-}
-
-action jump_s3() {
+    //hdr.meta.mar = (bit<32>)crc_16_s2.get({hdr.meta.mbr});
+}action jump_s3() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s3() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[3].goto);
-}
-
-action bit_and_mbr_s3() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[3].arg;
-}
-
-action bit_and_mar_s3() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[3].arg;
-}
-
-action mbr_equals_arg_s3() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[3].arg;
 }
 
 action memory_read_s3() {
@@ -642,49 +785,17 @@ action memory_write_s3() {
 }
 
 action memory_count_s3() {
-    hdr.meta.mbr = heap_count_s3.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s3.execute(hdr.meta.mar);
 }
 
 action hash_s3() {
-    hdr.meta.mar = crc_16_s3.get({hdr.meta.mbr});
-}action mar_load_s4() {
-    hdr.meta.mar = hdr.instr[4].arg;
-}
-
-action mbr1_load_s4() {
-    hdr.meta.mbr = hdr.instr[4].arg;
-}
-
-action mbr2_load_s4() {
-    hdr.meta.mbr2 = hdr.instr[4].arg;
-}
-
-action mbr_add_s4() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[4].arg;
-}
-
-action mar_add_s4() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[4].arg;
-}
-
-action jump_s4() {
+    //hdr.meta.mar = (bit<32>)crc_16_s3.get({hdr.meta.mbr});
+}action jump_s4() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s4() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[4].goto);
-}
-
-action bit_and_mbr_s4() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[4].arg;
-}
-
-action bit_and_mar_s4() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[4].arg;
-}
-
-action mbr_equals_arg_s4() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[4].arg;
 }
 
 action memory_read_s4() {
@@ -696,49 +807,17 @@ action memory_write_s4() {
 }
 
 action memory_count_s4() {
-    hdr.meta.mbr = heap_count_s4.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s4.execute(hdr.meta.mar);
 }
 
 action hash_s4() {
-    hdr.meta.mar = crc_16_s4.get({hdr.meta.mbr});
-}action mar_load_s5() {
-    hdr.meta.mar = hdr.instr[5].arg;
-}
-
-action mbr1_load_s5() {
-    hdr.meta.mbr = hdr.instr[5].arg;
-}
-
-action mbr2_load_s5() {
-    hdr.meta.mbr2 = hdr.instr[5].arg;
-}
-
-action mbr_add_s5() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[5].arg;
-}
-
-action mar_add_s5() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[5].arg;
-}
-
-action jump_s5() {
+    //hdr.meta.mar = (bit<32>)crc_16_s4.get({hdr.meta.mbr});
+}action jump_s5() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s5() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[5].goto);
-}
-
-action bit_and_mbr_s5() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[5].arg;
-}
-
-action bit_and_mar_s5() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[5].arg;
-}
-
-action mbr_equals_arg_s5() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[5].arg;
 }
 
 action memory_read_s5() {
@@ -750,49 +829,17 @@ action memory_write_s5() {
 }
 
 action memory_count_s5() {
-    hdr.meta.mbr = heap_count_s5.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s5.execute(hdr.meta.mar);
 }
 
 action hash_s5() {
-    hdr.meta.mar = crc_16_s5.get({hdr.meta.mbr});
-}action mar_load_s6() {
-    hdr.meta.mar = hdr.instr[6].arg;
-}
-
-action mbr1_load_s6() {
-    hdr.meta.mbr = hdr.instr[6].arg;
-}
-
-action mbr2_load_s6() {
-    hdr.meta.mbr2 = hdr.instr[6].arg;
-}
-
-action mbr_add_s6() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[6].arg;
-}
-
-action mar_add_s6() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[6].arg;
-}
-
-action jump_s6() {
+    //hdr.meta.mar = (bit<32>)crc_16_s5.get({hdr.meta.mbr});
+}action jump_s6() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s6() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[6].goto);
-}
-
-action bit_and_mbr_s6() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[6].arg;
-}
-
-action bit_and_mar_s6() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[6].arg;
-}
-
-action mbr_equals_arg_s6() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[6].arg;
 }
 
 action memory_read_s6() {
@@ -804,49 +851,17 @@ action memory_write_s6() {
 }
 
 action memory_count_s6() {
-    hdr.meta.mbr = heap_count_s6.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s6.execute(hdr.meta.mar);
 }
 
 action hash_s6() {
-    hdr.meta.mar = crc_16_s6.get({hdr.meta.mbr});
-}action mar_load_s7() {
-    hdr.meta.mar = hdr.instr[7].arg;
-}
-
-action mbr1_load_s7() {
-    hdr.meta.mbr = hdr.instr[7].arg;
-}
-
-action mbr2_load_s7() {
-    hdr.meta.mbr2 = hdr.instr[7].arg;
-}
-
-action mbr_add_s7() {
-    hdr.meta.mbr = hdr.meta.mbr + hdr.instr[7].arg;
-}
-
-action mar_add_s7() {
-    hdr.meta.mar = hdr.meta.mar + hdr.instr[7].arg;
-}
-
-action jump_s7() {
+    //hdr.meta.mar = (bit<32>)crc_16_s6.get({hdr.meta.mbr});
+}action jump_s7() {
     hdr.meta.disabled = 1;
 }
 
 action attempt_rejoin_s7() {
     hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[7].goto);
-}
-
-action bit_and_mbr_s7() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.instr[7].arg;
-}
-
-action bit_and_mar_s7() {
-    hdr.meta.mar = hdr.meta.mar & hdr.instr[7].arg;
-}
-
-action mbr_equals_arg_s7() {
-    hdr.meta.mbr = hdr.meta.mbr ^ hdr.instr[7].arg;
 }
 
 action memory_read_s7() {
@@ -858,11 +873,11 @@ action memory_write_s7() {
 }
 
 action memory_count_s7() {
-    hdr.meta.mbr = heap_count_s7.execute((bit<32>)hdr.meta.mar);
+    hdr.meta.mbr = heap_count_s7.execute(hdr.meta.mar);
 }
 
 action hash_s7() {
-    hdr.meta.mar = crc_16_s7.get({hdr.meta.mbr});
+    //hdr.meta.mar = (bit<32>)crc_16_s7.get({hdr.meta.mbr});
 }
 
     // GENERATED: TABLES
@@ -875,8 +890,8 @@ table instruction_0 {
         hdr.instr[0].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -885,36 +900,55 @@ table instruction_0 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s0;
-mbr1_load_s0;
-mbr2_load_s0;
-mbr_add_s0;
-mar_add_s0;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s0;
 attempt_rejoin_s0;
-bit_and_mbr_s0;
-bit_and_mar_s0;
-mbr_equals_arg_s0;
 memory_read_s0;
 memory_write_s0;
 memory_count_s0;
@@ -928,8 +962,8 @@ table instruction_1 {
         hdr.instr[1].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -938,36 +972,55 @@ table instruction_1 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s1;
-mbr1_load_s1;
-mbr2_load_s1;
-mbr_add_s1;
-mar_add_s1;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s1;
 attempt_rejoin_s1;
-bit_and_mbr_s1;
-bit_and_mar_s1;
-mbr_equals_arg_s1;
 memory_read_s1;
 memory_write_s1;
 memory_count_s1;
@@ -981,8 +1034,8 @@ table instruction_2 {
         hdr.instr[2].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -991,36 +1044,55 @@ table instruction_2 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s2;
-mbr1_load_s2;
-mbr2_load_s2;
-mbr_add_s2;
-mar_add_s2;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s2;
 attempt_rejoin_s2;
-bit_and_mbr_s2;
-bit_and_mar_s2;
-mbr_equals_arg_s2;
 memory_read_s2;
 memory_write_s2;
 memory_count_s2;
@@ -1034,8 +1106,8 @@ table instruction_3 {
         hdr.instr[3].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -1044,36 +1116,55 @@ table instruction_3 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s3;
-mbr1_load_s3;
-mbr2_load_s3;
-mbr_add_s3;
-mar_add_s3;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s3;
 attempt_rejoin_s3;
-bit_and_mbr_s3;
-bit_and_mar_s3;
-mbr_equals_arg_s3;
 memory_read_s3;
 memory_write_s3;
 memory_count_s3;
@@ -1087,8 +1178,8 @@ table instruction_4 {
         hdr.instr[4].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -1097,36 +1188,55 @@ table instruction_4 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s4;
-mbr1_load_s4;
-mbr2_load_s4;
-mbr_add_s4;
-mar_add_s4;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s4;
 attempt_rejoin_s4;
-bit_and_mbr_s4;
-bit_and_mar_s4;
-mbr_equals_arg_s4;
 memory_read_s4;
 memory_write_s4;
 memory_count_s4;
@@ -1140,8 +1250,8 @@ table instruction_5 {
         hdr.instr[5].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -1150,36 +1260,55 @@ table instruction_5 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s5;
-mbr1_load_s5;
-mbr2_load_s5;
-mbr_add_s5;
-mar_add_s5;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s5;
 attempt_rejoin_s5;
-bit_and_mbr_s5;
-bit_and_mar_s5;
-mbr_equals_arg_s5;
 memory_read_s5;
 memory_write_s5;
 memory_count_s5;
@@ -1193,8 +1322,8 @@ table instruction_6 {
         hdr.instr[6].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -1203,36 +1332,55 @@ table instruction_6 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s6;
-mbr1_load_s6;
-mbr2_load_s6;
-mbr_add_s6;
-mar_add_s6;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s6;
 attempt_rejoin_s6;
-bit_and_mbr_s6;
-bit_and_mar_s6;
-mbr_equals_arg_s6;
 memory_read_s6;
 memory_write_s6;
 memory_count_s6;
@@ -1246,8 +1394,8 @@ table instruction_7 {
         hdr.instr[7].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;
@@ -1256,36 +1404,55 @@ table instruction_7 {
         rts;
         set_port;
         complete;
-        uncomplete;
-        acc1_load;
-        acc2_load;
-        copy_mbr2_mbr1;
-        copy_mbr1_mbr2;
-        mark_packet;
-        memfault;
-        min_mbr1_mbr2;
-        min_mbr2_mbr1;
-        mbr1_equals_mbr2;
-        copy_mar_mbr;
-        copy_mbr_mar;
-        bit_and_mar_mbr;
-        mar_add_mbr;
-        mar_add_mbr2;
-        mbr_add_mbr2;
-        mar_mbr_add_mbr2;
-        copy_acc_mbr;
-        hash_5_tuple;
-        load_salt;
-        mar_load_s7;
-mbr1_load_s7;
-mbr2_load_s7;
-mbr_add_s7;
-mar_add_s7;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
 jump_s7;
 attempt_rejoin_s7;
-bit_and_mbr_s7;
-bit_and_mar_s7;
-mbr_equals_arg_s7;
 memory_read_s7;
 memory_write_s7;
 memory_count_s7;
@@ -1305,11 +1472,11 @@ hash_s7;
         activep4_stats.count((bit<32>)hdr.ih.fid);
     }
 
-    action get_quotas(bit<16> alloc_id, bit<16> mem_start, bit<16> mem_end, bit<16> curr_bw) {
-        hdr.ih.acc = mem_start;
-        hdr.ih.acc2 = mem_end;
-        hdr.ih.data = curr_bw;
-        hdr.ih.data2 = alloc_id;
+    action get_quotas(bit<32> alloc_id, bit<32> mem_start, bit<32> mem_end, bit<32> curr_bw) {
+        hdr.data.data_0 = mem_start;
+        hdr.data.data_1 = mem_end;
+        hdr.data.data_2 = curr_bw;
+        hdr.data.data_3 = alloc_id;
         hdr.ih.flag_allocated = 1;
         rts();
         bypass_egress();

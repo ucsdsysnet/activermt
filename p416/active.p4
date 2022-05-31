@@ -15,7 +15,7 @@ typedef bit<4> mirror_type_t;
 const mirror_type_t MIRROR_TYPE_I2E = 1;
 const mirror_type_t MIRROR_TYPE_E2E = 2;
 
-#define MAX_INSTRUCTIONS       28
+#define MAX_INSTRUCTIONS       18
 #define MAX_TCP_OPTIONS        10
 #define CONST_SALT             0x5093
 
