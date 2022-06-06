@@ -27,12 +27,20 @@ parser EgressParser(
         pkt.extract(hdr.ih);
         transition select(hdr.ih.flag_done) {
             1   : accept;
-            _   : parse_active_data;
+            _   : parse_active_args;
+        }
+    }
+
+    state parse_active_args {
+        pkt.extract(hdr.data);
+        transition select(hdr.ih.opt_data) {
+            1   : parse_active_data;
+            _   : parse_active_instruction;
         }
     }
 
     state parse_active_data {
-        pkt.extract(hdr.data);
+        pkt.extract(hdr.bulk_data);
         transition parse_active_instruction;
     }
 

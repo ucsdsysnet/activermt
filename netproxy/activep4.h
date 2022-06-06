@@ -7,7 +7,13 @@
 #define MAXPROGSIZE     512
 #define MAXFILESIZE     1024
 #define ACTIVEP4SIG     0x12345678
-#define AP4FLAGS_DONE   0x0100
+#define AP4_INSTR_LEN   2
+#define AP4_DATA_LEN    5
+
+#define AP4FLAGMASK_OPT_ARGS    0x8000
+#define AP4FLAGMASK_OPT_DATA    0x4000
+#define AP4FLAGMASK_FLAG_EOE    0x0100
+#define AP4FLAGMASK_FLAG_MARKED 0x0800
 
 #include <stdio.h>
 #include <string.h>
@@ -20,28 +26,48 @@ typedef struct {
     uint16_t    flags;
     uint16_t    fid;
     uint16_t    seq;
-    uint16_t    acc;
-    uint16_t    acc2;
-    uint16_t    data;
-    uint16_t    data2;
-    uint16_t    res;
-} activep4_ih;
+} __attribute__((packed)) activep4_ih;
+
+typedef struct {
+    uint32_t    data[AP4_DATA_LEN];
+} __attribute__((packed)) activep4_data_t;
 
 typedef struct {
     uint8_t     flags;
     uint8_t     opcode;
-    uint16_t    arg;
-} activep4_instr;
+} __attribute__((packed)) activep4_instr;
+
+typedef struct {
+    uint32_t    bulk_data_0;
+    uint32_t    bulk_data_1;
+    uint32_t    bulk_data_2;
+    uint32_t    bulk_data_3;
+    uint32_t    bulk_data_4;
+    uint32_t    bulk_data_5;
+    uint32_t    bulk_data_6;
+    uint32_t    bulk_data_7;
+    uint32_t    bulk_data_8;
+    uint32_t    bulk_data_9;
+    uint32_t    bulk_data_10;
+    uint32_t    bulk_data_11;
+    uint32_t    bulk_data_12;
+    uint32_t    bulk_data_13;
+    uint32_t    bulk_data_14;
+    uint32_t    bulk_data_15;
+    uint32_t    bulk_data_16;
+    uint32_t    bulk_data_17;
+} __attribute__((packed)) activep4_bulk_data_t;
 
 typedef struct {
     char        argname[20];
     int         idx;
+    int         didx;
     int         value_idx;
 } activep4_arg;
 
 typedef struct {
     char        argname[20];
-    uint16_t    argval;
+    uint32_t    argval;
 } activep4_argval;
 
 typedef struct {
@@ -77,12 +103,14 @@ static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_arg
     int ap4_buf_size = ap4->ap4_len * sizeof(activep4_instr);
     char* bufptr = buf;
     activep4_instr* prog = ap4->ap4_prog;
+    activep4_ih* ih;
     activep4_instr* instr;
+    activep4_data_t* data;
     int numinstr = ap4->ap4_len;
+    ih = (activep4_ih*)buf;
     offset += insert_active_initial_header(buf, ap4->fid, 0);
     bufptr += offset;
-    memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
-    offset += ap4_buf_size;
+    // insert arguments
     if(ap4->args_mapped == 0) {
         for(i = 0; i < ap4->num_args; i++) {
             for(j = 0; j < numargs; j++) {
@@ -93,10 +121,19 @@ static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_arg
         }
         ap4->args_mapped = 1;
     }
+    memset(bufptr, 0, sizeof(activep4_data_t));
+    data = (activep4_data_t*)bufptr;
     for(i = 0; i < ap4->num_args; i++) {
-        instr = (activep4_instr*)bufptr + ap4->ap4_args[i].idx;
-        instr->arg = htons(args[ap4->ap4_args[i].value_idx].argval);
+        data->data[ap4->ap4_args[i].didx] = htonl(args[ap4->ap4_args[i].value_idx].argval);
     }
+    if(ap4->num_args > 0) {
+        bufptr += sizeof(activep4_data_t);
+        offset += sizeof(activep4_data_t);
+        ih->flags = htons(ntohs(ih->flags) | AP4FLAGMASK_OPT_ARGS);
+    }
+    // insert active program
+    memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
+    offset += ap4_buf_size;
     return offset;
 }
 
@@ -115,15 +152,13 @@ static inline int read_active_program(activep4_t* ap4, char* prog_file) {
     printf("[Active Program]\n");
     #endif
     while(i < MAXPROGLEN && j < ap4_size) {
-        arg = fbuf[j + 2] << 8 + fbuf[j + 3];
         prog[i].flags = fbuf[j];
         prog[i].opcode = fbuf[j + 1];
-        prog[i].arg = htons(arg);
         #ifdef DEBUG
-        printf("%d,%d,%d\n", prog[i].flags, prog[i].opcode, prog[i].arg);
+        printf("%d,%d\n", prog[i].flags, prog[i].opcode);
         #endif
         i++;
-        j += 4;
+        j += AP4_INSTR_LEN;
     }
     ap4->ap4_len = i;
     return i;
@@ -134,14 +169,17 @@ static inline int read_active_args(activep4_t* ap4, char* arg_file) {
     char buf[50];
     const char* tok;
     char argname[50];
-    int i, argidx, j, num_args = 0;
+    int i, argidx, dataidx, j, num_args = 0;
     while( fgets(buf, 50, fp) > 0 ) {
-        for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, "\n"), i++) {
+        for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
             if(i == 0) strcpy(argname, tok);
-            else argidx = atoi(tok);
+            else if(i == 1) argidx = atoi(tok);
+            else dataidx = atoi(tok);
         }
         ap4->ap4_args[num_args].idx = argidx;
+        ap4->ap4_args[num_args].didx = dataidx;
         strcpy(ap4->ap4_args[num_args].argname, argname);
+        printf("[ARG] %s %d %d\n", ap4->ap4_args[num_args].argname, ap4->ap4_args[num_args].idx,  ap4->ap4_args[num_args].didx);
         num_args++;
     }
     ap4->num_args = num_args;

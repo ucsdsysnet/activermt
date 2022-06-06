@@ -91,11 +91,11 @@ header active_data_h {
     bit<32>     data_2;
     bit<32>     data_3;
     bit<32>     data_4;
-    bit<32>     data_5;
 }
 
 header active_instruction_h {
-    bit<7>      flags;
+    bit<6>      flags;
+    bit<1>      tr_nz;
     bit<1>      goto;
     bit<8>      opcode;
 }
@@ -130,9 +130,6 @@ header bridged_metadata_h {
     bit<8>      cycles;
     bit<16>     rtsid;
     bit<16>     fwdid;
-    bit<32>     mar;
-    bit<32>     mbr;
-    bit<32>     mbr2;
     MirrorId_t  egr_mir_ses;
     pkt_type_t  pkt_type;
     bit<2>      padding;
@@ -143,6 +140,9 @@ header bridged_metadata_h {
     bit<8>      ipv4_protocol;
     bit<16>     l4_src;
     bit<16>     l4_dst;
+    bit<32>     mar;
+    bit<32>     mbr;
+    bit<32>     mbr2;
 }
 
 header eg_port_mirror_h {

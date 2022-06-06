@@ -4,27 +4,42 @@ import os
 import sys
 import json
 
+class ActiveIH:
+
+    ACTIVEP4_SIG = 0x12345678
+
+    def __init__(self):
+        self.fid = 1
+
 class ActiveInstruction:
-    def __init__(self, opcode=0, arg=0, goto=0):
+    def __init__(self, opcode=0, goto=0):
         self.opcode = opcode
-        self.arg = arg
         self.goto = goto
 
     def getBytes(self):
-        instr = ( bytes(chr(self.goto)) + bytes(chr(self.opcode)) + bytes(chr(self.arg >> 8)) + bytes(chr(self.arg)) )
+        instr = ( bytes(chr(self.goto)) + bytes(chr(self.opcode)) )
         return instr
+
+    def printInstruction(self, mnemonics=None):
+        opname = mnemonics[self.opcode] if mnemonics is not None else "OPCODE"
+        print("%d\t[%d]\t%s" % (self.opcode, self.goto, opname))
 
 class ActiveProgram:
     def __init__(self, program):
+        self.max_args = 5
+        self.opt_data = False
         self.OPCODES = {}
+        self.MNEMONICS = {}
         opcodeList = open(os.path.join(os.environ['ACTIVEP4_SRC'], 'config', 'opcode_action_mapping.csv')).read().strip().splitlines()
         for opcode in range(0, len(opcodeList)):
             m = opcodeList[opcode].split(',')
             pnemonic = m[0]
             self.OPCODES[pnemonic] = opcode
+            self.MNEMONICS[opcode] = pnemonic
         self.program = []
         self.args = {}
         self.labels = {}
+        self.num_data = 0
         program.reverse()
         for i in range(0, len(program)):
             opcode = program[i][0]
@@ -40,8 +55,15 @@ class ActiveProgram:
                 elif param_1[0] == '$':
                     argname = param_1[1:]
                     if argname not in self.args:
-                        self.args[argname] = []    
-                    self.args[argname].append(len(program) - i - 1)
+                        self.args[argname] = {
+                            'idx'   : [],
+                            'didx'  : None
+                        }
+                        if '_LOAD' in opcode:
+                            self.args[argname]['didx'] = self.num_data
+                            opcode = '%s_DATA_%d' % (opcode, self.num_data)
+                            self.num_data = self.num_data + 1
+                    self.args[argname]['idx'].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
                     self.labels[param_2] = 1
@@ -53,9 +75,9 @@ class ActiveProgram:
                     if argname not in self.args:
                         self.args[argname] = []    
                     self.args[argname].append(len(program) - i - 1)
-            self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], arg=0, goto=label))
+            self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], goto=label))
         self.program.reverse()
-        self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], arg=0, goto=0))
+        self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], goto=0))
 
     def getByteCode(self):
         if len(self.program) < 1:
@@ -64,12 +86,17 @@ class ActiveProgram:
         for i in range(1, len(self.program)):
             bytecode = bytecode + self.program[i].getBytes()
         return bytecode
+
+    def printProgram(self):
+        print("OPCODE\tFLAGS\tMNEMONIC")
+        for i in range(0, len(self.program)):
+            self.program[i].printInstruction(mnemonics=self.MNEMONICS)
     
     def getArgumentMap(self):
         args = []
         for arg in self.args:
-            for idx in self.args[arg]:
-                args.append((arg, idx))
+            for idx in self.args[arg]['idx']:
+                args.append((arg, idx, self.args[arg]['didx']))
         return args
 
 if len(sys.argv) < 2:
@@ -80,6 +107,7 @@ with open(sys.argv[1]) as f:
     rows = f.read().strip().splitlines()
     program = [ x.split(',') for x in rows ]
     ap = ActiveProgram(program)
+    ap.printProgram()
     with open(sys.argv[1].replace('.ap4', '.apo'), 'w') as out:
         out.write(ap.getByteCode())
         out.close()

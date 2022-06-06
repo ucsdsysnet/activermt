@@ -9,6 +9,7 @@
 #define TUNOFFSET       4
 #define CRCPOLY_DNP     0x3D65
 #define ETHTYPE_AP4     0x83B2
+#define ETHTYPE_IP      0x0800
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -291,6 +292,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
     char*           payload;
 
     activep4_ih* ap4ih;
+    activep4_data_t* ap4data;
 
     uint16_t ap4_flags, pkt_size, ip_masked_src, ip_masked_dst;
 
@@ -323,30 +325,46 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
                 printf("<< FRAME: %d bytes from protocol 0x%hx\n", read_bytes, ntohs(eth->h_proto));
                 #endif
                 if(ntohs(eth->h_proto) == ETHTYPE_AP4 && read_bytes > 34) {
-                    offset = 0;
+                    //offset = sizeof(struct ethhdr);
+                    pptr = recvbuf + sizeof(struct ethhdr);
                     ap4ih = NULL;
-                    if(is_activep4(recvbuf + sizeof(struct ethhdr))) {
-                        ap4ih = (activep4_ih*) (recvbuf + sizeof(struct ethhdr));
+                    if(is_activep4(pptr)) {
+                        ap4ih = (activep4_ih*) pptr;
                         ap4_flags = ntohs(ap4ih->flags);
-                        if(((ap4_flags & AP4FLAGS_DONE) >> 8) == 0) offset = get_active_eof(recvbuf + sizeof(struct ethhdr) + sizeof(activep4_ih));
-                        offset += sizeof(activep4_ih);
-                        iph = (struct iphdr*) (recvbuf + sizeof(struct ethhdr) + offset);
+                        pptr += sizeof(activep4_ih);
+                        #ifdef DEBUG
+                        printf("FLAGS %x\n", ap4_flags);
+                        #endif
+                        if((ap4_flags & AP4FLAGMASK_OPT_ARGS) != 0) {
+                            ap4data = (activep4_data_t*) pptr;
+                            //offset += sizeof(activep4_data_t);
+                            pptr += sizeof(activep4_data_t);
+                        }
+                        if((ap4_flags & AP4FLAGMASK_FLAG_EOE) == 0) {
+                            ap4_offset = get_active_eof(pptr);
+                            //offset += ap4_offset;
+                            pptr += ap4_offset;
+                        }
+                        iph = (struct iphdr*) pptr;
+                        pptr += sizeof(struct iphdr);
                         if((iph->daddr & TUN_NETMASK) == (tun_info.ipv4addr & TUN_NETMASK)) {
                             #ifdef DEBUG
                             inet_ntop(AF_INET, &tun_info.ipv4addr, ipaddr, IPADDRSIZE);
                             printf("== RELAY: %d bytes to %s\n", ntohs(iph->tot_len), ipaddr);
                             #endif
                             if(iph->protocol == IPPROTO_TCP) {
-                                tcph = (struct tcphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
-                                payload = recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr) + (4 * tcph->doff);
+                                tcph = (struct tcphdr*) pptr;
+                                pptr += (4 * tcph->doff);
+                                payload = pptr;
                                 active_filter_tcp_rx(iph, tcph, ap4ih, payload);
                             } else if(iph->protocol == IPPROTO_UDP) {
-                                udph = (struct udphdr*) (recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr));
-                                payload = recvbuf + sizeof(struct ethhdr) + offset + sizeof(struct iphdr) + sizeof(struct udphdr);
+                                udph = (struct udphdr*) pptr;
+                                pptr += sizeof(struct udphdr);
+                                payload = pptr;
                                 active_filter_udp_rx(iph, udph, ap4ih, payload);
                             }
                             memset(sendbuf, 0, BUFSIZE);
-                            memcpy(sendbuf, recvbuf + sizeof(struct ethhdr) + offset, ntohs(iph->tot_len));
+                            memcpy(sendbuf, (char*)iph, ntohs(iph->tot_len));
                             tin.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
                             if( sendto(conn, sendbuf, ntohs(iph->tot_len), 0, (struct sockaddr*)&tin, sizeof(tin)) < 0 )
                             perror("sendto");

@@ -91,6 +91,7 @@ class ActiveP4Installer:
         #info = ipv4_host.info(return_info=True, print_info=False)
 
     def installInstructionTableEntriesGress(self, fid, gress, num_stages, offset=0):
+        REG_MAX = 0xFFFFF
         for i in range(offset, num_stages + offset):
             instr_table = getattr(gress, 'instruction_%d' % i)
             for a in self.opcode_action:
@@ -100,14 +101,14 @@ class ActiveP4Installer:
                 add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i)))
                 add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(i))
                 if act['condition'] is not None:
-                    mbr_start = 1 if act['condition'] else 0
-                    mbr_end = 0xFFFF if act['condition'] else 0
-                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=mbr_start, mbr_end=mbr_end, mar_start=0, mar_end=0xFFFF)
+                    mbr_19_0__start = 1 if act['condition'] else 0
+                    mbr_19_0__end = REG_MAX if act['condition'] else 0
+                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=mbr_19_0__start, mbr_19_0__end=mbr_19_0__end, mar_19_0__start=0, mar_19_0__end=REG_MAX)
                 else:
                     if act['opcode'] == 0:
-                        add_method(fid=fid, opcode=act['opcode'], complete=1, disabled=0, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
-                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
-                add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_start=0, mbr_end=0xFFFF, mar_start=0, mar_end=0xFFFF)
+                        add_method(fid=fid, opcode=act['opcode'], complete=1, disabled=0, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
+                    add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
+                add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
         bfrt.complete_operations()
 
     def installInstructionTableEntries(self, fid):

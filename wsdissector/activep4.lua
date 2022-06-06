@@ -5,13 +5,15 @@ local field_signature = ProtoField.uint32("activep4.SIG", "ActiveP4SIG", base.HE
 local field_flags = ProtoField.uint16("activep4.flags", "Flags", base.HEX)
 local field_fid = ProtoField.uint16("activep4.fid", "FID", base.DEC)
 local field_seq = ProtoField.uint16("activep4.seq", "SEQ", base.DEC)
-local field_acc = ProtoField.uint16("activep4.acc", "ACC", base.DEC)
-local field_acc2 = ProtoField.uint16("activep4.acc2", "ACC2", base.DEC)
-local field_data = ProtoField.uint16("activep4.data", "DATA", base.DEC)
-local field_data2 = ProtoField.uint16("activep4.data2", "DATA2", base.DEC)
-local field_res = ProtoField.uint16("activep4.res", "RES", base.HEX)
 
-proto_activep4.fields = {field_signature, field_flags, field_fid, field_seq, field_acc, field_acc2, field_data, field_data2, field_res}
+proto_activep4.fields = {field_signature, field_flags, field_fid, field_seq}
+
+local MAX_ARGS = 5
+local field_active_arg = {}
+for i = 1,MAX_ARGS do
+    field_active_arg[i] = ProtoField.uint32(string.format("activep4.arg_%d", i), string.format("Argument[%d]", i), base.HEX)
+    table.insert(proto_activep4.fields, field_active_arg[i])
+end
 
 function proto_activep4.dissector(buffer, pinfo, tree)
     
@@ -23,14 +25,18 @@ function proto_activep4.dissector(buffer, pinfo, tree)
     payload_tree:add(field_flags, buffer(4, 2))
     payload_tree:add(field_fid, buffer(6, 2))
     payload_tree:add(field_seq, buffer(8, 2))
-    payload_tree:add(field_acc, buffer(10, 2))
-    payload_tree:add(field_acc2, buffer(12, 2))
-    payload_tree:add(field_data, buffer(14, 2))
-    payload_tree:add(field_data2, buffer(16, 2))
-    payload_tree:add(field_res, buffer(18, 2))
 
     local flags = buffer(4, 2):uint()
-    local buffer_remainder = buffer:range(20, buffer:len() - 20):tvb()
+    local buffer_remainder = buffer:range(10, buffer:len() - 10):tvb()
+
+    if (bit.band(flags, 0x8000)) ~= 0
+    then
+        for i = 1,MAX_ARGS do
+            local offset = (i - 1) * 4
+            payload_tree:add(field_active_arg[i], string.format("0x%x", buffer_remainder(offset, 4):uint()))
+        end
+        buffer_remainder = buffer_remainder:range(20, buffer_remainder:len() - 20):tvb()
+    end
 
     if (bit.band(flags, 0x0100)) == 0
     then
@@ -57,10 +63,10 @@ function proto_active_program.dissector(buffer, pinfo, tree)
     local program_len = 0
 
     for i = 1,MAX_INSTR do
-        program_len = program_len + 4
-        local offset = (i - 1) * 4
+        program_len = program_len + 2
+        local offset = (i - 1) * 2
         local opcode = buffer(offset + 1, 1):uint()
-        payload_tree:add(field_active_instruction[i], string.format("[0x%x] OPCODE=%d (%d)", buffer(offset, 1):uint(), opcode, buffer(offset + 2, 2):uint()))
+        payload_tree:add(field_active_instruction[i], string.format("[0x%x] OPCODE=%d", buffer(offset, 1):uint(), opcode))
         if opcode == 0
         then
             break
