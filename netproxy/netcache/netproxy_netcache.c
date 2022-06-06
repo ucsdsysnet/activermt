@@ -31,8 +31,8 @@ typedef struct {
 } redis_command_t;
 
 typedef struct {
-    uint16_t    sw_key;
-    uint16_t    sw_value;
+    uint32_t    sw_key;
+    uint32_t    sw_value;
     uint16_t    addr;
     uint32_t    rts_ack;
     uint32_t    rts_seq;
@@ -116,10 +116,10 @@ static inline void deserialize_redis_data(char* buf, int buflen, redis_command_t
     }
 }
 
-static inline int serialize_redis_data(char* buf, uint16_t response, int len) {
-    int buflen = 8;
-    response = ntohs(response);
-    sprintf(buf, "$2\r\n%c%c\r\n", (char)(response >> 8), (char)response);
+static inline int serialize_redis_data(char* buf, uint32_t response, int len) {
+    int buflen = 10;
+    response = ntohl(response);
+    sprintf(buf, "$4\r\n%c%c%c%c\r\n", (char)(response >> 24), (char)(response >> 16), (char)(response >> 8), (char)response );
     buf[buflen] = '\0';
     while(buflen++ < len) buf[buflen] = '\0';
     return buflen;
@@ -228,10 +228,10 @@ void active_filter_tcp_rx(struct iphdr* iph, struct tcphdr* tcph, activep4_ih* a
         #ifdef DEBUG
         printf("TCP PUSH RX (conn %d)\n", conn_id);
         #endif
+        app[conn_id].sw_key = ap4_data->data[2];
+        app[conn_id].addr = (uint16_t)ap4_data->data[3];
         if(app[conn_id].rts_seq == tcph->seq) {
             payload_size = ntohs(iph->tot_len) - (iph->ihl * 4) - (tcph->doff * 4);
-            app[conn_id].sw_key = ap4_data->data[2];
-            app[conn_id].addr = ap4_data->data[3];
             prev_seq = ntohl(tcph->seq);
             tcph->seq = tcph->ack_seq;
             tcph->ack_seq = htonl(prev_seq + payload_size);
