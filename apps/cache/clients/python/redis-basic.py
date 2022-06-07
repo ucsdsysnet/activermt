@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import redis
+import time
 
 parser = argparse.ArgumentParser(description="GET/SET Key-Value objects using a Redis store.")
 parser.add_argument("-p", dest="port", type=int, default=6379, help="Redis server port")
@@ -23,5 +24,9 @@ if args.set is not None:
     r.set(args.set[0], args.set[1])
 
 if args.get is not None:
+    start = time.time()
     value = r.get(args.get)
+    end = time.time()
+    elapsed = end - start
+    print("Elapsed %f seconds." % elapsed)
     print(value)

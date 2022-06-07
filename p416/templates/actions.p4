@@ -11,7 +11,9 @@ action memory_read_s<stage-id>() {
 }
 
 action memory_bulk_read_s<stage-id>() {
-    hdr.bulk_data.data_<stage-id> = heap_read_s<stage-id>.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.data_<data-id> = heap_read_s<stage-id>.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s<stage-id>() {

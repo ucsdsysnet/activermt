@@ -764,6 +764,8 @@ action memory_read_s0() {
 
 action memory_bulk_read_s0() {
     hdr.bulk_data.data_0 = heap_read_s0.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s0() {
@@ -794,6 +796,8 @@ action memory_read_s1() {
 
 action memory_bulk_read_s1() {
     hdr.bulk_data.data_1 = heap_read_s1.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s1() {
@@ -824,6 +828,8 @@ action memory_read_s2() {
 
 action memory_bulk_read_s2() {
     hdr.bulk_data.data_2 = heap_read_s2.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s2() {
@@ -854,6 +860,8 @@ action memory_read_s3() {
 
 action memory_bulk_read_s3() {
     hdr.bulk_data.data_3 = heap_read_s3.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s3() {
@@ -884,6 +892,8 @@ action memory_read_s4() {
 
 action memory_bulk_read_s4() {
     hdr.bulk_data.data_4 = heap_read_s4.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s4() {
@@ -914,6 +924,8 @@ action memory_read_s5() {
 
 action memory_bulk_read_s5() {
     hdr.bulk_data.data_5 = heap_read_s5.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s5() {
@@ -944,6 +956,8 @@ action memory_read_s6() {
 
 action memory_bulk_read_s6() {
     hdr.bulk_data.data_6 = heap_read_s6.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s6() {
@@ -974,6 +988,8 @@ action memory_read_s7() {
 
 action memory_bulk_read_s7() {
     hdr.bulk_data.data_7 = heap_read_s7.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
 }
 
 action memory_write_s7() {

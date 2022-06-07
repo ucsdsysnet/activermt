@@ -45,12 +45,13 @@ class ActiveP4Generator:
                 actions.append(action)
         return actions
 
-    def getStagewiseActions(self, stage_id):
+    def getStagewiseActions(self, stage_id, offset=0):
         p4code = None
         with open(self.paths['actions']) as f:
             template = f.read()
             instruction_id = stage_id
-            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id))
+            data_id = stage_id + offset
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace('<data-id>', str(data_id))
             f.close()
         actions = self.getActionDefinitions(p4code.splitlines())
         return (p4code, actions)
@@ -73,12 +74,12 @@ class ActiveP4Generator:
         actions = self.getActionDefinitions(p4code.splitlines())
         return (p4code, actions)
 
-    def getGeneratedTable(self, stage_id):
+    def getGeneratedTable(self, stage_id, offset=0):
         p4code = None
         actions = []
         gen = self.getCommonActions()
         actions = actions + gen[1]
-        gen = self.getStagewiseActions(stage_id)
+        gen = self.getStagewiseActions(stage_id, offset)
         actions = actions + gen[1]
         p4code_actions = gen[0]
         with open(self.paths['instruction']) as f:
@@ -94,11 +95,12 @@ class ActiveP4Generator:
                 tables.append(tokens[1])
         return (p4code, tables, p4code_actions)
 
-    def getGeneratedRegister(self, stage_id):
+    def getGeneratedRegister(self, stage_id, offset):
         p4code = None
         with open(self.paths['memory']) as f:
             template = f.read()
-            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id))
+            data_id = stage_id + offset
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace('<data-id>', str(data_id))
             f.close()
         return p4code
 
@@ -123,10 +125,10 @@ class ActiveP4Generator:
             table_names = []
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
-            for i in range(offset, num_stages + offset):
+            for i in range(0, num_stages):
                 instr_id = i
-                tabledefs = self.getGeneratedTable(i)
-                registerdefs = self.getGeneratedRegister(i)
+                tabledefs = self.getGeneratedTable(i, offset)
+                registerdefs = self.getGeneratedRegister(i, offset)
                 hash_algo = hash_algos[hash_idx]
                 hash_idx = (hash_idx + 1) % len(hash_algos)
                 hashdefs = self.getGeneratedHashing(i, hash_algo)
@@ -151,5 +153,5 @@ with open('ingress/control.p4', 'w') as f:
     f.close()
 
 with open('egress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('egress', 10))
+    f.write(generator.getGeneratedControl('egress', 10, 8))
     f.close()

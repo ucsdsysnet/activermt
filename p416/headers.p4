@@ -170,8 +170,8 @@ struct ingress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
-    active_instruction_h[MAX_INSTRUCTIONS]      instr;
     active_bulk_data_h                          bulk_data;
+    active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
     tcp_h                                       tcp;
@@ -183,6 +183,6 @@ struct egress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
-    active_instruction_h[MAX_INSTRUCTIONS]      instr;
     active_bulk_data_h                          bulk_data;
+    active_instruction_h[MAX_INSTRUCTIONS]      instr;
 }

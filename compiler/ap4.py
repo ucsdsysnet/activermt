@@ -57,12 +57,16 @@ class ActiveProgram:
                     if argname not in self.args:
                         self.args[argname] = {
                             'idx'   : [],
-                            'didx'  : None
+                            'didx'  : None,
+                            'bulk'  : False
                         }
                         if '_LOAD' in opcode:
                             self.args[argname]['didx'] = self.num_data
                             opcode = '%s_DATA_%d' % (opcode, self.num_data)
                             self.num_data = self.num_data + 1
+                        elif '_BULK_WRITE' in opcode:
+                            self.args[argname]['bulk'] = True
+                            self.args[argname]['didx'] = 0
                     self.args[argname]['idx'].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
@@ -96,7 +100,8 @@ class ActiveProgram:
         args = []
         for arg in self.args:
             for idx in self.args[arg]['idx']:
-                args.append((arg, idx, self.args[arg]['didx']))
+                is_bulk = 1 if self.args[arg]['bulk'] else 0
+                args.append((arg, idx, self.args[arg]['didx'], is_bulk))
         return args
 
 if len(sys.argv) < 2:

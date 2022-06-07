@@ -187,7 +187,7 @@ sid_to_port_mapping = {
 fids = [1]
 
 installer.clear_all()
-installer.installForwardingTableEntries(config='cheetahlb')
+installer.installForwardingTableEntries(config='default')
 installer.installInstructionTableEntries(1)
 installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
 installer.setMirrorSessions(sid_to_port_mapping)
