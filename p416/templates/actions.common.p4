@@ -68,11 +68,11 @@ Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
 
 action hash_5_tuple() {
     hdr.meta.mbr = (bit<32>)crc16.get({
-        hdr.meta.ipv4_src,
-        hdr.meta.ipv4_dst,
-        hdr.meta.ipv4_protocol,
-        hdr.meta.l4_src,
-        hdr.meta.l4_dst,
+        hdr.meta.hash_data_0,
+        hdr.meta.hash_data_1,
+        hdr.meta.hash_data_2,
+        hdr.meta.hash_data_3,
+        hdr.meta.hash_data_4,
         hdr.meta.mbr
     });
 }

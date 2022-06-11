@@ -381,6 +381,14 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
         meta.vport = (bit<16>)hdr.meta.mbr;
     }
 
+    action load_5_tuple_tcp() {
+        hdr.meta.hash_data_0 = hdr.ipv4.src_addr;
+        hdr.meta.hash_data_1 = hdr.ipv4.dst_addr;
+        hdr.meta.hash_data_2 = (bit<32>)0x0006;
+        hdr.meta.hash_data_3 = (bit<32>)hdr.tcp.src_port;
+        hdr.meta.hash_data_4 = (bit<32>)hdr.tcp.dst_port;
+    }
+
     // GENERATED: ACTIONS
 
     action complete() {
@@ -453,11 +461,11 @@ Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
 
 action hash_5_tuple() {
     hdr.meta.mbr = (bit<32>)crc16.get({
-        hdr.meta.ipv4_src,
-        hdr.meta.ipv4_dst,
-        hdr.meta.ipv4_protocol,
-        hdr.meta.l4_src,
-        hdr.meta.l4_dst,
+        hdr.meta.hash_data_0,
+        hdr.meta.hash_data_1,
+        hdr.meta.hash_data_2,
+        hdr.meta.hash_data_3,
+        hdr.meta.hash_data_4,
         hdr.meta.mbr
     });
 }
@@ -1027,6 +1035,7 @@ table instruction_0 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1102,6 +1111,7 @@ table instruction_1 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1177,6 +1187,7 @@ table instruction_2 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1252,6 +1263,7 @@ table instruction_3 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1327,6 +1339,7 @@ table instruction_4 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1402,6 +1415,7 @@ table instruction_5 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1477,6 +1491,7 @@ table instruction_6 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1552,6 +1567,7 @@ table instruction_7 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1680,7 +1696,7 @@ hash_s7;
     // control flow
 
     apply {
-        meta.set_clr_seq = 1;
+        //meta.set_clr_seq = 1;
         seq_vaddr.apply();
         seq_addr_translate();
         check_prior_exec();

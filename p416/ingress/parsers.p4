@@ -26,9 +26,6 @@ parser IngressParser(
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
         tcp_checksum.subtract({ hdr.ipv4.src_addr, hdr.ipv4.dst_addr });
-        hdr.meta.ipv4_src = hdr.ipv4.src_addr;
-        hdr.meta.ipv4_dst = hdr.ipv4.dst_addr;
-        hdr.meta.ipv4_protocol = hdr.ipv4.protocol;
         transition select(hdr.ipv4.protocol) {
             ipv4_protocol_t.UDP : parse_udp;
             ipv4_protocol_t.TCP : parse_tcp;
@@ -38,8 +35,6 @@ parser IngressParser(
 
     state parse_udp {
         pkt.extract(hdr.udp);
-        hdr.meta.l4_src = hdr.udp.src_port;
-        hdr.meta.l4_dst = hdr.udp.dst_port;
         transition select(hdr.udp.dst_port) {
             active_port_t.UDP    : parse_active_ih;
             default : accept;
@@ -48,8 +43,6 @@ parser IngressParser(
 
     state parse_tcp {
         pkt.extract(hdr.tcp);
-        hdr.meta.l4_src = hdr.tcp.src_port;
-        hdr.meta.l4_dst = hdr.tcp.dst_port;
         tcp_checksum.subtract({ hdr.tcp.checksum });
         tcp_checksum.subtract({ hdr.tcp.seq_no, hdr.tcp.ack_no });
         tcp_checksum.subtract({ hdr.tcp.flags });

@@ -29,6 +29,10 @@ control Egress(
         // TODO re-circulate
     }
 
+    action load_5_tuple_tcp() {
+        // NOP
+    }
+
     // GENERATED: ACTIONS
 
     <generated-actions-defs>

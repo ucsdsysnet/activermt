@@ -60,7 +60,8 @@ MEM_BULK_WRITE,memory_bulk_write_s#
 MEM_BULK_READ,memory_bulk_read_s#
 MEM_COUNT,memory_count_s#
 HASHMBR,hash_s#
-HASH5TUPLE,hash_5_tuple
+LOAD_TCP_5TUPLE,load_5_tuple_tcp
+HASH,hash_5_tuple
 MBR_LOAD,NULL
 MBR2_LOAD,NULL
 MAR_LOAD,NULL

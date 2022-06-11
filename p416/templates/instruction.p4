@@ -13,6 +13,7 @@ table instruction_<stage-id> {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         <generated-actions>
     }
     size = 512;

@@ -409,6 +409,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         // TODO re-circulate
     }
 
+    action load_5_tuple_tcp() {
+        // NOP
+    }
+
     // GENERATED: ACTIONS
 
     action complete() {
@@ -481,11 +485,11 @@ Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
 
 action hash_5_tuple() {
     hdr.meta.mbr = (bit<32>)crc16.get({
-        hdr.meta.ipv4_src,
-        hdr.meta.ipv4_dst,
-        hdr.meta.ipv4_protocol,
-        hdr.meta.l4_src,
-        hdr.meta.l4_dst,
+        hdr.meta.hash_data_0,
+        hdr.meta.hash_data_1,
+        hdr.meta.hash_data_2,
+        hdr.meta.hash_data_3,
+        hdr.meta.hash_data_4,
         hdr.meta.mbr
     });
 }
@@ -1119,6 +1123,7 @@ table instruction_0 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1194,6 +1199,7 @@ table instruction_1 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1269,6 +1275,7 @@ table instruction_2 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1344,6 +1351,7 @@ table instruction_3 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1419,6 +1427,7 @@ table instruction_4 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1494,6 +1503,7 @@ table instruction_5 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1569,6 +1579,7 @@ table instruction_6 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1644,6 +1655,7 @@ table instruction_7 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1719,6 +1731,7 @@ table instruction_8 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -1794,6 +1807,7 @@ table instruction_9 {
         skip;
         rts;
         set_port;
+        load_5_tuple_tcp;
         complete;
 uncomplete;
 copy_mbr2_mbr1;

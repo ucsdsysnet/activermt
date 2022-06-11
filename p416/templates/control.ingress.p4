@@ -77,6 +77,14 @@ control Ingress(
         meta.vport = (bit<16>)hdr.meta.mbr;
     }
 
+    action load_5_tuple_tcp() {
+        hdr.meta.hash_data_0 = hdr.ipv4.src_addr;
+        hdr.meta.hash_data_1 = hdr.ipv4.dst_addr;
+        hdr.meta.hash_data_2 = (bit<32>)0x0006;
+        hdr.meta.hash_data_3 = (bit<32>)hdr.tcp.src_port;
+        hdr.meta.hash_data_4 = (bit<32>)hdr.tcp.dst_port;
+    }
+
     // GENERATED: ACTIONS
 
     <generated-actions-defs>
@@ -153,7 +161,7 @@ control Ingress(
     // control flow
 
     apply {
-        meta.set_clr_seq = 1;
+        //meta.set_clr_seq = 1;
         seq_vaddr.apply();
         seq_addr_translate();
         check_prior_exec();

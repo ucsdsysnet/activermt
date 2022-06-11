@@ -135,11 +135,11 @@ header bridged_metadata_h {
     bit<2>      padding;
     bit<16>     randnum;
     bit<16>     tcp_length;
-    bit<32>     ipv4_src;
-    bit<32>     ipv4_dst;
-    bit<8>      ipv4_protocol;
-    bit<16>     l4_src;
-    bit<16>     l4_dst;
+    bit<32>     hash_data_0;
+    bit<32>     hash_data_1;
+    bit<32>     hash_data_2;
+    bit<32>     hash_data_3;
+    bit<32>     hash_data_4;
     bit<32>     mar;
     bit<32>     mbr;
     bit<32>     mbr2;
@@ -159,6 +159,7 @@ struct ig_metadata_t {
     bit<16>     seq_addr;
     bit<16>     vport;
     bit<16>     chksum_tcp;
+    bit<16>     phash;
 }
 
 struct eg_metadata_t {
