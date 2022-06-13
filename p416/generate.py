@@ -139,6 +139,7 @@ class ActiveP4Generator:
                 if self.truncate:
                     set_tables = " ".join([ "%s.apply();" % x for x in tabledefs[1] ])
                     table_names.append('if(hdr.instr[%d].isValid()) { %s hdr.instr[%d].setInvalid(); }' % (i, set_tables, i))
+                    #table_names.append('if(hdr.meta.mbr == 0) hdr.meta.zero = true;')
                 else:
                     table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); }' % (i, x)) for x in tabledefs[1]]
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
@@ -149,9 +150,9 @@ class ActiveP4Generator:
 generator = ActiveP4Generator(truncate=True)
 
 with open('ingress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('ingress', 8))
+    f.write(generator.getGeneratedControl('ingress', 10))
     f.close()
 
 with open('egress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('egress', 10, 8))
+    f.write(generator.getGeneratedControl('egress', 2, 10))
     f.close()

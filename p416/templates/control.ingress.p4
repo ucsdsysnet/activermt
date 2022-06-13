@@ -73,8 +73,10 @@ control Ingress(
     }
 
     action set_port() {
-        meta.port_change = 1;
-        meta.vport = (bit<16>)hdr.meta.mbr;
+        /*meta.port_change = 1;
+        meta.vport = (bit<16>)hdr.meta.mbr;*/
+        //hdr.ipv4.dst_addr = hdr.meta.mbr;
+        ig_tm_md.ucast_egress_port = (bit<9>)hdr.meta.mbr;
     }
 
     action load_5_tuple_tcp() {
@@ -100,7 +102,7 @@ control Ingress(
     Random<bit<16>>() rnd;
     Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
-    action set_quotas(bit<8> circulations) {
+    /*action set_quotas(bit<8> circulations) {
         hdr.meta.cycles = circulations;
         activep4_stats.count((bit<32>)hdr.ih.fid);
     }
@@ -125,57 +127,39 @@ control Ingress(
             set_quotas;
             get_quotas;
         }
-    }
+    }*/
 
-    action get_seq_vaddr_params(bit<16> addrmask, bit<16> offset) {
-        meta.seq_addr = hdr.ih.seq & addrmask;
-        meta.seq_offset = offset;
-    }
+    Register<bit<8>, bit<16>>(32w65536) seqmap;
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
 
-    table seq_vaddr {
-        key     = {
-            hdr.ih.fid  : exact;
-        }
-        actions = {
-            get_seq_vaddr_params;
-        }
-    }
-
-    Register<bit<8>, bit<32>>(32w65536) seqmap;
-
-    RegisterAction<bit<8>, bit<32>, bit<8>>(seqmap) seq_update = {
+    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
         void apply(inout bit<8> value, out bit<8> rv) {
             rv = value;
-            value = meta.set_clr_seq;
+            value = (bit<8>)~hdr.ih.rst_seq & value;
         }
     };
 
-    action seq_addr_translate() {
-        meta.seq_addr = meta.seq_addr + meta.seq_offset;
-    }
-
     action check_prior_exec() {
-        //hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
+        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
+        hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
     // control flow
 
     apply {
-        //meta.set_clr_seq = 1;
-        seq_vaddr.apply();
-        seq_addr_translate();
-        check_prior_exec();
-        if(!hdr.ih.isValid()) {
-            bypass_egress();
-        }
         hdr.meta.randnum = rnd.get();
-        quotas.apply();
+        if(hdr.ih.isValid()) {
+            activep4_stats.count((bit<32>)hdr.ih.fid);
+            check_prior_exec();
+        } else bypass_egress();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
+            ipv4_host.apply();
             overall_stats.count(0);
+            /*overall_stats.count(0);
             if(vroute.apply().miss) {
                 ipv4_host.apply();
-            }
+            }*/
         }
     }
 }

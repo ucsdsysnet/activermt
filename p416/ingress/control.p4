@@ -225,6 +225,60 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_count_s7 = {
     }
 };
 
+Register<bit<32>, bit<32>>(32w65536) heap_s8;
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_write_s8 = {
+    void apply(inout bit<32> value) {
+        value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_bulk_write_s8 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_8;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_read_s8 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
+        rv = value;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_count_s8 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
+Register<bit<32>, bit<32>>(32w65536) heap_s9;
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_write_s9 = {
+    void apply(inout bit<32> value) {
+        value = hdr.meta.mbr;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_bulk_write_s9 = {
+    void apply(inout bit<32> value) {
+        value = hdr.bulk_data.data_9;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_read_s9 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
+        rv = value;
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_count_s9 = {
+    void apply(inout bit<32> value, out bit<32> rv) {
+        rv = value;
+        value = value + 1;
+    }
+};
+
     
 
 CRCPolynomial<bit<16>>(
@@ -315,6 +369,28 @@ CRCPolynomial<bit<16>>(
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
 
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s8;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
+
+CRCPolynomial<bit<16>>(
+    coeff       = 0x18005,
+    reversed    = true,
+    msb         = false,
+    extended    = false,
+    init        = 0x0000,
+    xor         = 0x0000
+) crc_16_poly_s9;
+
+Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
+
     Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
 
     action bypass_egress() {
@@ -377,8 +453,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
     }
 
     action set_port() {
-        meta.port_change = 1;
-        meta.vport = (bit<16>)hdr.meta.mbr;
+        /*meta.port_change = 1;
+        meta.vport = (bit<16>)hdr.meta.mbr;*/
+        hdr.ipv4.dst_addr = hdr.meta.mbr;
+        ig_tm_md.ucast_egress_port = (bit<9>)hdr.meta.mbr;
     }
 
     action load_5_tuple_tcp() {
@@ -1014,6 +1092,70 @@ action memory_count_s7() {
 
 action hash_s7() {
     //hdr.meta.mar = (bit<32>)crc_16_s7.get({hdr.meta.mbr});
+}action jump_s8() {
+    hdr.meta.disabled = 1;
+}
+
+action attempt_rejoin_s8() {
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[8].goto);
+}
+
+action memory_read_s8() {
+    hdr.meta.mbr = heap_read_s8.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_read_s8() {
+    hdr.bulk_data.data_8 = heap_read_s8.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
+}
+
+action memory_write_s8() {
+    heap_write_s8.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s8() {
+    heap_bulk_write_s8.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_count_s8() {
+    hdr.meta.mbr = heap_count_s8.execute(hdr.meta.mar);
+}
+
+action hash_s8() {
+    //hdr.meta.mar = (bit<32>)crc_16_s8.get({hdr.meta.mbr});
+}action jump_s9() {
+    hdr.meta.disabled = 1;
+}
+
+action attempt_rejoin_s9() {
+    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[9].goto);
+}
+
+action memory_read_s9() {
+    hdr.meta.mbr = heap_read_s9.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_read_s9() {
+    hdr.bulk_data.data_9 = heap_read_s9.execute((bit<32>)hdr.meta.mar);
+    hdr.bulk_data.setValid();
+    hdr.ih.opt_data = 1;
+}
+
+action memory_write_s9() {
+    heap_write_s9.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_bulk_write_s9() {
+    heap_bulk_write_s9.execute((bit<32>)hdr.meta.mar);
+}
+
+action memory_count_s9() {
+    hdr.meta.mbr = heap_count_s9.execute(hdr.meta.mar);
+}
+
+action hash_s9() {
+    //hdr.meta.mar = (bit<32>)crc_16_s9.get({hdr.meta.mbr});
 }
 
     // GENERATED: TABLES
@@ -1026,6 +1168,7 @@ table instruction_0 {
         hdr.instr[0].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1102,6 +1245,7 @@ table instruction_1 {
         hdr.instr[1].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1178,6 +1322,7 @@ table instruction_2 {
         hdr.instr[2].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1254,6 +1399,7 @@ table instruction_3 {
         hdr.instr[3].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1330,6 +1476,7 @@ table instruction_4 {
         hdr.instr[4].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1406,6 +1553,7 @@ table instruction_5 {
         hdr.instr[5].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1482,6 +1630,7 @@ table instruction_6 {
         hdr.instr[6].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1558,6 +1707,7 @@ table instruction_7 {
         hdr.instr[7].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
         hdr.meta.mbr[19:0]                      : range;
         hdr.meta.mar[19:0]                      : range;
     }
@@ -1628,6 +1778,160 @@ hash_s7;
     size = 512;
 }
 
+table instruction_8 {
+    key = {
+        hdr.ih.fid                              : exact;
+        hdr.instr[8].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
+    }
+    actions = {
+        drop;
+        mark_termination;
+        skip;
+        rts;
+        set_port;
+        load_5_tuple_tcp;
+        complete;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
+jump_s8;
+attempt_rejoin_s8;
+memory_read_s8;
+memory_bulk_read_s8;
+memory_write_s8;
+memory_bulk_write_s8;
+memory_count_s8;
+hash_s8;
+    }
+    size = 512;
+}
+
+table instruction_9 {
+    key = {
+        hdr.ih.fid                              : exact;
+        hdr.instr[9].opcode      : exact;
+        hdr.meta.complete                       : exact;
+        hdr.meta.disabled                       : exact;
+        //hdr.meta.zero                           : exact;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
+    }
+    actions = {
+        drop;
+        mark_termination;
+        skip;
+        rts;
+        set_port;
+        load_5_tuple_tcp;
+        complete;
+uncomplete;
+copy_mbr2_mbr1;
+copy_mbr1_mbr2;
+mark_packet;
+memfault;
+min_mbr1_mbr2;
+min_mbr2_mbr1;
+mbr1_equals_mbr2;
+copy_mar_mbr;
+copy_mbr_mar;
+bit_and_mar_mbr;
+mar_add_mbr;
+mar_add_mbr2;
+mbr_add_mbr2;
+mar_mbr_add_mbr2;
+hash_5_tuple;
+load_salt;
+mar_load_d0;
+d0_load_mar;
+mar_load_d1;
+d1_load_mar;
+mar_load_d2;
+d2_load_mar;
+mar_load_d3;
+d3_load_mar;
+mar_load_d4;
+d4_load_mar;
+mbr_load_d0;
+d0_load_mbr;
+mbr_load_d1;
+d1_load_mbr;
+mbr_load_d2;
+d2_load_mbr;
+mbr_load_d3;
+d3_load_mbr;
+mbr_load_d4;
+d4_load_mbr;
+mbr2_load_d0;
+d0_load_mbr2;
+mbr2_load_d1;
+d1_load_mbr2;
+mbr2_load_d2;
+d2_load_mbr2;
+mbr2_load_d3;
+d3_load_mbr2;
+mbr2_load_d4;
+d4_load_mbr2;
+jump_s9;
+attempt_rejoin_s9;
+memory_read_s9;
+memory_bulk_read_s9;
+memory_write_s9;
+memory_bulk_write_s9;
+memory_count_s9;
+hash_s9;
+    }
+    size = 512;
+}
+
     // resource monitoring
 
     // quota enforcement
@@ -1635,7 +1939,7 @@ hash_s7;
     Random<bit<16>>() rnd;
     Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
-    action set_quotas(bit<8> circulations) {
+    /*action set_quotas(bit<8> circulations) {
         hdr.meta.cycles = circulations;
         activep4_stats.count((bit<32>)hdr.ih.fid);
     }
@@ -1660,51 +1964,31 @@ hash_s7;
             set_quotas;
             get_quotas;
         }
-    }
+    }*/
 
-    action get_seq_vaddr_params(bit<16> addrmask, bit<16> offset) {
-        meta.seq_addr = hdr.ih.seq & addrmask;
-        meta.seq_offset = offset;
-    }
+    Register<bit<8>, bit<16>>(32w65536) seqmap;
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
 
-    table seq_vaddr {
-        key     = {
-            hdr.ih.fid  : exact;
-        }
-        actions = {
-            get_seq_vaddr_params;
-        }
-    }
-
-    Register<bit<8>, bit<32>>(32w65536) seqmap;
-
-    RegisterAction<bit<8>, bit<32>, bit<8>>(seqmap) seq_update = {
+    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
         void apply(inout bit<8> value, out bit<8> rv) {
             rv = value;
-            value = meta.set_clr_seq;
+            value = (bit<8>)~hdr.ih.rst_seq & value;
         }
     };
 
-    action seq_addr_translate() {
-        meta.seq_addr = meta.seq_addr + meta.seq_offset;
-    }
-
     action check_prior_exec() {
-        //hdr.meta.complete = (bit<1>) seq_update.execute((bit<32>) meta.seq_addr);
+        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
+        hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
     // control flow
 
     apply {
-        //meta.set_clr_seq = 1;
-        seq_vaddr.apply();
-        seq_addr_translate();
-        check_prior_exec();
-        if(!hdr.ih.isValid()) {
-            bypass_egress();
-        }
         hdr.meta.randnum = rnd.get();
-        quotas.apply();
+        if(hdr.ih.isValid()) {
+            activep4_stats.count((bit<32>)hdr.ih.fid);
+            check_prior_exec();
+        } else bypass_egress();
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
 		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
@@ -1713,11 +1997,15 @@ hash_s7;
 		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
 		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
 		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
+		if(hdr.instr[8].isValid()) { instruction_8.apply(); hdr.instr[8].setInvalid(); }
+		if(hdr.instr[9].isValid()) { instruction_9.apply(); hdr.instr[9].setInvalid(); }
         if (hdr.ipv4.isValid()) {
+            ipv4_host.apply();
             overall_stats.count(0);
+            /*overall_stats.count(0);
             if(vroute.apply().miss) {
                 ipv4_host.apply();
-            }
+            }*/
         }
     }
 }

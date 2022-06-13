@@ -68,7 +68,7 @@ header active_initial_h {
     bit<32>     ACTIVEP4;
     bit<1>      opt_arg;
     bit<1>      opt_data;
-    bit<1>      flag_bypasseg;
+    bit<1>      rst_seq;
     bit<1>      flag_rts;
     bit<1>      flag_marked;
     bit<1>      flag_aux;
@@ -143,6 +143,7 @@ header bridged_metadata_h {
     bit<32>     mar;
     bit<32>     mbr;
     bit<32>     mbr2;
+    bool        zero;
 }
 
 header eg_port_mirror_h {
