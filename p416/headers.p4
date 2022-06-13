@@ -119,6 +119,8 @@ header active_bulk_data_h {
     bit<32>     data_15;
     bit<32>     data_16;
     bit<32>     data_17;
+    bit<32>     data_18;
+    bit<32>     data_19;
 }
 
 @flexible

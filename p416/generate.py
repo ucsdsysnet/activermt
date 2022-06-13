@@ -154,5 +154,5 @@ with open('ingress/control.p4', 'w') as f:
     f.close()
 
 with open('egress/control.p4', 'w') as f:
-    f.write(generator.getGeneratedControl('egress', 2, 10))
+    f.write(generator.getGeneratedControl('egress', 10, 10))
     f.close()
