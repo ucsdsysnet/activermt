@@ -22,7 +22,8 @@ function [numValid, numTotal] = getNumValidAllocations(numInstances, midx, const
         preSum = 0;
         for j = 1:numInstances
             xidx = preSum + cfg(j);
-            D(j, : ) = M(xidx, : );
+            demand = M(xidx, : );
+            D(j, : ) = demand;
             preSum = sum(numMutants(1:j));
         end
         d = c' * D;

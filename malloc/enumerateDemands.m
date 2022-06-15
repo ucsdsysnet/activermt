@@ -22,7 +22,7 @@ function [enumSize, demands] = enumerateDemands(numMutations, maxMutations)
                 j = j + 1;
             end
         end
+        demands = demands + 1;
     end
-    demands = demands + 1;
 end
 

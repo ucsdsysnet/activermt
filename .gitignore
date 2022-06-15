@@ -17,6 +17,7 @@ bf_drivers*
 *.o
 *.json
 *.ffs_db
+*.asv
 *DS_Store
 .*
 
