@@ -22,6 +22,8 @@ header cache_h {
 }
 
 struct ig_metadata_t {
+    bit<32>     mask;
+    bit<32>     offset;
     bit<32>     mar;
     bit<32>     mbr;
     bool        eq;
