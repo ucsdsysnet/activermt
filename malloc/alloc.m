@@ -41,10 +41,12 @@ for i = 1:ALLOCSIZE
     end
 end
 
-f = @(x) sum(x' ~= x0) + (numel(find(x)) - numel(unique(x(x>0)))) * ALLOCSIZE;
-options = optimoptions('surrogateopt', 'PlotFcn', 'surrogateoptplot', 'MaxFunctionEvaluations', 120);
+f = @(x) sum(x' ~= x0);
+nlcon = @(x) deal(numel(find(x)) - numel(unique(x(x>0))), []);
 
-[x, fval, exitflag, output] = surrogateopt(f, LL, UL, 1:ALLOCSIZE, A, B, [], [], options);
+options = optimoptions('ga', 'ConstraintTolerance', 1e-6, 'PlotFcn', @gaplotbestf);
+
+[x, fval, exitflag, output] = ga(f, ALLOCSIZE, A, B, [], [], LL, UL, nlcon, 1:ALLOCSIZE, options);
 
 % nlcon = @(x) deal([], numel(unique(x(x>0))) - numel(find(x)));
 % opts = optimoptions(@fmincon, 'Algorithm', 'interior-point');
