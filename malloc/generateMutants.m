@@ -1,29 +1,21 @@
-function [mutants] = generateMutants(plen, midx, constr_max_stage)
-%{
-assume: memory ops are non-commutative.
-assume: most compact midx is provided as input.
-constr: specify min instructions separating two mem accesses (B).
-constr: specify max index for memory op (L).
-%}
-    midx_sparse = find(midx);
-    num_memaccess = length(midx_sparse);
-    A = zeros(num_memaccess);
-    A(1,1) = 1;
-    for r = 2:num_memaccess
-        for c = 1:num_memaccess
-            if r - 1 == c
-                A(r, c) = -1;
-            elseif r == c
-                A(r, c) = 1;
-            end
-        end
+function [mutants] = generateMutants(constrUB, constrMinSep)
+    NUM_STAGES = 20;
+    numAccesses = length(constrUB);    
+    A = tril(ones(numAccesses));
+    constrLB = (A * constrMinSep')';
+    A = zeros(numAccesses);
+    A(1, 1) = 1;
+    for r = 2:numAccesses
+        A(r, r - 1) = -1;
+        A(r, r) = 1;
     end
+    
     B = A * midx_sparse';
     L = constr_max_stage(find(constr_max_stage));
-    base = zeros(num_memaccess, 1);
+    base = zeros(numAccesses, 1);
     idxlim = 20 - plen + midx_sparse(end);
     max_mutants = 1;
-    for i = num_memaccess:-1:1
+    for i = numAccesses:-1:1
         base(i) = idxlim;
         max_mutants = max_mutants * idxlim;
         idxlim = idxlim - 1;
@@ -32,8 +24,8 @@ constr: specify max index for memory op (L).
     for i = 1:max_mutants
         eidx = i - 1;
         j = 1;
-        mutant = zeros(num_memaccess, 1);
-        while eidx > 0 && j <= num_memaccess
+        mutant = zeros(numAccesses, 1);
+        while eidx > 0 && j <= numAccesses
             mutant(j) = mod(eidx, base(j));
             eidx = floor(eidx / base(j));
             j = j + 1;
