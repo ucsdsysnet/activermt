@@ -11,7 +11,8 @@ ALLOC_TYPE_HEURISTIC = 2;
 
 MAX_ITER = 300;
 NUM_STAGES = 20;
-NUM_REPEATS = 1000;
+NUM_INSTANCES = NUM_STAGES;
+NUM_REPEATS = 10;
 ARRIVAL_PROB = 0.5;
 
 cacheConstrUB = [10 20];
@@ -20,17 +21,18 @@ cacheConstrMinSep = [3 4];
 lbConstrUB = [10 10 10];
 lbConstrMinSep = [2 3 2];
 
-allocationType = ALLOC_TYPE_HEURISTIC;
+allocationType = ALLOC_TYPE_RANDOMIZED;
 
 fskew = zeros(NUM_REPEATS, 2);
 numAllocated = zeros(NUM_REPEATS, 1);
 utilization = zeros(NUM_REPEATS, 1);
+overlap = zeros(NUM_REPEATS, 1);
 executionTime = zeros(NUM_REPEATS, NUM_STAGES);
 sequence = zeros(NUM_REPEATS, NUM_STAGES);
 
 for k = 1:NUM_REPEATS
     current = zeros(NUM_STAGES, 1);
-    for i = 1:NUM_STAGES
+    for i = 1:NUM_INSTANCES
         if rand() < ARRIVAL_PROB
             constrUB = cacheConstrUB;
             constrMinSep = cacheConstrMinSep;
@@ -47,25 +49,27 @@ for k = 1:NUM_REPEATS
             alloc = getRandomizedAllocation(constrUB, constrMinSep, current, MAX_ITER);
         end
         elapsed = toc(tStart);
-        if sum(bitand(current, alloc), "all") ~= 0
-            break
-        end
+%         if sum(bitand(current, alloc), "all") ~= 0
+%             break
+%         end
         fskew(k, fidx) = fskew(k, fidx) + 1;
         sequence(k, i) = fidx;
         executionTime(k, i) = elapsed;
-        current = bitor(current, alloc);
+%         current = bitor(current, alloc);
+        current = current + alloc;
         numAllocated(k) = numAllocated(k) + 1;
     end
     memIdx = find(current);
-    utilization(k) = sum(current) / NUM_STAGES;
+    overlap(k) = (sum(current(memIdx)) - length(memIdx)) / sum(current(memIdx));
+    utilization(k) = sum(current > 0) / NUM_STAGES;
 end
 
 close(gcf);
 
 if allocationType == ALLOC_TYPE_RANDOMIZED
-    paramstr = 'randomized_i%d_r%d_p%f';
+    paramstr = 'shared_randomized_i%d_r%d_p%f';
 else
-    paramstr = 'heuristic_i%d_r%d_p%f';
+    paramstr = 'shared_heuristic_i%d_r%d_p%f';
 end
 paramstr = sprintf(paramstr, MAX_ITER, NUM_REPEATS, ARRIVAL_PROB);
 
@@ -114,3 +118,15 @@ grid on
 saveas(gcf, sprintf('utilization_%s.fig', paramstr));
 saveas(gcf, sprintf('utilization_%s.png', paramstr));
 save(sprintf('utilization_%s.mat', paramstr), "utilization");
+
+% memory stage overlap
+figure
+boxplot(overlap);
+title('Overlapping stages');
+ylim([0 1]);
+ylabel('Shared memory region');
+set(gca, 'FontSize', 16);
+grid on
+saveas(gcf, sprintf('overlap_%s.fig', paramstr));
+saveas(gcf, sprintf('overlap_%s.png', paramstr));
+save(sprintf('overlap_%s.mat', paramstr), "overlap");
