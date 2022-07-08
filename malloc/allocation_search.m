@@ -6,13 +6,15 @@ Metrics: fairness, utilization, execution time.
 clear;
 clc
 
+SHARED_EN = 0;
+
 ALLOC_TYPE_RANDOMIZED = 1;
 ALLOC_TYPE_HEURISTIC = 2;
 
 MAX_ITER = 300;
 NUM_STAGES = 20;
 NUM_INSTANCES = NUM_STAGES;
-NUM_REPEATS = 10;
+NUM_REPEATS = 100;
 ARRIVAL_PROB = 0.5;
 
 cacheConstrUB = [10 20];
@@ -30,9 +32,12 @@ overlap = zeros(NUM_REPEATS, 1);
 executionTime = zeros(NUM_REPEATS, NUM_STAGES);
 sequence = zeros(NUM_REPEATS, NUM_STAGES);
 
-for k = 1:NUM_REPEATS
+parfor k = 1:NUM_REPEATS
+    fprintf('[Iteration %d]\n', k);
     current = zeros(NUM_STAGES, 1);
+    appcounts = [0 0];
     for i = 1:NUM_INSTANCES
+        fprintf('Attempting allocation for instance %d\n', i);
         if rand() < ARRIVAL_PROB
             constrUB = cacheConstrUB;
             constrMinSep = cacheConstrMinSep;
@@ -49,16 +54,20 @@ for k = 1:NUM_REPEATS
             alloc = getRandomizedAllocation(constrUB, constrMinSep, current, MAX_ITER);
         end
         elapsed = toc(tStart);
-%         if sum(bitand(current, alloc), "all") ~= 0
-%             break
-%         end
-        fskew(k, fidx) = fskew(k, fidx) + 1;
+        if SHARED_EN == 0 && sum(bitand(current, alloc), "all") ~= 0
+            break
+        end
+        appcounts(fidx) = appcounts(fidx) + 1;
         sequence(k, i) = fidx;
         executionTime(k, i) = elapsed;
-%         current = bitor(current, alloc);
-        current = current + alloc;
+        if SHARED_EN == 0
+            current = bitor(current, alloc);
+        else
+            current = current + alloc;
+        end
         numAllocated(k) = numAllocated(k) + 1;
     end
+    fskew(k, : ) = appcounts;
     memIdx = find(current);
     overlap(k) = (sum(current(memIdx)) - length(memIdx)) / sum(current(memIdx));
     utilization(k) = sum(current > 0) / NUM_STAGES;
@@ -66,20 +75,41 @@ end
 
 close(gcf);
 
-if allocationType == ALLOC_TYPE_RANDOMIZED
-    paramstr = 'shared_randomized_i%d_r%d_p%f';
+if SHARED_EN == 0
+    param_atype = 'exclusive';
 else
-    paramstr = 'shared_heuristic_i%d_r%d_p%f';
+    param_atype = 'shared';
 end
-paramstr = sprintf(paramstr, MAX_ITER, NUM_REPEATS, ARRIVAL_PROB);
+
+if allocationType == ALLOC_TYPE_RANDOMIZED
+    param_algo = 'randomized';
+else
+    param_algo = 'heuristic';
+end
+
+paramstr = sprintf('%s_%s_i%d_r%d_p%f', param_atype, param_algo, MAX_ITER, NUM_REPEATS, ARRIVAL_PROB);
 
 % function distribution vs sequence length.
 figure
+maxdiameter = 10000;
 fratio = fskew ./ sum(fskew, 2);
 ftotal = sum(fskew, 2);
-scatter(ftotal, fratio( : , 1), 'o');
-hold on
-scatter(ftotal, fratio( : , 2), 'x');
+for k = 1:2
+    fcounts = zeros(NUM_STAGES + 1, NUM_STAGES + 1);
+    for i = 1:NUM_REPEATS
+        x = fskew(i, k) + 1;
+        y = ftotal(i) + 1;
+        fcounts(x, y) = fcounts(x, y) + 1;
+    end
+    [fx, fy] = find(fcounts);
+    D = zeros(length(fx), 1);
+    for i = 1:length(fx)
+        D(i) = fcounts(fx(i), fy(i)) * maxdiameter / NUM_REPEATS;
+    end
+    Y = fx ./ fy;
+    scatter(fy, Y, D, 'o');
+    hold on
+end
 title('Effect of function arrival on occupancy');
 ylabel('Proportion of allocations');
 xlabel('Total allocations');
@@ -88,6 +118,7 @@ set(gca, 'FontSize', 16);
 grid on
 saveas(gcf, sprintf('proportions_%s.fig', paramstr));
 saveas(gcf, sprintf('proportions_%s.png', paramstr));
+save(sprintf('proportions_%s.mat', paramstr), "fskew");
 
 % execution time.
 for i = 1:NUM_STAGES
@@ -106,6 +137,7 @@ set(gca, 'FontSize', 16);
 grid on
 saveas(gcf, sprintf('execution_time_%s.fig', paramstr));
 saveas(gcf, sprintf('execution_time_%s.png', paramstr));
+save(sprintf('execution_time_%s.mat', paramstr), "executionTime");
 
 % memory utilization
 figure
