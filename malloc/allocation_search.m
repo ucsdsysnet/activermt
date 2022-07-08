@@ -6,7 +6,7 @@ Metrics: fairness, utilization, execution time.
 clear;
 clc
 
-SHARED_EN = 0;
+SHARED_EN = 1;
 
 ALLOC_TYPE_RANDOMIZED = 1;
 ALLOC_TYPE_HEURISTIC = 2;
@@ -14,7 +14,7 @@ ALLOC_TYPE_HEURISTIC = 2;
 MAX_ITER = 300;
 NUM_STAGES = 20;
 NUM_INSTANCES = NUM_STAGES;
-NUM_REPEATS = 100;
+NUM_REPEATS = 1000;
 ARRIVAL_PROB = 0.5;
 
 cacheConstrUB = [10 20];
