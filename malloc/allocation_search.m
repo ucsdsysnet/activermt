@@ -6,7 +6,7 @@ Metrics: fairness, utilization, execution time.
 clear;
 clc
 
-SHARED_EN = 1;
+SHARED_EN = 0;
 
 ALLOC_TYPE_RANDOMIZED = 1;
 ALLOC_TYPE_HEURISTIC = 2;
@@ -15,7 +15,7 @@ MAX_ITER = 300;
 NUM_STAGES = 20;
 NUM_INSTANCES = NUM_STAGES;
 NUM_REPEATS = 1000;
-ARRIVAL_PROB = 0.5;
+ARRIVAL_PROB = 0;
 
 cacheConstrUB = [10 20];
 cacheConstrMinSep = [3 4];
@@ -38,7 +38,7 @@ parfor k = 1:NUM_REPEATS
     appcounts = [0 0];
     for i = 1:NUM_INSTANCES
         fprintf('Attempting allocation for instance %d\n', i);
-        if rand() < ARRIVAL_PROB
+        if rand() <= ARRIVAL_PROB
             constrUB = cacheConstrUB;
             constrMinSep = cacheConstrMinSep;
             fidx = 1;
@@ -106,7 +106,7 @@ for k = 1:2
     for i = 1:length(fx)
         D(i) = fcounts(fx(i), fy(i)) * maxdiameter / NUM_REPEATS;
     end
-    Y = fx ./ fy;
+    Y = (fx - 1) ./ (fy - 1);
     scatter(fy, Y, D, 'o');
     hold on
 end
