@@ -1,10 +1,18 @@
-function [allocation] = getRandomizedAllocation(constrUB, constrMinSep, currentAlloc, maxIter)
+function [allocation] = getRandomizedAllocation( ...
+    constrLB, ...
+    constrUB, ...
+    constrMinSep, ...
+    currentAlloc, ...
+    maxIter ...
+)
     
     NUM_STAGES = 20;
 
     numMemaccesses = length(constrUB);
-    A = tril(ones(numMemaccesses));
-    constrLB = (A * constrMinSep')';
+    if isempty(constrLB)
+        A = tril(ones(numMemaccesses));
+        constrLB = (A * constrMinSep')';
+    end
     A = zeros(numMemaccesses, numMemaccesses);
     A(1, 1) = 1;
     for i = 2:numMemaccesses
@@ -18,7 +26,11 @@ function [allocation] = getRandomizedAllocation(constrUB, constrMinSep, currentA
         allocation = zeros(NUM_STAGES, 1);
         while isValid == false
             memidx = round(rand(numMemaccesses, 1) * NUM_STAGES);
-            if all(memidx' >= constrLB) && all(memidx' <= constrUB) && all((A * memidx) >= constrMinSep')
+            if all( ...
+                    memidx' >= constrLB) && all(memidx' <= constrUB) ...
+                    && ... 
+                    all((A * memidx) >= constrMinSep' ...
+                )
                 isValid = true;
             end
         end

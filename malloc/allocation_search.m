@@ -7,23 +7,29 @@ clear;
 clc
 
 SHARED_EN = 0;
+ELASTIC_EN = 1;
 
 ALLOC_TYPE_RANDOMIZED = 1;
 ALLOC_TYPE_HEURISTIC = 2;
 
-MAX_ITER = 300;
+EARLY_TERMINATION = false;
+MAX_ITER = 100;
 NUM_STAGES = 20;
 NUM_INSTANCES = NUM_STAGES;
 NUM_REPEATS = 1000;
-ARRIVAL_PROB = 0;
+ARRIVAL_PROB = 0.5;
 
-cacheConstrUB = [10 20];
-cacheConstrMinSep = [3 4];
+cacheConstrLB = [3 7 8 9 10 11 12 13 14 15 16 17 18 19 20];
+cacheConstrUB = [10 20 20 20 20 20 20 20 20 20 20 20 20 20 20];
+cacheConstrMinSep = [3 4 0 0 0 0 0 0 0 0 0 0 0 0 0];
+cacheConstrOpt = 3:15;
 
+lbConstrLB = [2 5 7];
 lbConstrUB = [10 10 10];
 lbConstrMinSep = [2 3 2];
+lbConstrOpt = [];
 
-allocationType = ALLOC_TYPE_RANDOMIZED;
+allocationType = ALLOC_TYPE_HEURISTIC;
 
 fskew = zeros(NUM_REPEATS, 2);
 numAllocated = zeros(NUM_REPEATS, 1);
@@ -35,28 +41,57 @@ sequence = zeros(NUM_REPEATS, NUM_STAGES);
 parfor k = 1:NUM_REPEATS
     fprintf('[Iteration %d]\n', k);
     current = zeros(NUM_STAGES, 1);
+    shares = zeros(NUM_STAGES, 1);
     appcounts = [0 0];
     for i = 1:NUM_INSTANCES
         fprintf('Attempting allocation for instance %d\n', i);
         if rand() <= ARRIVAL_PROB
+            constrLB = cacheConstrLB;
             constrUB = cacheConstrUB;
             constrMinSep = cacheConstrMinSep;
+            constrOpt = cacheConstrOpt;
             fidx = 1;
         else
+            constrLB = lbConstrLB;
             constrUB = lbConstrUB;
             constrMinSep = lbConstrMinSep;
+            constrOpt = lbConstrOpt;
             fidx = 2;
         end
         tStart = tic;
         if allocationType == ALLOC_TYPE_HEURISTIC
-            alloc = getHeuristicAllocation(constrUB, constrMinSep, current, MAX_ITER);
+            if ELASTIC_EN == 0
+                alloc = getHeuristicAllocation( ...
+                    constrUB, ...
+                    constrMinSep, ...
+                    current, ...
+                    MAX_ITER ...
+                );
+            else
+                alloc = getElasticHeuristicAllocation( ...
+                    constrLB, ...
+                    constrUB, ...
+                    constrMinSep, ...
+                    current, ...
+                    MAX_ITER, ...
+                    EARLY_TERMINATION, ...
+                    constrOpt ...
+                );
+            end
         else
-            alloc = getRandomizedAllocation(constrUB, constrMinSep, current, MAX_ITER);
+            alloc = getRandomizedAllocation( ...
+                [], ...
+                constrUB, ...
+                constrMinSep, ...
+                current, ...
+                MAX_ITER ...
+            );
         end
         elapsed = toc(tStart);
         if SHARED_EN == 0 && sum(bitand(current, alloc), "all") ~= 0
             break
         end
+        shares = shares + alloc * fidx;
         appcounts(fidx) = appcounts(fidx) + 1;
         sequence(k, i) = fidx;
         executionTime(k, i) = elapsed;
@@ -67,6 +102,7 @@ parfor k = 1:NUM_REPEATS
         end
         numAllocated(k) = numAllocated(k) + 1;
     end
+    disp(mat2str(shares'));
     fskew(k, : ) = appcounts;
     memIdx = find(current);
     overlap(k) = (sum(current(memIdx)) - length(memIdx)) / sum(current(memIdx));
@@ -74,6 +110,12 @@ parfor k = 1:NUM_REPEATS
 end
 
 close(gcf);
+
+if ELASTIC_EN == 1
+    param_etype = 'elastic';
+else
+    param_etype = 'inelastic';
+end
 
 if SHARED_EN == 0
     param_atype = 'exclusive';
@@ -87,7 +129,15 @@ else
     param_algo = 'heuristic';
 end
 
-paramstr = sprintf('%s_%s_i%d_r%d_p%f', param_atype, param_algo, MAX_ITER, NUM_REPEATS, ARRIVAL_PROB);
+paramstr = sprintf( ...
+    '%s_%s_%s_i%d_r%d_p%f', ...
+    param_etype, ...
+    param_atype, ...
+    param_algo, ...
+    MAX_ITER, ...
+    NUM_REPEATS, ...
+    ARRIVAL_PROB ...
+);
 
 % function distribution vs sequence length.
 figure
