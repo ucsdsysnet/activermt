@@ -10,3 +10,6 @@
 [submodule "util/tofino-logviz"]
 	path = util/tofino-logviz
 	url = git@github.com:dasrajdeep/tofino-logviz.git
+[submodule "ref/p4app-switchML"]
+	path = ref/p4app-switchML
+	url = https://github.com/p4lang/p4app-switchML.git
