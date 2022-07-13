@@ -13,3 +13,6 @@
 [submodule "ref/p4app-switchML"]
 	path = ref/p4app-switchML
 	url = https://github.com/p4lang/p4app-switchML.git
+[submodule "ref/hashpipe"]
+	path = ref/hashpipe
+	url = https://github.com/vibhaa/hashpipe.git
