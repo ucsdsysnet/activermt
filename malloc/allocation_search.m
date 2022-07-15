@@ -50,6 +50,7 @@ randomizedTrialsProg = zeros(NUM_REPEATS, NUM_STAGES);
 randomizedTrialsAlloc = zeros(NUM_REPEATS, NUM_STAGES);
 allocationShares = zeros(NUM_REPEATS, NUM_STAGES);
 allocationSeq = zeros(NUM_REPEATS, NUM_INSTANCES, NUM_STAGES);
+successful = zeros(NUM_REPEATS, NUM_STAGES);
 
 parfor k = 1:NUM_REPEATS
     fprintf('[Iteration %d]\n', k);
@@ -102,16 +103,17 @@ parfor k = 1:NUM_REPEATS
             );
         end
         elapsed = toc(tStart);
+        executionTime(k, i) = elapsed;
         if SHARED_EN == 0 && sum(bitand(current, alloc), "all") ~= 0
             break
         end
+        successful(k, i) = successful(k, i) + 1;
         allocSeq(i, : ) = alloc * fidx;
         randomizedTrialsProg(k, i) = sum(attempts);
         randomizedTrialsAlloc(k, i) = length(find(attempts));
         shares = shares + alloc * fidx;
         appcounts(fidx) = appcounts(fidx) + 1;
         sequence(k, i) = fidx;
-        executionTime(k, i) = elapsed;
         if SHARED_EN == 0
             current = bitor(current, alloc);
         else
@@ -208,6 +210,21 @@ grid on
 saveas(gcf, sprintf('execution_time_%s.fig', paramstr));
 saveas(gcf, sprintf('execution_time_%s.png', paramstr));
 save(sprintf('execution_time_%s.mat', paramstr), "executionTime");
+
+% Successful allocations
+figure
+sallocs = sum(successful, 1);
+bar(sallocs);
+xlim([0 maxStages]);
+title('Successful allocations');
+xlabel('Seq Idx');
+ylabel('# allocations');
+set(gca, 'FontSize', 16);
+set(gca, 'YScale', 'log');
+grid on
+saveas(gcf, sprintf('successful_%s.fig', paramstr));
+saveas(gcf, sprintf('successful_%s.png', paramstr));
+save(sprintf('successful_%s.mat', paramstr), "successful");
 
 % Arrival sequence.
 figure
