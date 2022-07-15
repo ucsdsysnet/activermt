@@ -1,4 +1,4 @@
-function [allocation] = getRandomizedAllocation( ...
+function [allocation, attempts] = getRandomizedAllocation( ...
     constrLB, ...
     constrUB, ...
     constrMinSep, ...
@@ -20,10 +20,12 @@ function [allocation] = getRandomizedAllocation( ...
         A(i, i) = 1;
     end
 
+    attempts = zeros(maxIter, 1);
     for i = 1:maxIter
         isValid = false;
         memidx = [];
         allocation = zeros(NUM_STAGES, 1);
+        validProgAttempts = 0;
         while isValid == false
             memidx = round(rand(numMemaccesses, 1) * NUM_STAGES);
             if all( ...
@@ -33,7 +35,9 @@ function [allocation] = getRandomizedAllocation( ...
                 )
                 isValid = true;
             end
+            validProgAttempts = validProgAttempts + 1;
         end
+        attempts(i) = validProgAttempts;
         allocation(memidx) = 1;
         if sum(currentAlloc(memidx)) == 0
             break
