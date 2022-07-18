@@ -17,6 +17,8 @@ header ethernet_h {
 
 struct ig_metadata_t {
     bit<32> key;
+    bit<32> prev_key;
+    bit<32> count;
 }
 
 struct eg_metadata_t {}
@@ -62,24 +64,64 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md
 ) {
-    Register<counter_obj_t, bit<32>>(32w65536) flow_tracker;
-    Register<counter_obj_t, bit<32>>(32w65536) flow_counter;
+    Register<counter_obj_t, bit<32>>(32w65536) key_0;
+    Register<counter_obj_t, bit<32>>(32w65536) value_0;
 
-    RegisterAction<bit<32>, bit<32>, bit<32>>(flow_tracker) insert_flow = {
-        void apply(inout counter_obj_t obj, out counter_obj_t rv) {
-            if(obj.key == meta.key) {
+    RegisterAction<counter_obj_t, bit<32>, bit<32>>(key_0) insert_key_0 = {
+        void apply(inout counter_obj_t obj, out bit<32> rv) {
+            rv = obj.key;
+            obj.key = meta.key;
+        }
+    };
+
+    RegisterAction<counter_obj_t, bit<32>, bit<32>>(value_0) insert_count_0 = {
+        void apply(inout counter_obj_t obj, out bit<32> rv) {
+            rv = obj.count;
+            if(meta.key == obj.key) {
                 obj.count = obj.count + 1;
             } else {
-                rv.count = obj.count;
-                rv.key = obj.key;
                 obj.key = meta.key;
                 obj.count = 1;
             }
         }
     };
 
-    action stage_0() {
-        insert_flow.
+    action stage_0_key() {
+        meta.prev_key = insert_key_0.execute(0);
+    }
+
+    action stage_0_count() {
+        meta.count = insert_count_0.execute(0);
+    }
+
+    Register<counter_obj_t, bit<32>>(32w65536) key_1;
+    Register<counter_obj_t, bit<32>>(32w65536) value_1;
+
+    RegisterAction<counter_obj_t, bit<32>, bit<32>>(key_1) update_key_1 = {
+        void apply(inout counter_obj_t obj, out bit<32> rv) {
+            if(meta.count < obj.count) {
+                obj.key = meta.key;
+                obj.count = meta.count;
+            }
+            rv = obj.key;
+        }
+    };
+
+    RegisterAction<counter_obj_t, bit<32>, bit<32>>(value_1) update_count_1 = {
+        void apply(inout counter_obj_t obj, out bit<32> rv) {
+            if(meta.count < obj.count) {
+                obj.count = meta.count;
+            }
+            rv = obj.count;
+        }
+    };
+
+    action stage_1_key() {
+        meta.prev_key = update_key_1.execute(0);
+    }
+
+    action stage_1_count() {
+        meta.count = update_count_1.execute(0);
     }
 
     action send(PortId_t port, mac_addr_t mac) {
@@ -103,6 +145,13 @@ control Ingress(
 
     apply {
         if(hdr.ethernet.isValid()) mac_host.apply();
+        stage_0_key();
+        stage_0_count();
+        if(meta.prev_key != meta.key) {
+            meta.key = meta.prev_key;
+            stage_1_key();
+            stage_1_count();
+        }
     }
 }
 

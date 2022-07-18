@@ -17,8 +17,8 @@ header_type ethernet_t {
 
 header_type metadata_t {
     fields {
-        result  : 16;
-        addr    : 16;
+        result  : 32;
+        addr    : 32;
     }
 }
 
@@ -36,16 +36,16 @@ action compute() {
 }
 
 register heap {
-    width           : 8;
+    width           : 64;
     instance_count  : 65536;
 }
 
 blackbox stateful_alu heap_read {
     reg                 : heap;
-    condition_lo        : register_lo == meta.mar;
-    condition_hi        : meta.mbr > 0;
+    condition_lo        : register_lo == meta.addr;
+    condition_hi        : meta.result > 0;
     output_predicate    : condition_lo or condition_hi;
-    output_dst          : meta.mbr;
+    output_dst          : meta.result;
     output_value        : register_hi;
 }
 
@@ -69,6 +69,7 @@ table dummy {
     }
     actions {
         compute;
+        memory_read;
     }
 }
 
