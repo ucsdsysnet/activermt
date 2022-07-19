@@ -16,3 +16,6 @@
 [submodule "ref/hashpipe"]
 	path = ref/hashpipe
 	url = https://github.com/vibhaa/hashpipe.git
+[submodule "ref/LightGuardian"]
+	path = ref/LightGuardian
+	url = https://github.com/Light-Guardian/LightGuardian.git
