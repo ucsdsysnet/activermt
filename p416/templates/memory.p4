@@ -1,39 +1,31 @@
-Register<memory_object_t, bit<16>>(32w65536) heap_s<stage-id>;
+Register<bit<16>, bit<16>>(32w65536) heap_s<stage-id>;
 
-RegisterAction<memory_object_t, bit<16>, bit<16>>(heap_s<stage-id>) heap_write_s<stage-id> = {
-    void apply(inout memory_object_t obj, out bit<16> rv) {
-        obj.key = hdr.meta.mbr2;
-        obj.value = hdr.meta.mbr;
-        rv = obj.value;
+/*
+    Write mbr to register value, return old value.
+    [special case] Increment: hdr.meta.mbr2 > 0. 
+*/
+RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_write_s<stage-id> = {
+    void apply(inout bit<16> obj, out bit<16> rv) {
+        rv = obj;
+        if(hdr.meta.mbr2 == 0) {
+            obj = hdr.meta.mbr;
+        } else {
+            obj = obj + hdr.meta.mbr;
+        }
     }
 };
 
-RegisterAction<memory_object_t, bit<16>, bit<16>>(heap_s<stage-id>) heap_conditional_write_s<stage-id> = {
-    void apply(inout memory_object_t obj, out bit<16> rv) {
-        if(obj.value > hdr.meta.mbr) {
-            obj.key = hdr.meta.mbr2;
-            obj.value = hdr.meta.mbr;    
-        }
-        rv = obj.value;
-    }
-};
-
-RegisterAction<memory_object_t, bit<16>, bit<16>>(heap_s<stage-id>) heap_count_s<stage-id> = {
-    void apply(inout memory_object_t obj, out bit<16> rv) {
-        if(obj.value > hdr.meta.mbr) {
-            obj.key = hdr.meta.mbr2;
-            obj.value = obj.value + 1;    
-        }
-        rv = obj.value;
-    }
-};
-
-RegisterAction<memory_object_t, bit<16>, bit<16>>(heap_s<stage-id>) heap_read_s<stage-id> = {
-    void apply(inout memory_object_t obj, out bit<16> rv) {
-        rv = 0;
-        if(obj.key == hdr.meta.mbr2) {
-            rv = obj.value;
-        }
+/*
+    Increment by mbr (eg. 1) if current value is less than mbr2.
+    [special case] Read: hdr.meta.mbr2 = 0.
+    [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
+*/
+RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_conditional_increment_s<stage-id> = {
+    void apply(inout bit<16> obj, out bit<16> rv) {
+        rv = obj;
+        if(obj < hdr.meta.mbr2) {
+            obj = obj + hdr.meta.mbr;
+        } 
     }
 };
 

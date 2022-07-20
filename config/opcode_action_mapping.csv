@@ -56,9 +56,9 @@ COPY_MAR_MBR,copy_mar_mbr
 COPY_MBR_MAR,copy_mbr_mar
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
-MEM_BULK_WRITE,memory_bulk_write_s#
-MEM_BULK_READ,memory_bulk_read_s#
-MEM_COUNT,memory_count_s#
+MEM_INCREMENT,memory_increment_s#
+MEM_EQ_INCREMENT,memory_eq_increment_s#
+MEM_LT_INCREMENT,memory_lt_increment_s#
 HASHMBR,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
 HASH,hash_5_tuple
