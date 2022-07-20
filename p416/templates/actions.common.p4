@@ -67,7 +67,7 @@ action mar_mbr_add_mbr2() {
 Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
 
 action hash_5_tuple() {
-    hdr.meta.mbr = (bit<32>)crc16.get({
+    hdr.meta.mbr = crc16.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
