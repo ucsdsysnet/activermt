@@ -59,9 +59,9 @@ MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#
 MEM_EQ_INCREMENT,memory_eq_increment_s#
 MEM_LT_INCREMENT,memory_lt_increment_s#
-HASHMBR,hash_s#
+MEM_LT_SWAP,memory_conditional_swap_s#
+HASH,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
-HASH,hash_5_tuple
 MBR_LOAD,NULL
 MBR2_LOAD,NULL
 MAR_LOAD,NULL

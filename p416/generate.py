@@ -32,7 +32,7 @@ class ActiveP4Generator:
         self.crc_16_params = {
             'crc_16'        : ('0x18005', 'true', '0x0000', '0x0000')
         }
-        self.registers = ('mar', 'mbr', 'mbr2')
+        self.registers = ('mar', 'mbr')
         self.num_data = 5
 
     def getActionDefinitions(self, code):

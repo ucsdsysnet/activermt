@@ -4,7 +4,7 @@ Register<bit<16>, bit<16>>(32w65536) heap_s<stage-id>;
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_write_s<stage-id> = {
+RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_conditional_write_s<stage-id> = {
     void apply(inout bit<16> obj, out bit<16> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
@@ -25,6 +25,18 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_conditional_inc
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
+        } 
+    }
+};
+
+/*
+    Swap by mbr if current value is less than mbr.
+*/
+RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s<stage-id>) heap_conditional_swap_s<stage-id> = {
+    void apply(inout bit<16> obj, out bit<16> rv) {
+        rv = obj;
+        if(obj < hdr.meta.mbr2) {
+            obj = hdr.meta.mbr;
         } 
     }
 };
