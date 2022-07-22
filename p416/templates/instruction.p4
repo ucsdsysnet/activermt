@@ -5,8 +5,8 @@ table instruction_<stage-id> {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mar[19:0]                      : range;
     }
     actions = {
         drop;

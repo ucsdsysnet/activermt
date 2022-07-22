@@ -46,7 +46,7 @@ action memory_swap_conditional_s<stage-id>() {
 
 action hash_s<stage-id>() {
     //hdr.meta.mar = (bit<32>)crc_16_s<stage-id>.get({hdr.meta.mbr});
-    crc_16_s<stage-id>.get({
+    hdr.meta.mar = (bit<32>)crc_16_s<stage-id>.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,

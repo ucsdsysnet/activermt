@@ -9,14 +9,14 @@ control Egress(
 ) {
     
 
-Register<bit<16>, bit<16>>(32w65536) heap_s0;
+Register<bit<32>, bit<32>>(32w65536) heap_s0;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_write_s0 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_write_s0 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -31,8 +31,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_write_s0 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_increment_s0 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_increment_s0 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -43,8 +43,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_increment_s0
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_swap_s0 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_swap_s0 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -58,14 +58,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s0) heap_conditional_swap_s0 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s1;
+Register<bit<32>, bit<32>>(32w65536) heap_s1;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_write_s1 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_write_s1 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -80,8 +80,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_write_s1 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_increment_s1 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_increment_s1 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -92,8 +92,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_increment_s1
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_swap_s1 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_swap_s1 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -107,14 +107,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s1) heap_conditional_swap_s1 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s2;
+Register<bit<32>, bit<32>>(32w65536) heap_s2;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_write_s2 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_write_s2 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -129,8 +129,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_write_s2 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_increment_s2 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_increment_s2 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -141,8 +141,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_increment_s2
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_swap_s2 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_swap_s2 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -156,14 +156,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s2) heap_conditional_swap_s2 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s3;
+Register<bit<32>, bit<32>>(32w65536) heap_s3;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_write_s3 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_write_s3 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -178,8 +178,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_write_s3 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_increment_s3 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_increment_s3 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -190,8 +190,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_increment_s3
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_swap_s3 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_swap_s3 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -205,14 +205,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s3) heap_conditional_swap_s3 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s4;
+Register<bit<32>, bit<32>>(32w65536) heap_s4;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_write_s4 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_write_s4 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -227,8 +227,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_write_s4 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_increment_s4 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_increment_s4 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -239,8 +239,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_increment_s4
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_swap_s4 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_swap_s4 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -254,14 +254,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s4) heap_conditional_swap_s4 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s5;
+Register<bit<32>, bit<32>>(32w65536) heap_s5;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_write_s5 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_write_s5 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -276,8 +276,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_write_s5 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_increment_s5 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_increment_s5 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -288,8 +288,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_increment_s5
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_swap_s5 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_swap_s5 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -303,14 +303,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s5) heap_conditional_swap_s5 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s6;
+Register<bit<32>, bit<32>>(32w65536) heap_s6;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_write_s6 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_write_s6 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -325,8 +325,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_write_s6 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_increment_s6 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -337,8 +337,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_increment_s6
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_swap_s6 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_swap_s6 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -352,14 +352,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s6) heap_conditional_swap_s6 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s7;
+Register<bit<32>, bit<32>>(32w65536) heap_s7;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_write_s7 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_write_s7 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -374,8 +374,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_write_s7 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_increment_s7 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_increment_s7 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -386,8 +386,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_increment_s7
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_swap_s7 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_swap_s7 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -401,14 +401,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s7) heap_conditional_swap_s7 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s8;
+Register<bit<32>, bit<32>>(32w65536) heap_s8;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_write_s8 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_write_s8 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -423,8 +423,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_write_s8 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_increment_s8 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_increment_s8 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -435,8 +435,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_increment_s8
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_swap_s8 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_swap_s8 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -450,14 +450,14 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s8) heap_conditional_swap_s8 = {
     }
 };*/
 
-Register<bit<16>, bit<16>>(32w65536) heap_s9;
+Register<bit<32>, bit<32>>(32w65536) heap_s9;
 
 /*
     Write mbr to register value, return old value.
     [special case] Increment: hdr.meta.mbr2 > 0. 
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s9) heap_conditional_write_s9 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_write_s9 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(hdr.meta.mbr2 == 0) {
             obj = hdr.meta.mbr;
@@ -472,8 +472,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s9) heap_conditional_write_s9 = {
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s9) heap_conditional_increment_s9 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_increment_s9 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = obj + hdr.meta.mbr;
@@ -484,8 +484,8 @@ RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s9) heap_conditional_increment_s9
 /*
     Swap by mbr if current value is less than mbr.
 */
-RegisterAction<bit<16>, bit<16>, bit<16>>(heap_s9) heap_conditional_swap_s9 = {
-    void apply(inout bit<16> obj, out bit<16> rv) {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_swap_s9 = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
@@ -717,11 +717,11 @@ action load_salt() {
     hdr.meta.mbr = CONST_SALT;
 }
 action mar_load_d0() {
-    hdr.meta.mar = (bit<16>)hdr.data.data_0;
+    hdr.meta.mar = hdr.data.data_0;
 }
 
 action d0_load_mar() {
-    hdr.data.data_0 = (bit<32>)hdr.meta.mar;
+    hdr.data.data_0 = hdr.meta.mar;
 }
 
 /*action mar_add_d0() {
@@ -736,11 +736,11 @@ action d0_load_mar() {
     hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_0;
 }*/
 action mar_load_d1() {
-    hdr.meta.mar = (bit<16>)hdr.data.data_1;
+    hdr.meta.mar = hdr.data.data_1;
 }
 
 action d1_load_mar() {
-    hdr.data.data_1 = (bit<32>)hdr.meta.mar;
+    hdr.data.data_1 = hdr.meta.mar;
 }
 
 /*action mar_add_d1() {
@@ -755,11 +755,11 @@ action d1_load_mar() {
     hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_1;
 }*/
 action mar_load_d2() {
-    hdr.meta.mar = (bit<16>)hdr.data.data_2;
+    hdr.meta.mar = hdr.data.data_2;
 }
 
 action d2_load_mar() {
-    hdr.data.data_2 = (bit<32>)hdr.meta.mar;
+    hdr.data.data_2 = hdr.meta.mar;
 }
 
 /*action mar_add_d2() {
@@ -774,11 +774,11 @@ action d2_load_mar() {
     hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_2;
 }*/
 action mar_load_d3() {
-    hdr.meta.mar = (bit<16>)hdr.data.data_3;
+    hdr.meta.mar = hdr.data.data_3;
 }
 
 action d3_load_mar() {
-    hdr.data.data_3 = (bit<32>)hdr.meta.mar;
+    hdr.data.data_3 = hdr.meta.mar;
 }
 
 /*action mar_add_d3() {
@@ -793,11 +793,11 @@ action d3_load_mar() {
     hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_3;
 }*/
 action mar_load_d4() {
-    hdr.meta.mar = (bit<16>)hdr.data.data_4;
+    hdr.meta.mar = hdr.data.data_4;
 }
 
 action d4_load_mar() {
-    hdr.data.data_4 = (bit<32>)hdr.meta.mar;
+    hdr.data.data_4 = hdr.meta.mar;
 }
 
 /*action mar_add_d4() {
@@ -812,11 +812,11 @@ action d4_load_mar() {
     hdr.meta.mar = hdr.meta.mar ^ hdr.data.data_4;
 }*/
 action mbr_load_d0() {
-    hdr.meta.mbr = (bit<16>)hdr.data.data_0;
+    hdr.meta.mbr = hdr.data.data_0;
 }
 
 action d0_load_mbr() {
-    hdr.data.data_0 = (bit<32>)hdr.meta.mbr;
+    hdr.data.data_0 = hdr.meta.mbr;
 }
 
 /*action mbr_add_d0() {
@@ -831,11 +831,11 @@ action d0_load_mbr() {
     hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_0;
 }*/
 action mbr_load_d1() {
-    hdr.meta.mbr = (bit<16>)hdr.data.data_1;
+    hdr.meta.mbr = hdr.data.data_1;
 }
 
 action d1_load_mbr() {
-    hdr.data.data_1 = (bit<32>)hdr.meta.mbr;
+    hdr.data.data_1 = hdr.meta.mbr;
 }
 
 /*action mbr_add_d1() {
@@ -850,11 +850,11 @@ action d1_load_mbr() {
     hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_1;
 }*/
 action mbr_load_d2() {
-    hdr.meta.mbr = (bit<16>)hdr.data.data_2;
+    hdr.meta.mbr = hdr.data.data_2;
 }
 
 action d2_load_mbr() {
-    hdr.data.data_2 = (bit<32>)hdr.meta.mbr;
+    hdr.data.data_2 = hdr.meta.mbr;
 }
 
 /*action mbr_add_d2() {
@@ -869,11 +869,11 @@ action d2_load_mbr() {
     hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_2;
 }*/
 action mbr_load_d3() {
-    hdr.meta.mbr = (bit<16>)hdr.data.data_3;
+    hdr.meta.mbr = hdr.data.data_3;
 }
 
 action d3_load_mbr() {
-    hdr.data.data_3 = (bit<32>)hdr.meta.mbr;
+    hdr.data.data_3 = hdr.meta.mbr;
 }
 
 /*action mbr_add_d3() {
@@ -888,11 +888,11 @@ action d3_load_mbr() {
     hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_3;
 }*/
 action mbr_load_d4() {
-    hdr.meta.mbr = (bit<16>)hdr.data.data_4;
+    hdr.meta.mbr = hdr.data.data_4;
 }
 
 action d4_load_mbr() {
-    hdr.data.data_4 = (bit<32>)hdr.meta.mbr;
+    hdr.data.data_4 = hdr.meta.mbr;
 }
 
 /*action mbr_add_d4() {
@@ -954,7 +954,7 @@ action memory_swap_conditional_s0() {
 
 action hash_s0() {
     //hdr.meta.mar = (bit<32>)crc_16_s0.get({hdr.meta.mbr});
-    crc_16_s0.get({
+    hdr.meta.mar = (bit<32>)crc_16_s0.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1010,7 +1010,7 @@ action memory_swap_conditional_s1() {
 
 action hash_s1() {
     //hdr.meta.mar = (bit<32>)crc_16_s1.get({hdr.meta.mbr});
-    crc_16_s1.get({
+    hdr.meta.mar = (bit<32>)crc_16_s1.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1066,7 +1066,7 @@ action memory_swap_conditional_s2() {
 
 action hash_s2() {
     //hdr.meta.mar = (bit<32>)crc_16_s2.get({hdr.meta.mbr});
-    crc_16_s2.get({
+    hdr.meta.mar = (bit<32>)crc_16_s2.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1122,7 +1122,7 @@ action memory_swap_conditional_s3() {
 
 action hash_s3() {
     //hdr.meta.mar = (bit<32>)crc_16_s3.get({hdr.meta.mbr});
-    crc_16_s3.get({
+    hdr.meta.mar = (bit<32>)crc_16_s3.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1178,7 +1178,7 @@ action memory_swap_conditional_s4() {
 
 action hash_s4() {
     //hdr.meta.mar = (bit<32>)crc_16_s4.get({hdr.meta.mbr});
-    crc_16_s4.get({
+    hdr.meta.mar = (bit<32>)crc_16_s4.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1234,7 +1234,7 @@ action memory_swap_conditional_s5() {
 
 action hash_s5() {
     //hdr.meta.mar = (bit<32>)crc_16_s5.get({hdr.meta.mbr});
-    crc_16_s5.get({
+    hdr.meta.mar = (bit<32>)crc_16_s5.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1290,7 +1290,7 @@ action memory_swap_conditional_s6() {
 
 action hash_s6() {
     //hdr.meta.mar = (bit<32>)crc_16_s6.get({hdr.meta.mbr});
-    crc_16_s6.get({
+    hdr.meta.mar = (bit<32>)crc_16_s6.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1346,7 +1346,7 @@ action memory_swap_conditional_s7() {
 
 action hash_s7() {
     //hdr.meta.mar = (bit<32>)crc_16_s7.get({hdr.meta.mbr});
-    crc_16_s7.get({
+    hdr.meta.mar = (bit<32>)crc_16_s7.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1402,7 +1402,7 @@ action memory_swap_conditional_s8() {
 
 action hash_s8() {
     //hdr.meta.mar = (bit<32>)crc_16_s8.get({hdr.meta.mbr});
-    crc_16_s8.get({
+    hdr.meta.mar = (bit<32>)crc_16_s8.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1458,7 +1458,7 @@ action memory_swap_conditional_s9() {
 
 action hash_s9() {
     //hdr.meta.mar = (bit<32>)crc_16_s9.get({hdr.meta.mbr});
-    crc_16_s9.get({
+    hdr.meta.mar = (bit<32>)crc_16_s9.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
@@ -1479,8 +1479,8 @@ table instruction_0 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1546,8 +1546,8 @@ table instruction_1 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1613,8 +1613,8 @@ table instruction_2 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1680,8 +1680,8 @@ table instruction_3 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1747,8 +1747,8 @@ table instruction_4 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1814,8 +1814,8 @@ table instruction_5 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1881,8 +1881,8 @@ table instruction_6 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -1948,8 +1948,8 @@ table instruction_7 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -2015,8 +2015,8 @@ table instruction_8 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;
@@ -2082,8 +2082,8 @@ table instruction_9 {
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
         //hdr.meta.zero                           : exact;
-        hdr.meta.mbr                            : range;
-        hdr.meta.mar                            : range;
+        hdr.meta.mbr[19:0]                            : range;
+        hdr.meta.mar[19:0]                            : range;
     }
     actions = {
         drop;

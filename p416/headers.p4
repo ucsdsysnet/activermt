@@ -142,9 +142,9 @@ header bridged_metadata_h {
     bit<32>     hash_data_2;
     bit<32>     hash_data_3;
     bit<32>     hash_data_4;
-    bit<16>     mar;
-    bit<16>     mbr;
-    bit<16>     mbr2;
+    bit<32>     mar;
+    bit<32>     mbr;
+    bit<32>     mbr2;
     bool        zero;
 }
 
