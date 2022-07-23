@@ -7,7 +7,7 @@ Register<bit<32>, bit<32>>(32w65536) heap_s<stage-id>;
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_write_s<stage-id> = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr2 != 0) {
             obj = hdr.meta.mbr;
         } else {
             obj = obj + hdr.meta.mbr;

@@ -17,11 +17,6 @@ MBR_LOAD_DATA_1,mbr_load_d1
 MBR_LOAD_DATA_2,mbr_load_d2
 MBR_LOAD_DATA_3,mbr_load_d3
 MBR_LOAD_DATA_4,mbr_load_d4
-MBR2_LOAD_DATA_0,mbr2_load_d0
-MBR2_LOAD_DATA_1,mbr2_load_d1
-MBR2_LOAD_DATA_2,mbr2_load_d2
-MBR2_LOAD_DATA_3,mbr2_load_d3
-MBR2_LOAD_DATA_4,mbr2_load_d4
 MAR_LOAD_DATA_0,mar_load_d0
 MAR_LOAD_DATA_1,mar_load_d1
 MAR_LOAD_DATA_2,mar_load_d2
@@ -32,11 +27,6 @@ DATA_1_LOAD_MBR,d1_load_mbr
 DATA_2_LOAD_MBR,d2_load_mbr
 DATA_3_LOAD_MBR,d3_load_mbr
 DATA_4_LOAD_MBR,d4_load_mbr
-DATA_0_LOAD_MBR2,d0_load_mbr2
-DATA_1_LOAD_MBR2,d1_load_mbr2
-DATA_2_LOAD_MBR2,d2_load_mbr2
-DATA_3_LOAD_MBR2,d3_load_mbr2
-DATA_4_LOAD_MBR2,d4_load_mbr2
 DATA_0_LOAD_MAR,d0_load_mar
 DATA_1_LOAD_MAR,d1_load_mar
 DATA_2_LOAD_MAR,d2_load_mar
@@ -59,9 +49,8 @@ MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#
 MEM_EQ_INCREMENT,memory_eq_increment_s#
 MEM_LT_INCREMENT,memory_lt_increment_s#
-MEM_LT_SWAP,memory_conditional_swap_s#
+MEM_LT_SWAP,memory_swap_conditional_s#
 HASH,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
 MBR_LOAD,NULL
-MBR2_LOAD,NULL
 MAR_LOAD,NULL

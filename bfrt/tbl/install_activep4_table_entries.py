@@ -14,7 +14,7 @@ class ActiveP4Installer:
 
     def __init__(self):
         self.p4 = bfrt.active.pipe
-        self.num_stages_ingress = 8
+        self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.recirculation_enabled = False
         self.base_path = "/usr/local/home/rajdeepd/activep4"
@@ -81,11 +81,11 @@ class ActiveP4Installer:
                 port_to_mac[dport] = mac_addr
             f.close()
         ipv4_host = self.p4.Ingress.ipv4_host
-        vroute = self.p4.Ingress.vroute
+        #vroute = self.p4.Ingress.vroute
         for host in dst_port_mapping:
             ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host], mac=port_to_mac[dst_port_mapping[host]])
-        for vport in vport_dst_mapping:
-            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]], mac=port_to_mac[dst_port_mapping[vport_dst_mapping[vport]]])
+        """for vport in vport_dst_mapping:
+            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]], mac=port_to_mac[dst_port_mapping[vport_dst_mapping[vport]]])"""
         bfrt.complete_operations()
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
@@ -99,16 +99,21 @@ class ActiveP4Installer:
                 if act['action'] == 'NULL': 
                     continue
                 add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(i)))
+                add_method_skip = getattr(instr_table, 'add_with_skip')
                 add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(i))
                 if act['condition'] is not None:
                     mbr_19_0__start = 1 if act['condition'] else 0
                     mbr_19_0__end = REG_MAX if act['condition'] else 0
                     add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=mbr_19_0__start, mbr_19_0__end=mbr_19_0__end, mar_19_0__start=0, mar_19_0__end=REG_MAX)
+                    mbr_19_0__start_default = 0 if act['condition'] else 1
+                    mbr_19_0__end_default = 0 if act['condition'] else REG_MAX
+                    add_method_skip(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=mbr_19_0__start_default, mbr_19_0__end=mbr_19_0__end_default, mar_19_0__start=0, mar_19_0__end=REG_MAX)
                 else:
                     if act['opcode'] == 0:
                         add_method(fid=fid, opcode=act['opcode'], complete=1, disabled=0, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
                     add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
                 add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_19_0__start=0, mbr_19_0__end=REG_MAX, mar_19_0__start=0, mar_19_0__end=REG_MAX)
+            #instr_table.dump(table=True)
         bfrt.complete_operations()
 
     def installInstructionTableEntries(self, fid):
@@ -189,7 +194,7 @@ fids = [1]
 installer.clear_all()
 installer.installForwardingTableEntries(config='default')
 installer.installInstructionTableEntries(1)
-installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
-installer.setMirrorSessions(sid_to_port_mapping)
+#installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
+#installer.setMirrorSessions(sid_to_port_mapping)
 #installer.getTrafficCounters(fids)
 #installer.resetTrafficCounters()

@@ -22,12 +22,11 @@ action memory_read_s<stage-id>() {
 }
 
 action memory_write_s<stage-id>() {
-    hdr.meta.mbr2 = 0;
+    hdr.meta.mbr2 = 1;
     hdr.meta.mbr = heap_conditional_write_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_eq_increment_s<stage-id>() {
-    //hdr.meta.mbr2 = 1;
     hdr.meta.mbr = heap_conditional_write_s<stage-id>.execute(hdr.meta.mar);
 }
 

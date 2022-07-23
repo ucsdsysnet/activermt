@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import re
 import sys
 import json
 
@@ -22,7 +23,7 @@ class ActiveInstruction:
 
     def printInstruction(self, mnemonics=None):
         opname = mnemonics[self.opcode] if mnemonics is not None else "OPCODE"
-        print("%d\t[%d]\t%s" % (self.opcode, self.goto, opname))
+        print("%02X (%d)\t[%d]\t%s" % (self.opcode, self.opcode, self.goto, opname))
 
 class ActiveProgram:
     def __init__(self, program):
@@ -36,11 +37,21 @@ class ActiveProgram:
             pnemonic = m[0]
             self.OPCODES[pnemonic] = opcode
             self.MNEMONICS[opcode] = pnemonic
+        self.LOAD_INSTR = [ 'MBR_LOAD', 'MAR_LOAD' ]
+        self.regex_data = re.compile('DATA_([0-9])')
         self.program = []
         self.args = {}
         self.labels = {}
         self.num_data = 0
+        self.data_idx = []
         program.reverse()
+        for i in range(0, len(program)):
+            opcode = program[i][0]
+            if '_LOAD_' in opcode:
+                data_reg = re.search('DATA_([0-9])', opcode).group(1)
+                didx = int(data_reg)
+                if didx not in self.data_idx:
+                    self.data_idx.append(didx)
         for i in range(0, len(program)):
             opcode = program[i][0]
             param_1 = program[i][1] if len(program[i]) > 1 else None
@@ -60,13 +71,16 @@ class ActiveProgram:
                             'didx'  : None,
                             'bulk'  : False
                         }
-                        if '_LOAD' in opcode:
+                    if opcode in self.LOAD_INSTR:
+                        if self.args[argname]['didx'] is None:
+                            while self.num_data in self.data_idx:
+                                self.num_data = self.num_data + 1
                             self.args[argname]['didx'] = self.num_data
-                            opcode = '%s_DATA_%d' % (opcode, self.num_data)
-                            self.num_data = self.num_data + 1
-                        elif '_BULK_WRITE' in opcode:
-                            self.args[argname]['bulk'] = True
-                            self.args[argname]['didx'] = 0
+                            self.data_idx.append(self.num_data)
+                        opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
+                    elif '_BULK_WRITE' in opcode:
+                        self.args[argname]['bulk'] = True
+                        self.args[argname]['didx'] = 0
                     self.args[argname]['idx'].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
@@ -110,6 +124,10 @@ if len(sys.argv) < 2:
 
 with open(sys.argv[1]) as f:
     rows = f.read().strip().splitlines()
+    for i in range(0, len(rows)):
+        idx = rows[i].find('//')
+        if idx >= 0:
+            rows[i] = rows[i][0:idx].strip()
     program = [ x.split(',') for x in rows ]
     ap = ActiveProgram(program)
     ap.printProgram()
