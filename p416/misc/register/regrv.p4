@@ -1,6 +1,8 @@
 #include <core.p4>
 #include <tna.p4>
 
+#define ALPHA   1
+
 typedef bit<48> mac_addr_t;
 
 enum bit<16> ether_type_t {
@@ -15,13 +17,13 @@ header ethernet_h {
     ether_type_t ether_type;
 }
 
-struct ig_metadata_t {
-    bit<32> key;
-    bit<32> prev_key;
-    bit<32> count;
-}
+struct ig_metadata_t {}
 
-struct eg_metadata_t {}
+struct eg_metadata_t {
+    bit<32>     buf;
+    bit<32>     omega;
+    bit<16>     addr;
+}
 
 struct ingress_headers_t {
     ethernet_h                                  ethernet;
@@ -29,11 +31,6 @@ struct ingress_headers_t {
 
 struct egress_headers_t {
     ethernet_h                                  ethernet;
-}
-
-struct counter_obj_t {
-    bit<32>     key;
-    bit<32>     count;
 }
 
 parser IngressParser(
@@ -64,44 +61,8 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md
 ) {
-    Register<bit<64>, bit<64>>(32w65536) stage_0;
-
-    RegisterAction<bit<64>, bit<64>, bit<64>>(stage_0) insert_0 = {
-        void apply(inout bit<64> obj, out bit<64> rv) {
-            if(obj[31:0] == meta.key) {
-                obj[63:32] = obj[63:32] + 1;
-            } else {
-                obj[31:0] = meta.key;
-                obj[63:32] = 1;
-            }
-        }
-    };
-
-    action hh_stage_0() {
-        insert_0.execute(0);
-    }
-
-    /*Register<counter_obj_t, bit<64>>(32w65536) stage_1;
-
-    RegisterAction<counter_obj_t, bit<32>, bit<32>>(value_0) insert_count_0 = {
-        void apply(inout counter_obj_t obj, out bit<32> rv) {
-            rv = obj.count;
-            if(meta.key == obj.key) {
-                obj.count = obj.count + 1;
-            } else {
-                obj.key = meta.key;
-                obj.count = 1;
-            }
-        }
-    };
-
-    action hh_stage_1() {
-        insert_count_0.execute(0);
-    }*/
-
-    action send(PortId_t port, mac_addr_t mac) {
+    action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-        hdr.ethernet.dst_addr = mac;
     }
 
     action drop() {
@@ -119,8 +80,8 @@ control Ingress(
     }
 
     apply {
-        if(hdr.ethernet.isValid()) mac_host.apply();
-        hh_stage_0();
+        //if(hdr.ethernet.isValid()) mac_host.apply();
+        send(1);
     }
 }
 
@@ -163,7 +124,31 @@ control Egress(
     inout egress_intrinsic_metadata_for_deparser_t     eg_dprsr_md,
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md
 ) {
-    apply {}
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
+
+    Register<bit<32>, bit<32>>(32w65536) reg;
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(reg) update_reg = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            //rv = meta.omega_flowsize;
+            if(obj < meta.buf) {
+                obj = obj + ALPHA;
+                rv = obj;
+            } else if(obj < meta.omega) {
+                obj = meta.omega;
+                rv = obj;
+            }
+        }
+    };
+
+    action update_stat_reg() {
+        meta.buf = update_reg.execute(0);
+    }
+
+    apply {
+        meta.omega = 0xFFFF;
+        update_stat_reg();
+    }
 }
 
 control EgressDeparser(

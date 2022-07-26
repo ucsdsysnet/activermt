@@ -33,8 +33,15 @@ struct eg_metadata_t {
     bit<32> key;
     bit<32> oldkey;
     bit<32> omega;
+    bit<32> omega_flowsize;
+    bit<32> max_tlast;
+    bit<32> max_ia;
+    bit<32> buf_flowsize;
+    bit<32> buf_0;
+    bit<32> buf_1;
+    bit<32> buf_2;
+    bit<32> buf_3;
     bit<32> buf;
-    bit<32> buf2;
     bit<32> tlast;
     bit<32> qdelay;
 }
@@ -145,40 +152,57 @@ control Egress(
 ) {
     Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
 
-    Register<bit<32>, bit<32>>(32w65536) stage_0_key;
-    Register<bit<32>, bit<32>>(32w65536) flow_size;
-    Register<bit<32>, bit<32>>(32w65536) last_time;
+    Register<bit<32>, bit<32>>(32w65536) flow_size_0;
+    Register<bit<32>, bit<32>>(32w65536) flow_size_1;
+    Register<bit<32>, bit<32>>(32w65536) last_time_0;
+    Register<bit<32>, bit<32>>(32w65536) last_time_1;
     Register<bit<32>, bit<32>>(32w65536) interarrival_time;
     Register<bit<32>, bit<32>>(32w65536) delay_0;
     Register<bit<32>, bit<32>>(32w65536) delay_1;
     Register<bit<32>, bit<32>>(32w65536) delay_2;
     Register<bit<32>, bit<32>>(32w65536) delay_3;
 
-    RegisterAction<bit<32>, bit<32>, bit<32>>(stage_0_key) key_check = {
+    // sum(): rv = 0 implies none of the conditions matched.
+    RegisterAction<bit<32>, bit<32>, bit<32>>(flow_size_0) update_flow_size_0 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj == 0) {
-                obj = meta.key;
-            }
-            rv = obj;
-        }
-    };
-
-    RegisterAction<bit<32>, bit<32>, bit<32>>(flow_size) update_flow_size = {
-        void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj < meta.buf) {
+            rv = 0;
+            if(obj < meta.buf_flowsize) { // if regval + alpha < omega
                 obj = obj + ALPHA;
-            } else if(obj < meta.omega) {
-                obj = meta.omega;
+                rv = obj;
+            } else if(obj < meta.omega_flowsize) { // else if regval < omega
+                obj = meta.omega_flowsize;
+                rv = obj;
             }
-            rv = obj;
         }
     };
 
-    RegisterAction<bit<32>, bit<32>, bit<32>>(last_time) update_last_time = {
+    RegisterAction<bit<32>, bit<32>, bit<32>>(flow_size_1) update_flow_size_1 = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            rv = 0;
+            if(obj < meta.buf_flowsize) { // if regval + alpha < omega
+                obj = obj + ALPHA;
+                rv = obj;
+            } else if(obj < meta.omega_flowsize) { // else if regval < omega
+                obj = meta.omega_flowsize;
+                rv = obj;
+            }
+        }
+    };
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(last_time_0) update_last_time_0 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
             rv = obj;
-            if(obj < meta.buf2) {
-                obj = meta.buf2;
+            if(obj < meta.max_tlast) {
+                obj = meta.max_tlast;
+            }
+        }
+    };
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(last_time_1) update_last_time_1 = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            rv = obj;
+            if(obj < meta.max_tlast) {
+                obj = meta.max_tlast;
             }
         }
     };
@@ -186,15 +210,15 @@ control Egress(
     RegisterAction<bit<32>, bit<32>, bit<32>>(interarrival_time) update_interarrival_time = {
         void apply(inout bit<32> obj, out bit<32> rv) {
             rv = obj;
-            if(obj < meta.buf2) {
-                obj = meta.buf2;
+            if(obj < meta.max_ia) {
+                obj = meta.max_ia;
             }
         }
     };
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(delay_0) update_delay_0 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj < meta.buf) {
+            if(obj < meta.buf_0) {
                 obj = obj + ALPHA;
             } else if(obj < meta.omega) {
                 obj = meta.omega;
@@ -205,7 +229,7 @@ control Egress(
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(delay_1) update_delay_1 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj < meta.buf) {
+            if(obj < meta.buf_1) {
                 obj = obj + ALPHA;
             } else if(obj < meta.omega) {
                 obj = meta.omega;
@@ -216,7 +240,7 @@ control Egress(
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(delay_2) update_delay_2 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj < meta.buf) {
+            if(obj < meta.buf_2) {
                 obj = obj + ALPHA;
             } else if(obj < meta.omega) {
                 obj = meta.omega;
@@ -227,7 +251,7 @@ control Egress(
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(delay_3) update_delay_3 = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            if(obj < meta.buf) {
+            if(obj < meta.buf_3) {
                 obj = obj + ALPHA;
             } else if(obj < meta.omega) {
                 obj = meta.omega;
@@ -243,28 +267,32 @@ control Egress(
         });
     }
 
-    action insert_stage_0_key() {
-        meta.oldkey = key_check.execute((bit<32>)meta.addr);
-    }
-
     action prepare_flow_size() {
-        meta.buf = meta.omega - ALPHA;
+        meta.buf_flowsize = meta.omega_flowsize - ALPHA;
     }
 
     action prepare_tlast() {
-        meta.buf2 = hdr.meta.ingress_tstamp;
+        meta.max_tlast = hdr.meta.ingress_tstamp;
     }
 
-    action update_stat_flowsize() {
-        update_flow_size.execute((bit<32>)meta.addr);
+    action update_stat_flowsize_0() {
+        meta.buf = update_flow_size_0.execute((bit<32>)meta.addr);
     }
 
-    action update_stat_tlast() {
-        meta.tlast = update_last_time.execute((bit<32>)meta.addr);
+    action update_stat_flowsize_1() {
+        meta.buf = update_flow_size_1.execute((bit<32>)meta.addr);
+    }
+
+    action update_stat_tlast_0() {
+        update_last_time_0.execute((bit<32>)meta.addr);
+    }
+
+    action update_stat_tlast_1() {
+        update_last_time_1.execute((bit<32>)meta.addr);
     }
 
     action compute_interval() {
-        meta.buf2 = hdr.meta.ingress_tstamp - meta.tlast;
+        meta.max_ia = hdr.meta.ingress_tstamp - meta.tlast;
     }
 
     action update_stat_interarrival() {
@@ -276,22 +304,22 @@ control Egress(
     }
 
     action update_stat_delay_0() {
-        meta.buf = DELAY_THRESH_Q0;
+        meta.buf_0 = DELAY_THRESH_Q0;
         update_delay_0.execute((bit<32>)meta.addr);
     }
 
     action update_stat_delay_1() {
-        meta.buf = DELAY_THRESH_Q1;
+        meta.buf_1 = DELAY_THRESH_Q1;
         update_delay_1.execute((bit<32>)meta.addr);
     }
 
     action update_stat_delay_2() {
-        meta.buf = DELAY_THRESH_Q2;
+        meta.buf_2 = DELAY_THRESH_Q2;
         update_delay_2.execute((bit<32>)meta.addr);
     }
 
     action update_stat_delay_3() {
-        meta.buf = REGMAX;
+        meta.buf_3 = REGMAX;
         update_delay_3.execute((bit<32>)meta.addr);
     }
 
@@ -299,21 +327,23 @@ control Egress(
         hdr.meta.egress_tstamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
         compute_queuing_delay();
         hash_flow();
-        insert_stage_0_key();
-        if(meta.oldkey == meta.key) {
-            prepare_flow_size();
-            prepare_tlast();
-            update_stat_flowsize();
-            update_stat_tlast();
-            if(meta.tlast == 0) meta.buf2 = 0;
-            else compute_interval();
-            update_stat_interarrival();
-            meta.omega = REGMAX;
-            update_stat_delay_0();
-            update_stat_delay_1();
-            update_stat_delay_2();
-            update_stat_delay_3();
-        }
+        prepare_tlast();
+        prepare_flow_size();
+        update_stat_flowsize_0();
+        if(meta.buf > 0) meta.omega_flowsize = meta.buf;
+        prepare_flow_size();
+        update_stat_flowsize_1();
+        if(meta.buf > 0) meta.omega_flowsize = meta.buf;
+        update_stat_tlast_0();
+        update_stat_tlast_1();
+        if(meta.tlast == 0) meta.max_tlast = 0;
+        else compute_interval();
+        update_stat_interarrival();
+        meta.omega = REGMAX;
+        update_stat_delay_0();
+        update_stat_delay_1();
+        update_stat_delay_2();
+        update_stat_delay_3();
     }
 }
 
