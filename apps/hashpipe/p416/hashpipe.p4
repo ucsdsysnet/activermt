@@ -17,8 +17,9 @@ header ethernet_h {
 
 struct ig_metadata_t {
     bit<32> key;
-    bit<32> prev_key;
     bit<32> count;
+    bit<32> result;
+    bit<32> prev_key;
 }
 
 struct eg_metadata_t {}
@@ -33,7 +34,7 @@ struct egress_headers_t {
 
 struct counter_obj_t {
     bit<32>     key;
-    bit<32>     count;
+    bit<32>     value;
 }
 
 parser IngressParser(
@@ -64,21 +65,23 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md
 ) {
-    Register<bit<64>, bit<64>>(32w65536) stage_0;
+    Register<counter_obj_t, bit<32>>(32w65536) stage_0;
 
-    RegisterAction<bit<64>, bit<64>, bit<64>>(stage_0) insert_0 = {
-        void apply(inout bit<64> obj, out bit<64> rv) {
-            if(obj[31:0] == meta.key) {
-                obj[63:32] = obj[63:32] + 1;
+    RegisterAction<counter_obj_t, bit<32>, bit<32>>(stage_0) insert_0 = {
+        void apply(inout counter_obj_t obj, out bit<32> rv) {
+            rv = obj.key;
+            if(obj.key == meta.key) {
+                obj.value = obj.value + 0x00010000;
             } else {
-                obj[31:0] = meta.key;
-                obj[63:32] = 1;
+                obj.key = meta.key;
+                obj.value = 0x00010000;
             }
+            rv = obj.key;
         }
     };
 
     action hh_stage_0() {
-        insert_0.execute(0);
+        meta.result = insert_0.execute(0);
     }
 
     /*Register<counter_obj_t, bit<64>>(32w65536) stage_1;

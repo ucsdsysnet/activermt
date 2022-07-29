@@ -21,8 +21,10 @@ struct ig_metadata_t {}
 
 struct eg_metadata_t {
     bit<32>     buf;
+    bit<32>     alpha;
     bit<32>     omega;
     bit<16>     addr;
+    bit<16>     offset;
 }
 
 struct ingress_headers_t {
@@ -130,9 +132,19 @@ control Egress(
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(reg) update_reg = {
         void apply(inout bit<32> obj, out bit<32> rv) {
-            //rv = meta.omega_flowsize;
+            /*bit<32> tmp = obj;
+            obj = obj + meta.alpha;
+            rv = obj;
+            if(obj > meta.omega) {
+                obj = meta.omega;
+                rv = obj;
+            } else if(obj >= meta.buf) {
+                obj = tmp;
+                rv = 0;
+            }*/
+            rv = 0;
             if(obj < meta.buf) {
-                obj = obj + ALPHA;
+                obj = obj + 1;
                 rv = obj;
             } else if(obj < meta.omega) {
                 obj = meta.omega;
@@ -142,11 +154,21 @@ control Egress(
     };
 
     action update_stat_reg() {
-        meta.buf = update_reg.execute(0);
+        meta.buf = update_reg.execute((bit<32>)meta.addr);
+    }
+
+    action compute_address_hash() {
+        meta.addr = crc16.get({ hdr.ethernet.dst_addr });
+    }
+
+    action compute_address_offset() {
+        meta.addr = (bit<16>)meta.addr[7:0] + meta.offset;
     }
 
     apply {
         meta.omega = 0xFFFF;
+        compute_address_hash();
+        compute_address_offset();
         update_stat_reg();
     }
 }

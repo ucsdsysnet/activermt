@@ -17,6 +17,8 @@ header_type ethernet_t {
 
 header_type metadata_t {
     fields {
+        key     : 32;
+        value   : 32;
         result  : 32;
         addr    : 32;
     }
@@ -40,13 +42,16 @@ register heap {
     instance_count  : 65536;
 }
 
-blackbox stateful_alu heap_read {
-    reg                 : heap;
-    condition_lo        : register_lo == meta.addr;
-    condition_hi        : meta.result > 0;
-    output_predicate    : condition_lo or condition_hi;
-    output_dst          : meta.result;
-    output_value        : register_hi;
+blackbox stateful_alu heap_update {
+    reg                     : heap;
+    condition_lo            : register_lo == meta.key;
+    update_lo_1_predicate   : condition_lo;
+    update_lo_1_value       : register_lo + 0x00010000;
+    update_hi_2_predicate   : not condition_lo;
+    update_hi_1_value       : 0x00010000;
+    output_predicate        : condition_lo or condition_hi;
+    output_dst              : meta.result;
+    output_value            : register_hi;
 }
 
 field_list addr_list {
