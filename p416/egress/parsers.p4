@@ -40,7 +40,7 @@ parser EgressParser(
     }
 
     state parse_active_data {
-        pkt.extract(hdr.bulk_data);
+        //pkt.extract(hdr.bulk_data);
         transition parse_active_instruction;
     }
 

@@ -11,6 +11,18 @@ control Egress(
 
     <hash-defs>
 
+    action fetch_queue() {
+        hdr.meta.mbr = (bit<32>)eg_intr_md.enq_qdepth;
+    }
+
+    action fetch_qdelay() {
+        hdr.meta.mbr = hdr.meta.qdelay;
+    }
+
+    action fetch_pktcount() {
+        hdr.meta.mbr = hdr.meta.ig_pktcount;
+    }
+
     action drop() {
         eg_dprsr_md.drop_ctl = 1;
     }
@@ -63,6 +75,8 @@ control Egress(
     // control flow
     
     apply {
+        hdr.meta.eg_timestamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
+        hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
         recirculation.apply();

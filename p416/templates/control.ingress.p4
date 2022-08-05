@@ -11,7 +11,13 @@ control Ingress(
 
     <hash-defs>
 
-    Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
+    action fetch_qdelay() {}
+
+    action fetch_queue() {}
+
+    action fetch_pktcount() {
+        hdr.meta.mbr = hdr.meta.ig_pktcount;
+    }
 
     action bypass_egress() {
         ig_tm_md.bypass_egress = 1;
@@ -100,7 +106,20 @@ control Ingress(
     // quota enforcement
 
     Random<bit<16>>() rnd;
+    Register<bit<32>, bit<32>>(32w65536) pkt_count;
+    Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
     Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(pkt_count) counter_pkts = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            obj = obj + 1; 
+            rv = obj;
+        }
+    };
+
+    action update_pkt_count_ap4() {
+        hdr.meta.ig_pktcount = counter_pkts.execute((bit<32>)hdr.ih.fid);
+    }
 
     /*action set_quotas(bit<8> circulations) {
         hdr.meta.cycles = circulations;
@@ -147,15 +166,17 @@ control Ingress(
     // control flow
 
     apply {
+        hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
-            activep4_stats.count((bit<32>)hdr.ih.fid);
+            //activep4_stats.count((bit<32>)hdr.ih.fid);
+            update_pkt_count_ap4();
             check_prior_exec();
         } else bypass_egress();
         <generated-ctrlflow>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
-            overall_stats.count(0);
+            //overall_stats.count(0);
             /*overall_stats.count(0);
             if(vroute.apply().miss) {
                 ipv4_host.apply();

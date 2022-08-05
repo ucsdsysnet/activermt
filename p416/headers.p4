@@ -146,6 +146,11 @@ header bridged_metadata_h {
     bit<32>     mbr;
     bit<32>     mbr2;
     bool        zero;
+    bit<32>     ig_timestamp;
+    bit<32>     eg_timestamp;
+    bit<32>     qdelay;
+    bit<32>     ig_pktcount;
+    bit<32>     eg_pktcount;
 }
 
 header eg_port_mirror_h {
@@ -163,6 +168,7 @@ struct ig_metadata_t {
     bit<16>     vport;
     bit<16>     chksum_tcp;
     bit<16>     phash;
+    bit<32>     idx;
 }
 
 struct eg_metadata_t {
@@ -174,7 +180,7 @@ struct ingress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
-    active_bulk_data_h                          bulk_data;
+    //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
@@ -187,7 +193,7 @@ struct egress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
-    active_bulk_data_h                          bulk_data;
+    //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
 }
 

@@ -16,27 +16,36 @@ action attempt_rejoin_s<stage-id>() {
     heap_bulk_write_s<stage-id>.execute((bit<32>)hdr.meta.mar);
 }*/
 
-action memory_read_s<stage-id>() {
+/*action memory_read_s<stage-id>() {
     hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
+}*/
+
+/*action memory_write_s<stage-id>() {
+    hdr.meta.mbr2 = 0x1FFFFFFF;
+    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
+}*/
+
+/*action memory_increment_s<stage-id>() {
+    hdr.meta.mbr = 0x1FFFFFFF;
+    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
+}*/
+
+/*action memory_increment_conditional_s<stage-id>() {
+    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
+}*/
+
+/*action memory_swap_conditional_s<stage-id>() {
+    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
+}*/
+
+action memory_read_s<stage-id>() {
+    hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_write_s<stage-id>() {
-    hdr.meta.mbr2 = 0x1FFFFFFF;
-    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
-}
-
-action memory_increment_s<stage-id>() {
-    hdr.meta.mbr = 0x1FFFFFFF;
-    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
-}
-
-action memory_increment_conditional_s<stage-id>() {
-    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
-}
-
-action memory_swap_conditional_s<stage-id>() {
-    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = 0;
+    hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s<stage-id>() {
