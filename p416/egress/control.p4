@@ -40,9 +40,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s0;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_rw_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -54,7 +57,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_rw_s0 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_accumulate_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -127,9 +130,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s1;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_rw_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -141,7 +147,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_rw_s1 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_accumulate_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -214,9 +220,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s2;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_rw_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -228,7 +237,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_rw_s2 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_accumulate_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -301,9 +310,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s3;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_rw_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -315,7 +327,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_rw_s3 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_accumulate_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -388,9 +400,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s4;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_rw_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -402,7 +417,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_rw_s4 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_accumulate_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -475,9 +490,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s5;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_rw_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -489,7 +507,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_rw_s5 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_accumulate_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -562,9 +580,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s6;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_rw_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -576,7 +597,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_rw_s6 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_accumulate_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -649,9 +670,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s7;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_rw_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -663,7 +687,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_rw_s7 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_accumulate_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -736,9 +760,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s8;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_rw_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -750,7 +777,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_rw_s8 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_accumulate_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -823,9 +850,12 @@ Register<bit<32>, bit<32>>(32w65536) heap_s9;
     }
 };*/
 
+/*
+    R/W memory object.
+*/
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_rw_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        if(hdr.meta.mbr2 == 0) {
+        if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
         rv = obj;
@@ -837,7 +867,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_rw_s9 = {
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_accumulate_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.mbr; 
+        obj = obj + hdr.meta.mbr2; 
         rv = obj;
     }
 };
@@ -1340,16 +1370,22 @@ action attempt_rejoin_s0() {
 }*/
 
 action memory_read_s0() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s0.execute(hdr.meta.mar);
 }
 
 action memory_write_s0() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s0.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s0() {
     hdr.meta.mbr = heap_accumulate_s0.execute(hdr.meta.mar);
+}
+
+action memory_minread_s0() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s0.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s0() {
@@ -1407,16 +1443,22 @@ action attempt_rejoin_s1() {
 }*/
 
 action memory_read_s1() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s1.execute(hdr.meta.mar);
 }
 
 action memory_write_s1() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s1.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s1() {
     hdr.meta.mbr = heap_accumulate_s1.execute(hdr.meta.mar);
+}
+
+action memory_minread_s1() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s1.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s1() {
@@ -1474,16 +1516,22 @@ action attempt_rejoin_s2() {
 }*/
 
 action memory_read_s2() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s2.execute(hdr.meta.mar);
 }
 
 action memory_write_s2() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s2.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s2() {
     hdr.meta.mbr = heap_accumulate_s2.execute(hdr.meta.mar);
+}
+
+action memory_minread_s2() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s2.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s2() {
@@ -1541,16 +1589,22 @@ action attempt_rejoin_s3() {
 }*/
 
 action memory_read_s3() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s3.execute(hdr.meta.mar);
 }
 
 action memory_write_s3() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s3.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s3() {
     hdr.meta.mbr = heap_accumulate_s3.execute(hdr.meta.mar);
+}
+
+action memory_minread_s3() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s3.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s3() {
@@ -1608,16 +1662,22 @@ action attempt_rejoin_s4() {
 }*/
 
 action memory_read_s4() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s4.execute(hdr.meta.mar);
 }
 
 action memory_write_s4() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s4.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s4() {
     hdr.meta.mbr = heap_accumulate_s4.execute(hdr.meta.mar);
+}
+
+action memory_minread_s4() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s4.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s4() {
@@ -1675,16 +1735,22 @@ action attempt_rejoin_s5() {
 }*/
 
 action memory_read_s5() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s5.execute(hdr.meta.mar);
 }
 
 action memory_write_s5() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s5.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s5() {
     hdr.meta.mbr = heap_accumulate_s5.execute(hdr.meta.mar);
+}
+
+action memory_minread_s5() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s5.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s5() {
@@ -1742,16 +1808,22 @@ action attempt_rejoin_s6() {
 }*/
 
 action memory_read_s6() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
 }
 
 action memory_write_s6() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s6() {
     hdr.meta.mbr = heap_accumulate_s6.execute(hdr.meta.mar);
+}
+
+action memory_minread_s6() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s6() {
@@ -1809,16 +1881,22 @@ action attempt_rejoin_s7() {
 }*/
 
 action memory_read_s7() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s7.execute(hdr.meta.mar);
 }
 
 action memory_write_s7() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s7.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s7() {
     hdr.meta.mbr = heap_accumulate_s7.execute(hdr.meta.mar);
+}
+
+action memory_minread_s7() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s7.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s7() {
@@ -1876,16 +1954,22 @@ action attempt_rejoin_s8() {
 }*/
 
 action memory_read_s8() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s8.execute(hdr.meta.mar);
 }
 
 action memory_write_s8() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s8.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s8() {
     hdr.meta.mbr = heap_accumulate_s8.execute(hdr.meta.mar);
+}
+
+action memory_minread_s8() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s8.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s8() {
@@ -1943,16 +2027,22 @@ action attempt_rejoin_s9() {
 }*/
 
 action memory_read_s9() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s9.execute(hdr.meta.mar);
 }
 
 action memory_write_s9() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s9.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s9() {
     hdr.meta.mbr = heap_accumulate_s9.execute(hdr.meta.mar);
+}
+
+action memory_minread_s9() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s9.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s9() {
@@ -2036,6 +2126,7 @@ attempt_rejoin_s0;
 memory_read_s0;
 memory_write_s0;
 memory_accumulate_s0;
+memory_minread_s0;
 hash_s0;
     }
     size = 512;
@@ -2103,6 +2194,7 @@ attempt_rejoin_s1;
 memory_read_s1;
 memory_write_s1;
 memory_accumulate_s1;
+memory_minread_s1;
 hash_s1;
     }
     size = 512;
@@ -2170,6 +2262,7 @@ attempt_rejoin_s2;
 memory_read_s2;
 memory_write_s2;
 memory_accumulate_s2;
+memory_minread_s2;
 hash_s2;
     }
     size = 512;
@@ -2237,6 +2330,7 @@ attempt_rejoin_s3;
 memory_read_s3;
 memory_write_s3;
 memory_accumulate_s3;
+memory_minread_s3;
 hash_s3;
     }
     size = 512;
@@ -2304,6 +2398,7 @@ attempt_rejoin_s4;
 memory_read_s4;
 memory_write_s4;
 memory_accumulate_s4;
+memory_minread_s4;
 hash_s4;
     }
     size = 512;
@@ -2371,6 +2466,7 @@ attempt_rejoin_s5;
 memory_read_s5;
 memory_write_s5;
 memory_accumulate_s5;
+memory_minread_s5;
 hash_s5;
     }
     size = 512;
@@ -2438,6 +2534,7 @@ attempt_rejoin_s6;
 memory_read_s6;
 memory_write_s6;
 memory_accumulate_s6;
+memory_minread_s6;
 hash_s6;
     }
     size = 512;
@@ -2505,6 +2602,7 @@ attempt_rejoin_s7;
 memory_read_s7;
 memory_write_s7;
 memory_accumulate_s7;
+memory_minread_s7;
 hash_s7;
     }
     size = 512;
@@ -2572,6 +2670,7 @@ attempt_rejoin_s8;
 memory_read_s8;
 memory_write_s8;
 memory_accumulate_s8;
+memory_minread_s8;
 hash_s8;
     }
     size = 512;
@@ -2639,6 +2738,7 @@ attempt_rejoin_s9;
 memory_read_s9;
 memory_write_s9;
 memory_accumulate_s9;
+memory_minread_s9;
 hash_s9;
     }
     size = 512;

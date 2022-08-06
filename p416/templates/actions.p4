@@ -40,16 +40,22 @@ action attempt_rejoin_s<stage-id>() {
 }*/
 
 action memory_read_s<stage-id>() {
+    hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_write_s<stage-id>() {
-    hdr.meta.mbr2 = 0;
     hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_accumulate_s<stage-id>() {
     hdr.meta.mbr = heap_accumulate_s<stage-id>.execute(hdr.meta.mar);
+}
+
+action memory_minread_s<stage-id>() {
+    hdr.meta.mbr = 0;
+    hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
 /*action memory_eq_increment_s<stage-id>() {

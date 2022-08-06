@@ -47,10 +47,14 @@ COPY_MBR_MAR,copy_mbr_mar
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#
+MEM_MINREAD,memory_minread_s#
 MEM_EQ_INCREMENT,memory_eq_increment_s#
 MEM_LT_INCREMENT,memory_lt_increment_s#
 MEM_LT_SWAP,memory_swap_conditional_s#
 HASH,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
+LOAD_QDELAY,fetch_qdelay
+LOAD_QUEUE,fetch_queue
+LOAD_PKTCOUNT,fetch_pktcount
 MBR_LOAD,NULL
 MAR_LOAD,NULL
