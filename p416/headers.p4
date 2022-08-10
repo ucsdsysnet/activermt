@@ -153,12 +153,18 @@ header bridged_metadata_h {
     bit<32>     eg_pktcount;
 }
 
+header resubmit_header_t {
+    bit<32>     buf;
+    bit<32>     addr;
+}
+
 header eg_port_mirror_h {
     pkt_type_t  pkt_type;
 }
 
 @flexible
 struct ig_metadata_t {
+    resubmit_header_t   resubmit_data;
     bit<8>      port_change;
     bit<8>      set_clr_seq;
     bit<8>      prev_exec;

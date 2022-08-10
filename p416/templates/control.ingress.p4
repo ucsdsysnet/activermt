@@ -33,6 +33,10 @@ control Ingress(
         ig_dprsr_md.drop_ctl = 1;
     }
 
+    action recirculate() {
+        ig_dprsr_md.resubmit_type = RESUBMIT_TYPE_DEFAULT;
+    }
+
     table ipv4_host {
         key = { 
             hdr.ipv4.dst_addr   : exact; 

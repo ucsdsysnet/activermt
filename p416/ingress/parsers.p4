@@ -9,8 +9,22 @@ parser IngressParser(
 
     state start {
         pkt.extract(ig_intr_md);
-        pkt.advance(PORT_METADATA_SIZE);
         hdr.meta.setValid();
+        transition select(ig_intr_md.resubmit_flag) {
+            1   : parse_resubmit;
+            0   : parse_port_metadata;
+        }
+    }
+
+    state parse_resubmit {
+        pkt.extract(meta.resubmit_data);
+        hdr.meta.mbr2 = meta.resubmit_data.buf;
+        hdr.meta.mar = meta.resubmit_data.addr;
+        transition parse_ethernet;
+    }
+
+    state parse_port_metadata {
+        pkt.advance(PORT_METADATA_SIZE);
         transition parse_ethernet;
     }
 
@@ -99,7 +113,14 @@ control IngressDeparser(
 ) {
     Checksum() ipv4_checksum;
     Checksum() tcp_checksum;
+    Resubmit() resubmit;
     apply {
+        if(ig_dprsr_md.resubmit_type == RESUBMIT_TYPE_DEFAULT) {
+            resubmit.emit<resubmit_header_t>({
+                hdr.meta.mbr2,
+                hdr.meta.mar
+            });
+        }
         if(hdr.ipv4.isValid()) {
             hdr.ipv4.hdr_checksum = ipv4_checksum.update({
                 hdr.ipv4.version,

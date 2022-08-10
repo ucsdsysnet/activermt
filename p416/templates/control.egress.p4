@@ -31,6 +31,8 @@ control Egress(
         hdr.ih.flag_done = 1;
     }
 
+    action recirculate() {}
+
     action skip() {}
 
     action rts() {

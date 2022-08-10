@@ -4,6 +4,7 @@ RETURN,complete
 CRET,complete,1
 DROP,drop
 SET_DST,set_port
+RECIRCULATE,recirculate
 LOAD_SALT,load_salt
 MARK_PACKET,mark_packet
 MARK_IF,mark_packet,1
