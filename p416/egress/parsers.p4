@@ -62,19 +62,8 @@ control EgressDeparser(
 ) {
     Mirror() mirror;
     apply {
-        if(eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
-            mirror.emit<eg_port_mirror_h>(
-                hdr.meta.egr_mir_ses,
-                {
-                    /*meta.mirror_header_type,
-                    meta.mirror_header_info,
-                    meta.ingress_port,
-                    meta.mirror_session,
-                    meta.ingress_mac_tstamp,
-                    meta.ingress_global_tstamp*/
-                    hdr.meta.pkt_type
-                }
-            );
+        if(eg_dprsr_md.mirror_type == 1) {
+            mirror.emit(meta.mirror_sessid);
         }
         pkt.emit(hdr);
     }

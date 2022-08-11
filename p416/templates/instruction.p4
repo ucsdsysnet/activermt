@@ -18,7 +18,6 @@ table instruction_<stage-id> {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         <generated-actions>
     }
     size = 512;

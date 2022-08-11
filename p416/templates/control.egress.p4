@@ -31,8 +31,6 @@ control Egress(
         hdr.ih.flag_done = 1;
     }
 
-    action recirculate() {}
-
     action skip() {}
 
     action rts() {
@@ -57,17 +55,20 @@ control Egress(
 
     Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
-    action set_mirror(MirrorId_t mir_sess) {
-        hdr.meta.egr_mir_ses = mir_sess;
-        hdr.meta.pkt_type = PKT_TYPE_MIRROR;
-        eg_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
-        drop();
+    action recirculate() {
+        meta.mirror_sessid = hdr.meta.mirror_sessid;
+        eg_dprsr_md.mirror_type = 1;
+        hdr.meta.mirror_iter = hdr.meta.mirror_iter - 1;
     }
 
-    table recirculation {
-        key     = {
-            hdr.meta.complete   : exact;
-            hdr.meta.cycles     : range;
+    action set_mirror(bit<10> sessid) {
+        hdr.meta.mirror_en = 1;
+        hdr.meta.mirror_sessid = sessid;
+    }
+
+    table mirror_cfg {
+        key = {
+            eg_intr_md.egress_port  : exact;
         }
         actions = {
             set_mirror;
@@ -77,11 +78,16 @@ control Egress(
     // control flow
     
     apply {
+        mirror_cfg.apply();
         hdr.meta.eg_timestamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
         hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
-        recirculation.apply();
-        hdr.meta.setInvalid();
+        if(hdr.meta.mirror_iter > 0 && hdr.meta.complete == 0) {
+            recirculate();
+            drop();
+        } else {
+            hdr.meta.setInvalid();
+        }
     }
 }

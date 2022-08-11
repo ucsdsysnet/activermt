@@ -53,7 +53,7 @@ control Ingress(
 #endif
     }
 
-    table vroute {
+    /*table vroute {
         key = {
             meta.port_change    : exact;
             meta.vport          : exact;
@@ -61,7 +61,7 @@ control Ingress(
         actions = {
             send;
         }
-    }
+    }*/
 
     // actions
 
@@ -125,32 +125,19 @@ control Ingress(
         hdr.meta.ig_pktcount = counter_pkts.execute((bit<32>)hdr.ih.fid);
     }
 
-    /*action set_quotas(bit<8> circulations) {
-        hdr.meta.cycles = circulations;
-        activep4_stats.count((bit<32>)hdr.ih.fid);
+    action enable_recirculation() {
+        hdr.meta.mirror_iter = MAX_RECIRCULATIONS;
     }
 
-    action get_quotas(bit<32> alloc_id, bit<32> mem_start, bit<32> mem_end, bit<32> curr_bw) {
-        hdr.data.data_0 = mem_start;
-        hdr.data.data_1 = mem_end;
-        hdr.data.data_2 = curr_bw;
-        hdr.data.data_3 = alloc_id;
-        hdr.ih.flag_allocated = 1;
-        rts();
-        bypass_egress();
-    }
-
-    table quotas {
-        key     = {
-            hdr.ih.fid              : exact;
-            hdr.ih.flag_reqalloc    : exact;
-            hdr.meta.randnum        : range;
+    table quota_recirc {
+        key = {
+            hdr.ih.fid          : exact;
+            //hdr.meta.randnum    : range;
         }
         actions = {
-            set_quotas;
-            get_quotas;
+            enable_recirculation;
         }
-    }*/
+    }
 
     Register<bit<8>, bit<16>>(32w65536) seqmap;
     Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
@@ -174,6 +161,7 @@ control Ingress(
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
+            quota_recirc.apply();
             update_pkt_count_ap4();
             check_prior_exec();
         } else bypass_egress();

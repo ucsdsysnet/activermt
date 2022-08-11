@@ -66,7 +66,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_accumulate_s0 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_increment_s0 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_increment_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -77,21 +77,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_increment_s0
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_swap_s0 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_swap_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_bulk_write_s0 = {
     void apply(inout bit<32> value) {
@@ -156,7 +156,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_accumulate_s1 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_increment_s1 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_increment_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -167,21 +167,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_increment_s1
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_swap_s1 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_swap_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_bulk_write_s1 = {
     void apply(inout bit<32> value) {
@@ -246,7 +246,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_accumulate_s2 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_increment_s2 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_increment_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -257,21 +257,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_increment_s2
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_swap_s2 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_swap_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_bulk_write_s2 = {
     void apply(inout bit<32> value) {
@@ -336,7 +336,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_accumulate_s3 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_increment_s3 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_increment_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -347,21 +347,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_increment_s3
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_swap_s3 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_swap_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_bulk_write_s3 = {
     void apply(inout bit<32> value) {
@@ -426,7 +426,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_accumulate_s4 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_increment_s4 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_increment_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -437,21 +437,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_increment_s4
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_swap_s4 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_swap_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_bulk_write_s4 = {
     void apply(inout bit<32> value) {
@@ -516,7 +516,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_accumulate_s5 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_increment_s5 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_increment_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -527,21 +527,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_increment_s5
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_swap_s5 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_swap_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_bulk_write_s5 = {
     void apply(inout bit<32> value) {
@@ -606,7 +606,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_accumulate_s6 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -617,21 +617,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_swap_s6 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_swap_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_bulk_write_s6 = {
     void apply(inout bit<32> value) {
@@ -696,7 +696,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_accumulate_s7 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_increment_s7 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_increment_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -707,21 +707,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_increment_s7
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_swap_s7 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_swap_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_bulk_write_s7 = {
     void apply(inout bit<32> value) {
@@ -786,7 +786,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_accumulate_s8 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_increment_s8 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_increment_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -797,21 +797,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_increment_s8
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_swap_s8 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_swap_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_bulk_write_s8 = {
     void apply(inout bit<32> value) {
@@ -876,7 +876,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_accumulate_s9 = {
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_increment_s9 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_increment_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = 0;
         if(obj < hdr.meta.mbr) {
@@ -887,21 +887,21 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_increment_s9
             rv = obj;
         } 
     }
-};
+};*/
 
 /*
     Swap by mbr if current value is less than mbr2.
     [special case] Read: hdr.meta.mbr2 = 0.
     [special case] Write: hdr.meta.mbr2 = REGMAX.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_swap_s9 = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_swap_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_bulk_write_s9 = {
     void apply(inout bit<32> value) {
@@ -1063,7 +1063,7 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
 #endif
     }
 
-    table vroute {
+    /*table vroute {
         key = {
             meta.port_change    : exact;
             meta.vport          : exact;
@@ -1071,7 +1071,7 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         actions = {
             send;
         }
-    }
+    }*/
 
     // actions
 
@@ -1408,18 +1408,18 @@ action attempt_rejoin_s0() {
     hdr.meta.mbr = heap_conditional_swap_s0.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s0() {
+/*action memory_increment_s0() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s0.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s0() {
+/*action memory_increment_conditional_s0() {
     hdr.meta.mbr2 = heap_conditional_increment_s0.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s0() {
+/*action memory_swap_conditional_s0() {
     hdr.meta.mbr = heap_conditional_swap_s0.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s0() {
     hdr.meta.mbr = 0;
@@ -1481,18 +1481,18 @@ action attempt_rejoin_s1() {
     hdr.meta.mbr = heap_conditional_swap_s1.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s1() {
+/*action memory_increment_s1() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s1.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s1() {
+/*action memory_increment_conditional_s1() {
     hdr.meta.mbr2 = heap_conditional_increment_s1.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s1() {
+/*action memory_swap_conditional_s1() {
     hdr.meta.mbr = heap_conditional_swap_s1.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s1() {
     hdr.meta.mbr = 0;
@@ -1554,18 +1554,18 @@ action attempt_rejoin_s2() {
     hdr.meta.mbr = heap_conditional_swap_s2.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s2() {
+/*action memory_increment_s2() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s2.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s2() {
+/*action memory_increment_conditional_s2() {
     hdr.meta.mbr2 = heap_conditional_increment_s2.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s2() {
+/*action memory_swap_conditional_s2() {
     hdr.meta.mbr = heap_conditional_swap_s2.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s2() {
     hdr.meta.mbr = 0;
@@ -1627,18 +1627,18 @@ action attempt_rejoin_s3() {
     hdr.meta.mbr = heap_conditional_swap_s3.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s3() {
+/*action memory_increment_s3() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s3.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s3() {
+/*action memory_increment_conditional_s3() {
     hdr.meta.mbr2 = heap_conditional_increment_s3.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s3() {
+/*action memory_swap_conditional_s3() {
     hdr.meta.mbr = heap_conditional_swap_s3.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s3() {
     hdr.meta.mbr = 0;
@@ -1700,18 +1700,18 @@ action attempt_rejoin_s4() {
     hdr.meta.mbr = heap_conditional_swap_s4.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s4() {
+/*action memory_increment_s4() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s4.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s4() {
+/*action memory_increment_conditional_s4() {
     hdr.meta.mbr2 = heap_conditional_increment_s4.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s4() {
+/*action memory_swap_conditional_s4() {
     hdr.meta.mbr = heap_conditional_swap_s4.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s4() {
     hdr.meta.mbr = 0;
@@ -1773,18 +1773,18 @@ action attempt_rejoin_s5() {
     hdr.meta.mbr = heap_conditional_swap_s5.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s5() {
+/*action memory_increment_s5() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s5.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s5() {
+/*action memory_increment_conditional_s5() {
     hdr.meta.mbr2 = heap_conditional_increment_s5.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s5() {
+/*action memory_swap_conditional_s5() {
     hdr.meta.mbr = heap_conditional_swap_s5.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s5() {
     hdr.meta.mbr = 0;
@@ -1846,18 +1846,18 @@ action attempt_rejoin_s6() {
     hdr.meta.mbr = heap_conditional_swap_s6.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s6() {
+/*action memory_increment_s6() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s6.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s6() {
+/*action memory_increment_conditional_s6() {
     hdr.meta.mbr2 = heap_conditional_increment_s6.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s6() {
+/*action memory_swap_conditional_s6() {
     hdr.meta.mbr = heap_conditional_swap_s6.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s6() {
     hdr.meta.mbr = 0;
@@ -1919,18 +1919,18 @@ action attempt_rejoin_s7() {
     hdr.meta.mbr = heap_conditional_swap_s7.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s7() {
+/*action memory_increment_s7() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s7.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s7() {
+/*action memory_increment_conditional_s7() {
     hdr.meta.mbr2 = heap_conditional_increment_s7.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s7() {
+/*action memory_swap_conditional_s7() {
     hdr.meta.mbr = heap_conditional_swap_s7.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s7() {
     hdr.meta.mbr = 0;
@@ -1992,18 +1992,18 @@ action attempt_rejoin_s8() {
     hdr.meta.mbr = heap_conditional_swap_s8.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s8() {
+/*action memory_increment_s8() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s8.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s8() {
+/*action memory_increment_conditional_s8() {
     hdr.meta.mbr2 = heap_conditional_increment_s8.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s8() {
+/*action memory_swap_conditional_s8() {
     hdr.meta.mbr = heap_conditional_swap_s8.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s8() {
     hdr.meta.mbr = 0;
@@ -2065,18 +2065,18 @@ action attempt_rejoin_s9() {
     hdr.meta.mbr = heap_conditional_swap_s9.execute(hdr.meta.mar);
 }*/
 
-action memory_increment_s9() {
+/*action memory_increment_s9() {
     hdr.meta.mbr = 0x1FFFFFFF;
     hdr.meta.mbr2 = heap_conditional_increment_s9.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_increment_conditional_s9() {
+/*action memory_increment_conditional_s9() {
     hdr.meta.mbr2 = heap_conditional_increment_s9.execute(hdr.meta.mar);
-}
+}*/
 
-action memory_swap_conditional_s9() {
+/*action memory_swap_conditional_s9() {
     hdr.meta.mbr = heap_conditional_swap_s9.execute(hdr.meta.mar);
-}
+}*/
 
 action memory_read_s9() {
     hdr.meta.mbr = 0;
@@ -2136,7 +2136,6 @@ table instruction_0 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2176,9 +2175,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s0;
 attempt_rejoin_s0;
-memory_increment_s0;
-memory_increment_conditional_s0;
-memory_swap_conditional_s0;
 memory_read_s0;
 memory_write_s0;
 memory_accumulate_s0;
@@ -2208,7 +2204,6 @@ table instruction_1 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2248,9 +2243,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s1;
 attempt_rejoin_s1;
-memory_increment_s1;
-memory_increment_conditional_s1;
-memory_swap_conditional_s1;
 memory_read_s1;
 memory_write_s1;
 memory_accumulate_s1;
@@ -2280,7 +2272,6 @@ table instruction_2 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2320,9 +2311,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s2;
 attempt_rejoin_s2;
-memory_increment_s2;
-memory_increment_conditional_s2;
-memory_swap_conditional_s2;
 memory_read_s2;
 memory_write_s2;
 memory_accumulate_s2;
@@ -2352,7 +2340,6 @@ table instruction_3 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2392,9 +2379,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s3;
 attempt_rejoin_s3;
-memory_increment_s3;
-memory_increment_conditional_s3;
-memory_swap_conditional_s3;
 memory_read_s3;
 memory_write_s3;
 memory_accumulate_s3;
@@ -2424,7 +2408,6 @@ table instruction_4 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2464,9 +2447,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s4;
 attempt_rejoin_s4;
-memory_increment_s4;
-memory_increment_conditional_s4;
-memory_swap_conditional_s4;
 memory_read_s4;
 memory_write_s4;
 memory_accumulate_s4;
@@ -2496,7 +2476,6 @@ table instruction_5 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2536,9 +2515,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s5;
 attempt_rejoin_s5;
-memory_increment_s5;
-memory_increment_conditional_s5;
-memory_swap_conditional_s5;
 memory_read_s5;
 memory_write_s5;
 memory_accumulate_s5;
@@ -2568,7 +2544,6 @@ table instruction_6 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2608,9 +2583,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s6;
 attempt_rejoin_s6;
-memory_increment_s6;
-memory_increment_conditional_s6;
-memory_swap_conditional_s6;
 memory_read_s6;
 memory_write_s6;
 memory_accumulate_s6;
@@ -2640,7 +2612,6 @@ table instruction_7 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2680,9 +2651,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s7;
 attempt_rejoin_s7;
-memory_increment_s7;
-memory_increment_conditional_s7;
-memory_swap_conditional_s7;
 memory_read_s7;
 memory_write_s7;
 memory_accumulate_s7;
@@ -2712,7 +2680,6 @@ table instruction_8 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2752,9 +2719,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s8;
 attempt_rejoin_s8;
-memory_increment_s8;
-memory_increment_conditional_s8;
-memory_swap_conditional_s8;
 memory_read_s8;
 memory_write_s8;
 memory_accumulate_s8;
@@ -2784,7 +2748,6 @@ table instruction_9 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        recirculate;
         complete;
 uncomplete;
 copy_mbr2_mbr1;
@@ -2824,9 +2787,6 @@ mbr_load_d4;
 d4_load_mbr;
 jump_s9;
 attempt_rejoin_s9;
-memory_increment_s9;
-memory_increment_conditional_s9;
-memory_swap_conditional_s9;
 memory_read_s9;
 memory_write_s9;
 memory_accumulate_s9;
@@ -2856,32 +2816,19 @@ hash_s9;
         hdr.meta.ig_pktcount = counter_pkts.execute((bit<32>)hdr.ih.fid);
     }
 
-    /*action set_quotas(bit<8> circulations) {
-        hdr.meta.cycles = circulations;
-        activep4_stats.count((bit<32>)hdr.ih.fid);
+    action enable_recirculation() {
+        hdr.meta.mirror_iter = MAX_RECIRCULATIONS;
     }
 
-    action get_quotas(bit<32> alloc_id, bit<32> mem_start, bit<32> mem_end, bit<32> curr_bw) {
-        hdr.data.data_0 = mem_start;
-        hdr.data.data_1 = mem_end;
-        hdr.data.data_2 = curr_bw;
-        hdr.data.data_3 = alloc_id;
-        hdr.ih.flag_allocated = 1;
-        rts();
-        bypass_egress();
-    }
-
-    table quotas {
-        key     = {
-            hdr.ih.fid              : exact;
-            hdr.ih.flag_reqalloc    : exact;
-            hdr.meta.randnum        : range;
+    table quota_recirc {
+        key = {
+            hdr.ih.fid          : exact;
+            //hdr.meta.randnum    : range;
         }
         actions = {
-            set_quotas;
-            get_quotas;
+            enable_recirculation;
         }
-    }*/
+    }
 
     Register<bit<8>, bit<16>>(32w65536) seqmap;
     Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
@@ -2905,6 +2852,7 @@ hash_s9;
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
+            quota_recirc.apply();
             update_pkt_count_ap4();
             check_prior_exec();
         } else bypass_egress();

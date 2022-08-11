@@ -129,12 +129,8 @@ header bridged_metadata_h {
     bit<1>      complete;
     bit<1>      rts;
     bit<1>      disabled; 
-    bit<8>      cycles;
     bit<16>     rtsid;
     bit<16>     fwdid;
-    MirrorId_t  egr_mir_ses;
-    pkt_type_t  pkt_type;
-    bit<2>      padding;
     bit<16>     randnum;
     bit<16>     tcp_length;
     bit<32>     hash_data_0;
@@ -151,6 +147,10 @@ header bridged_metadata_h {
     bit<32>     qdelay;
     bit<32>     ig_pktcount;
     bit<32>     eg_pktcount;
+    bit<10>     mirror_sessid;
+    bit<1>      mirror_en;
+    bit<7>      mirror_iter;
+    bit<3>      _padding;
 }
 
 header resubmit_header_t {
@@ -179,6 +179,7 @@ struct ig_metadata_t {
 
 struct eg_metadata_t {
     bit<16>     instr_count;
+    bit<10>     mirror_sessid;
 }
 
 struct ingress_headers_t {
