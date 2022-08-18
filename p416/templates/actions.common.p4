@@ -6,6 +6,10 @@ action uncomplete() {
     hdr.meta.complete = 0;
 }
 
+action fork() {
+    hdr.meta.duplicate = 1;
+}
+
 action copy_mbr2_mbr1() {
     hdr.meta.mbr2 = hdr.meta.mbr;
 }

@@ -85,7 +85,11 @@ control Egress(
         activep4_stats.count((bit<32>)hdr.ih.fid);
         if(hdr.meta.mirror_iter > 0 && hdr.meta.complete == 0) {
             recirculate();
-            drop();
+            if(hdr.meta.duplicate == 0) {
+                drop();
+            } else {
+                hdr.meta.duplicate = 0;
+            }
         } else {
             hdr.meta.setInvalid();
         }

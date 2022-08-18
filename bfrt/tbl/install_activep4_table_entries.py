@@ -16,7 +16,7 @@ class ActiveP4Installer:
         self.p4 = bfrt.active.pipe
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
-        self.recirculation_enabled = False
+        self.recirculation_enabled = True
         self.base_path = "/usr/local/home/rajdeepd/activep4"
         #self.base_path = "/root/src/activep4-p416"
         self.allocations = {
@@ -41,6 +41,9 @@ class ActiveP4Installer:
                     'args'      : None
                 }
             f.close()
+        self.sid_to_port_mapping = {}
+        self.dst_port_mapping = {}
+        self.ports = []
 
     # Taken from ICA examples
     def clear_all(self, verbose=True, batching=True):
@@ -57,7 +60,6 @@ class ActiveP4Installer:
                         print('Done')
 
     def installForwardingTableEntries(self, config='ptf'):
-        dst_port_mapping = {}
         vport_dst_mapping = {}
         port_to_mac = {}
         with open(os.path.join(self.base_path, 'config', 'ip_routing_%s.csv' % config)) as f:
@@ -67,7 +69,9 @@ class ActiveP4Installer:
                 ip_addr = record[0]
                 dport = int(record[1])
                 vport = record[2]
-                dst_port_mapping[ip_addr] = dport
+                self.dst_port_mapping[ip_addr] = dport
+                if dport not in self.ports:
+                    self.ports.append(dport)
                 if vport != '':
                     vport_dst_mapping[int(vport)] = ip_addr
             f.close()
@@ -82,8 +86,8 @@ class ActiveP4Installer:
             f.close()
         ipv4_host = self.p4.Ingress.ipv4_host
         #vroute = self.p4.Ingress.vroute
-        for host in dst_port_mapping:
-            ipv4_host.add_with_send(dst_addr=IPAddress(host), port=dst_port_mapping[host], mac=port_to_mac[dst_port_mapping[host]])
+        for host in self.dst_port_mapping:
+            ipv4_host.add_with_send(dst_addr=IPAddress(host), port=self.dst_port_mapping[host], mac=port_to_mac[self.dst_port_mapping[host]])
         """for vport in vport_dst_mapping:
             vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]], mac=port_to_mac[dst_port_mapping[vport_dst_mapping[vport]]])"""
         bfrt.complete_operations()
@@ -120,41 +124,26 @@ class ActiveP4Installer:
         self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
         self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
 
-    def addQuotas(self, fid, alloc_id, recirc_pct, circulations, mem_start, mem_end, curr_bw, addrmask, offset):
-        rand_thresh = math.floor(recirc_pct * 0xFFFF)
-        self.p4.Ingress.seq_vaddr.add_with_get_seq_vaddr_params(fid=fid, addrmask=addrmask, offset=offset)
-        self.p4.Ingress.quotas.add_with_set_quotas(fid=fid, flag_reqalloc=0, randnum_start=0, randnum_end=rand_thresh, circulations=circulations)
-        self.p4.Ingress.quotas.add_with_get_quotas(fid=fid, flag_reqalloc=1, randnum_start=0, randnum_end=0xFFFF, alloc_id=alloc_id, mem_start=mem_start, mem_end=mem_end, curr_bw=curr_bw)
-        if self.recirculation_enabled:
-            self.p4.Egress.recirculation.add_with_set_mirror(mir_sess=0)
+    def addQuotas(self, fid, recirculate=False):
+        #rand_thresh = math.floor(recirc_pct * 0xFFFF)
+        if(recirculate):
+            self.p4.Ingress.quota_recirc.add_with_enable_recirculation(fid=fid)
 
-    def setMirrorSessions(self, sid_to_port_mapping):
+    def createSidToPortMapping(self):
+        self.sid_to_port_mapping = {}
+        sid = 0
+        for port in self.ports:
+            sid = sid + 1
+            self.sid_to_port_mapping[sid] = port
+        print(self.sid_to_port_mapping)
+    
+    def setMirrorSessions(self):
         if not self.recirculation_enabled:
             return
-        for sid in sid_to_port_mapping:
-            bfrt.mirror.cfg.add_with_normal(
-                sid=sid, 
-                session_enable=True, 
-                direction="EGRESS", 
-                ucast_egress_port=0, 
-                ucast_egress_port_valid=False, 
-                egress_port_queue=0, 
-                ingress_cos=0, 
-                packet_color=0, 
-                level1_mcast_hash=0, 
-                level2_mcast_hash=0, 
-                mcast_grp_a=0, 
-                mcast_grp_a_valid=False, 
-                mcast_grp_b=0, 
-                mcast_grp_b_valid=False, 
-                mcast_l1_xid=0, 
-                mcast_l2_xid=0, 
-                mcast_rid=0, 
-                icos_for_copy_to_cpu=0, 
-                copy_to_cpu=False, 
-                max_pkt_len=0
-            )
-        #bfrt.mirror.dump()
+        for sid in self.sid_to_port_mapping:
+            bfrt.mirror.cfg.add_with_normal(sid=sid, direction='EGRESS', session_enable=True, ucast_egress_port=self.sid_to_port_mapping[sid], ucast_egress_port_valid=1, max_pkt_len=16384)
+            self.p4.Egress.mirror_cfg.add_with_set_mirror(egress_port=self.sid_to_port_mapping[sid], sessid=sid)
+        bfrt.mirror.dump()
 
     def getTrafficCounters(self, fids):
         traffic_overall = self.p4.Ingress.overall_stats.get(0)
@@ -168,7 +157,7 @@ class ActiveP4Installer:
             }
         return (traffic_overall, traffic_by_fid)
 
-    def resetTrafficCounters(self):
+    """def resetTrafficCounters(self):
         self.p4.Ingress.activep4_stats.clear()
         self.p4.Egress.activep4_stats.clear()
         self.p4.Ingress.overall_stats.clear()
@@ -180,21 +169,18 @@ class ActiveP4Installer:
         except BfRtTableError as e:
             if e.sts == 4:
                 print("Duplicate entry")
-        bfrt.batch_end()
+        bfrt.batch_end()"""
 
 installer = ActiveP4Installer()
-
-sid_to_port_mapping = {
-    1   : 0,
-    2   : 1
-}
 
 fids = [1]
 
 installer.clear_all()
 installer.installForwardingTableEntries(config='default')
 installer.installInstructionTableEntries(1)
-#installer.addQuotas(1, 1, 1.0, 1, 0, 0xFFFF, 0, 0x00FF, 0x0000)
-#installer.setMirrorSessions(sid_to_port_mapping)
+installer.createSidToPortMapping()
+installer.setMirrorSessions()
+installer.addQuotas(1, recirculate=True)
+
 #installer.getTrafficCounters(fids)
 #installer.resetTrafficCounters()

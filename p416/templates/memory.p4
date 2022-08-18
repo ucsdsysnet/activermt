@@ -52,6 +52,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_accumulate_s<st
 };
 
 /*
+    Conditional write (max).
+*/
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_rw_max_s<stage-id> = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
+        if(obj < hdr.meta.mbr) {
+            obj = hdr.meta.mbr;
+        } 
+    }
+};
+
+/*
     Increment if condition is true.
     [special case] Increment: hdr.meta.mbr = REGMAX.
 */
@@ -64,20 +76,6 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_accumulate_s<st
         } else if(obj < hdr.meta.mbr2) {
             obj = hdr.meta.mbr2;
             rv = obj;
-        } 
-    }
-};*/
-
-/*
-    Swap by mbr if current value is less than mbr2.
-    [special case] Read: hdr.meta.mbr2 = 0.
-    [special case] Write: hdr.meta.mbr2 = REGMAX.
-*/
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_swap_s<stage-id> = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-        if(obj < hdr.meta.mbr2) {
-            obj = hdr.meta.mbr;
         } 
     }
 };*/

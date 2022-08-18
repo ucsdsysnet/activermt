@@ -52,6 +52,15 @@ action memory_accumulate_s<stage-id>() {
     hdr.meta.mbr = heap_accumulate_s<stage-id>.execute(hdr.meta.mar);
 }
 
+action memory_increment_s<stage-id>() {
+    hdr.meta.mbr2 = 1;
+    memory_accumulate_s<stage-id>();
+}
+
+action memory_write_max_s<stage-id>() {
+    hdr.meta.mbr = heap_conditional_rw_max_s<stage-id>.execute(hdr.meta.mar);
+}
+
 action memory_minread_s<stage-id>() {
     hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);

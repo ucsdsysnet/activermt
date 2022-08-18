@@ -3,8 +3,8 @@ NOP,skip
 RETURN,complete
 CRET,complete,1
 DROP,drop
+FORK,fork
 SET_DST,set_port
-RECIRCULATE,recirculate
 LOAD_SALT,load_salt
 MARK_PACKET,mark_packet
 MARK_IF,mark_packet,1
@@ -48,10 +48,9 @@ COPY_MBR_MAR,copy_mbr_mar
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#
+MEM_ACCUMULATE,memory_accumulate_s#
 MEM_MINREAD,memory_minread_s#
-MEM_EQ_INCREMENT,memory_eq_increment_s#
-MEM_LT_INCREMENT,memory_lt_increment_s#
-MEM_LT_SWAP,memory_swap_conditional_s#
+MEM_WRITE_CONDMAX,memory_write_max_s#
 HASH,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
 LOAD_QDELAY,fetch_qdelay
