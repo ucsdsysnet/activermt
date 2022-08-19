@@ -76,6 +76,18 @@ parser IngressParser(
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
+        transition select(hdr.ih.flag_reqalloc) {
+            1   : parse_malloc;
+            _   : parse_check_completion;
+        }
+    }
+
+    state parse_malloc {
+        pkt.extract(hdr.malloc);
+        transition parse_ipv4;
+    }
+
+    state parse_check_completion {
         transition select(hdr.ih.flag_done) {
             1   : parse_ipv4;
             _   : parse_active_args;
@@ -114,11 +126,41 @@ control IngressDeparser(
     Checksum() ipv4_checksum;
     Checksum() tcp_checksum;
     Resubmit() resubmit;
+    Digest<malloc_digest_t>() malloc_digest;
     apply {
         if(ig_dprsr_md.resubmit_type == RESUBMIT_TYPE_DEFAULT) {
             resubmit.emit<resubmit_header_t>({
                 hdr.meta.mbr2,
                 hdr.meta.mar
+            });
+        }
+        if(ig_dprsr_md.digest_type == 1) {
+            malloc_digest.pack({
+                hdr.ih.fid,
+                hdr.malloc.constr_lb_0,
+                hdr.malloc.constr_ub_0,
+                hdr.malloc.constr_ms_0,
+                hdr.malloc.constr_lb_1,
+                hdr.malloc.constr_ub_1,
+                hdr.malloc.constr_ms_1,
+                hdr.malloc.constr_lb_2,
+                hdr.malloc.constr_ub_2,
+                hdr.malloc.constr_ms_2,
+                hdr.malloc.constr_lb_3,
+                hdr.malloc.constr_ub_3,
+                hdr.malloc.constr_ms_3,
+                hdr.malloc.constr_lb_4,
+                hdr.malloc.constr_ub_4,
+                hdr.malloc.constr_ms_4,
+                hdr.malloc.constr_lb_5,
+                hdr.malloc.constr_ub_5,
+                hdr.malloc.constr_ms_5,
+                hdr.malloc.constr_lb_6,
+                hdr.malloc.constr_ub_6,
+                hdr.malloc.constr_ms_6,
+                hdr.malloc.constr_lb_7,
+                hdr.malloc.constr_ub_7,
+                hdr.malloc.constr_ms_7
             });
         }
         if(hdr.ipv4.isValid()) {

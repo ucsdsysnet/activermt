@@ -123,6 +123,33 @@ header active_bulk_data_h {
     bit<32>     data_19;
 }
 
+header active_malloc_req_h {
+    bit<8>      constr_lb_0;
+    bit<8>      constr_ub_0;
+    bit<8>      constr_ms_0;
+    bit<8>      constr_lb_1;
+    bit<8>      constr_ub_1;
+    bit<8>      constr_ms_1;
+    bit<8>      constr_lb_2;
+    bit<8>      constr_ub_2;
+    bit<8>      constr_ms_2;
+    bit<8>      constr_lb_3;
+    bit<8>      constr_ub_3;
+    bit<8>      constr_ms_3;
+    bit<8>      constr_lb_4;
+    bit<8>      constr_ub_4;
+    bit<8>      constr_ms_4;
+    bit<8>      constr_lb_5;
+    bit<8>      constr_ub_5;
+    bit<8>      constr_ms_5;
+    bit<8>      constr_lb_6;
+    bit<8>      constr_ub_6;
+    bit<8>      constr_ms_6;
+    bit<8>      constr_lb_7;
+    bit<8>      constr_ub_7;
+    bit<8>      constr_ms_7;
+}
+
 @flexible
 header bridged_metadata_h {
     bit<1>      duplicate;
@@ -187,6 +214,7 @@ struct ingress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
+    active_malloc_req_h                         malloc;
     //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
@@ -204,7 +232,35 @@ struct egress_headers_t {
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
 }
 
-struct memory_object_t {
+/*struct memory_object_t {
     bit<16> key;
     bit<16> value;
-}
+}*/
+
+struct malloc_digest_t {
+    bit<16>     fid;
+    bit<8>      constr_lb_0;
+    bit<8>      constr_ub_0;
+    bit<8>      constr_ms_0;
+    bit<8>      constr_lb_1;
+    bit<8>      constr_ub_1;
+    bit<8>      constr_ms_1;
+    bit<8>      constr_lb_2;
+    bit<8>      constr_ub_2;
+    bit<8>      constr_ms_2;
+    bit<8>      constr_lb_3;
+    bit<8>      constr_ub_3;
+    bit<8>      constr_ms_3;
+    bit<8>      constr_lb_4;
+    bit<8>      constr_ub_4;
+    bit<8>      constr_ms_4;
+    bit<8>      constr_lb_5;
+    bit<8>      constr_ub_5;
+    bit<8>      constr_ms_5;
+    bit<8>      constr_lb_6;
+    bit<8>      constr_ub_6;
+    bit<8>      constr_ms_6;
+    bit<8>      constr_lb_7;
+    bit<8>      constr_ub_7;
+    bit<8>      constr_ms_7;      
+} 

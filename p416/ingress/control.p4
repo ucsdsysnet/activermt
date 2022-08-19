@@ -2956,6 +2956,11 @@ hash_s9;
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
+            if(hdr.ih.flag_reqalloc == 1) {
+                ig_dprsr_md.digest_type = 1;
+                rts();
+                bypass_egress();
+            }
             quota_recirc.apply();
             update_pkt_count_ap4();
             check_prior_exec();
@@ -2972,7 +2977,6 @@ hash_s9;
 		if(hdr.instr[9].isValid()) { instruction_9.apply(); hdr.instr[9].setInvalid(); }
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
-            //overall_stats.count(0);
             /*overall_stats.count(0);
             if(vroute.apply().miss) {
                 ipv4_host.apply();
