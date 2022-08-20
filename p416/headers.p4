@@ -77,10 +77,10 @@ header active_initial_h {
     bit<1>      flag_mfault;
     bit<1>      flag_exceeded;
     bit<1>      flag_reqalloc;
+    bit<1>      flag_getalloc;
     bit<1>      flag_allocated;
-    bit<1>      flag_precache;
-    bit<1>      flag_usecache;
-    bit<2>      padding;
+    bit<1>      flag_pending;
+    bit<2>      _padding;
     bit<16>     fid;
     bit<16>     seq;
 }
@@ -150,6 +150,11 @@ header active_malloc_req_h {
     bit<8>      constr_ms_7;
 }
 
+header active_malloc_h {
+    bit<16>     offset;
+    bit<16>     size;
+}
+
 @flexible
 header bridged_metadata_h {
     bit<1>      duplicate;
@@ -215,6 +220,7 @@ struct ingress_headers_t {
     active_initial_h                            ih;
     active_data_h                               data;
     active_malloc_req_h                         malloc;
+    active_malloc_h[NUM_STAGES]                 alloc;
     //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
@@ -227,6 +233,7 @@ struct egress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
+    active_malloc_h[NUM_STAGES]                 alloc;
     active_data_h                               data;
     //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;

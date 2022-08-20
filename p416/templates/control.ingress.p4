@@ -154,6 +154,40 @@ control Ingress(
         hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
+    action allocated() {
+        hdr.ih.flag_allocated = 1;
+    }
+
+    action pending() {
+        hdr.ih.flag_pending = 1;
+    }
+
+    table allocation {
+        key = {
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_getalloc    : exact;
+        }
+        actions = {
+            allocated;
+            pending;
+        }
+    }
+
+    action route_malloc() {
+        rts();
+        bypass_egress();
+    }
+
+    table routeback {
+        key = {
+            hdr.ih.flag_getalloc    : exact;
+            hdr.ih.flag_reqalloc    : exact;
+        }
+        actions = {
+            route_malloc;
+        }
+    }
+
     // control flow
 
     apply {
@@ -161,11 +195,12 @@ control Ingress(
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
+            routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
-                rts();
                 bypass_egress();
             }
+            allocation.apply();
             quota_recirc.apply();
             update_pkt_count_ap4();
             check_prior_exec();

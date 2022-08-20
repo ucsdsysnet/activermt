@@ -2261,6 +2261,23 @@ hash_s0;
     size = 512;
 }
 
+action get_allocation_s0(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[0].offset = offset_ig;
+    hdr.alloc[0].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(0)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(0)].size = size_eg;
+}
+
+table allocation_0 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s0;
+    }
+}
+
 table instruction_1 {
     key = {
         hdr.ih.fid                              : exact;
@@ -2330,6 +2347,23 @@ memory_minread_s1;
 hash_s1;
     }
     size = 512;
+}
+
+action get_allocation_s1(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[1].offset = offset_ig;
+    hdr.alloc[1].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(1)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(1)].size = size_eg;
+}
+
+table allocation_1 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s1;
+    }
 }
 
 table instruction_2 {
@@ -2403,6 +2437,23 @@ hash_s2;
     size = 512;
 }
 
+action get_allocation_s2(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[2].offset = offset_ig;
+    hdr.alloc[2].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(2)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(2)].size = size_eg;
+}
+
+table allocation_2 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s2;
+    }
+}
+
 table instruction_3 {
     key = {
         hdr.ih.fid                              : exact;
@@ -2472,6 +2523,23 @@ memory_minread_s3;
 hash_s3;
     }
     size = 512;
+}
+
+action get_allocation_s3(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[3].offset = offset_ig;
+    hdr.alloc[3].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(3)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(3)].size = size_eg;
+}
+
+table allocation_3 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s3;
+    }
 }
 
 table instruction_4 {
@@ -2545,6 +2613,23 @@ hash_s4;
     size = 512;
 }
 
+action get_allocation_s4(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[4].offset = offset_ig;
+    hdr.alloc[4].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(4)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(4)].size = size_eg;
+}
+
+table allocation_4 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s4;
+    }
+}
+
 table instruction_5 {
     key = {
         hdr.ih.fid                              : exact;
@@ -2614,6 +2699,23 @@ memory_minread_s5;
 hash_s5;
     }
     size = 512;
+}
+
+action get_allocation_s5(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[5].offset = offset_ig;
+    hdr.alloc[5].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(5)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(5)].size = size_eg;
+}
+
+table allocation_5 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s5;
+    }
 }
 
 table instruction_6 {
@@ -2687,6 +2789,23 @@ hash_s6;
     size = 512;
 }
 
+action get_allocation_s6(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[6].offset = offset_ig;
+    hdr.alloc[6].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(6)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(6)].size = size_eg;
+}
+
+table allocation_6 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s6;
+    }
+}
+
 table instruction_7 {
     key = {
         hdr.ih.fid                              : exact;
@@ -2756,6 +2875,23 @@ memory_minread_s7;
 hash_s7;
     }
     size = 512;
+}
+
+action get_allocation_s7(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[7].offset = offset_ig;
+    hdr.alloc[7].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(7)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(7)].size = size_eg;
+}
+
+table allocation_7 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s7;
+    }
 }
 
 table instruction_8 {
@@ -2829,6 +2965,23 @@ hash_s8;
     size = 512;
 }
 
+action get_allocation_s8(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[8].offset = offset_ig;
+    hdr.alloc[8].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(8)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(8)].size = size_eg;
+}
+
+table allocation_8 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s8;
+    }
+}
+
 table instruction_9 {
     key = {
         hdr.ih.fid                              : exact;
@@ -2900,6 +3053,23 @@ hash_s9;
     size = 512;
 }
 
+action get_allocation_s9(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
+    hdr.alloc[9].offset = offset_ig;
+    hdr.alloc[9].size = size_ig;
+    hdr.alloc[EG_STAGE_OFFSET(9)].offset = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(9)].size = size_eg;
+}
+
+table allocation_9 {
+    key = {
+        hdr.ih.fid              : exact;
+        hdr.ih.flag_allocated   : exact;
+    }
+    actions = {
+        get_allocation_s9;
+    }
+}
+
     // resource monitoring
 
     // quota enforcement
@@ -2949,6 +3119,40 @@ hash_s9;
         hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
+    action allocated() {
+        hdr.ih.flag_allocated = 1;
+    }
+
+    action pending() {
+        hdr.ih.flag_pending = 1;
+    }
+
+    table allocation {
+        key = {
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_getalloc    : exact;
+        }
+        actions = {
+            allocated;
+            pending;
+        }
+    }
+
+    action route_malloc() {
+        rts();
+        bypass_egress();
+    }
+
+    table routeback {
+        key = {
+            hdr.ih.flag_getalloc    : exact;
+            hdr.ih.flag_reqalloc    : exact;
+        }
+        actions = {
+            route_malloc;
+        }
+    }
+
     // control flow
 
     apply {
@@ -2956,25 +3160,36 @@ hash_s9;
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
+            routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
-                rts();
                 bypass_egress();
             }
+            allocation.apply();
             quota_recirc.apply();
             update_pkt_count_ap4();
             check_prior_exec();
         } else bypass_egress();
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
+		allocation_0.apply();
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
+		allocation_1.apply();
 		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
+		allocation_2.apply();
 		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].setInvalid(); }
+		allocation_3.apply();
 		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
+		allocation_4.apply();
 		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
+		allocation_5.apply();
 		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
+		allocation_6.apply();
 		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
+		allocation_7.apply();
 		if(hdr.instr[8].isValid()) { instruction_8.apply(); hdr.instr[8].setInvalid(); }
+		allocation_8.apply();
 		if(hdr.instr[9].isValid()) { instruction_9.apply(); hdr.instr[9].setInvalid(); }
+		allocation_9.apply();
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
             /*overall_stats.count(0);

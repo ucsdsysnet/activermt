@@ -21,6 +21,10 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 #define MAX_TCP_OPTIONS         10
 #define CONST_SALT              0x5093
 #define MAX_RECIRCULATIONS      10
+#define NUM_IG_STAGES           10
+#define NUM_STAGES              20
+
+#define EG_STAGE_OFFSET(X)      X + NUM_IG_STAGES
 
 #include <core.p4>
 #include <tna.p4>

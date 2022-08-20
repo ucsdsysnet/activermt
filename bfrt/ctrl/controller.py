@@ -2,11 +2,19 @@ import os
 import math
 import sys
 import inspect
+import threading
+
+VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
+sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
+
+import numpy as np
+
 from netaddr import IPAddress
 
-class ActiveP4Installer:
+class ActiveP4Controller:
 
     global os
+    global np
     global bfrt
     global math
     global inspect
@@ -16,6 +24,10 @@ class ActiveP4Installer:
         self.p4 = bfrt.active.pipe
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
+        self.max_constraints = 8
+        self.num_stages_total = self.num_stages_ingress + self.num_stages_egress
+        self.max_stage_sharing = 8
+        self.max_iter = 100
         self.recirculation_enabled = True
         self.base_path = "/usr/local/home/rajdeepd/activep4"
         #self.base_path = "/root/src/activep4-p416"
@@ -44,6 +56,7 @@ class ActiveP4Installer:
         self.sid_to_port_mapping = {}
         self.dst_port_mapping = {}
         self.ports = []
+        self.allocation = np.zeros((self.max_stage_sharing, self.num_stages_total))
 
     # Taken from ICA examples
     def clear_all(self, verbose=True, batching=True):
@@ -140,10 +153,13 @@ class ActiveP4Installer:
     def setMirrorSessions(self):
         if not self.recirculation_enabled:
             return
+        mirrorInfo = bfrt.mirror.info(return_info=True)[0]
+        if mirrorInfo['type'] == 'MIRROR_CFG' and mirrorInfo['usage'] > 0:
+            return
         for sid in self.sid_to_port_mapping:
             bfrt.mirror.cfg.add_with_normal(sid=sid, direction='EGRESS', session_enable=True, ucast_egress_port=self.sid_to_port_mapping[sid], ucast_egress_port_valid=1, max_pkt_len=16384)
             self.p4.Egress.mirror_cfg.add_with_set_mirror(egress_port=self.sid_to_port_mapping[sid], sessid=sid)
-        bfrt.mirror.dump()
+        #bfrt.mirror.dump()
 
     def getTrafficCounters(self, fids):
         traffic_overall = self.p4.Ingress.overall_stats.get(0)
@@ -171,16 +187,77 @@ class ActiveP4Installer:
                 print("Duplicate entry")
         bfrt.batch_end()"""
 
-installer = ActiveP4Installer()
+    def attemptAllocation(self, fid, constr):
+
+        print("Constraints", constr)
+
+        numAccesses = len(constr)
+        stageWiseAlloc = np.sum(self.allocation, axis=0)
+        alloc = stageWiseAlloc > np.zeros(self.num_stages_total)
+
+        constrLB = np.zeros(numAccesses)
+        constrUB = np.zeros(numAccesses)
+        constrMS = np.zeros(numAccesses)
+
+        for i in range(0, numAccesses):
+            constrLB[i] = constr[i][0]
+            constrUB[i] = constr[i][1]
+            constrMS[i] = constr[i][2]
+
+        A = np.zeros((numAccesses, numAccesses))
+        A[0, 0] = 1
+        for i in range(1, numAccesses):
+            A[i, i-1] = -1
+            A[i, i] = 1
+        
+        allocationValid = False
+        for i in range(0, self.max_iter):
+            isValid = False
+            while not isValid:
+                memIdx = np.random.randint(0, self.num_stages_total - 1, numAccesses)
+                sep = np.transpose(np.matmul(A, np.transpose(memIdx)))
+                isValid = np.all(memIdx >= constrLB) and np.all(memIdx <= constrUB) and np.all(sep >= constrMS)
+            if not np.any(alloc[memIdx]):
+                allocationValid = True
+                break
+
+        if allocationValid:
+            aMap = np.zeros(self.num_stages_total)
+            aMap[memIdx] = 1
+            # update allocation table
+            # update switch         
+
+    def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
+        for digest in msg:
+            fid = digest['fid']
+            constr = []
+            for i in range(0, self.max_constraints):
+                lb = digest['constr_lb_%d' % i]
+                ub = digest['constr_ub_%d' % i]
+                ms = digest['constr_ms_%d' % i]
+                if lb > 0 and ub > 0 and ms  > 0:
+                    constr.append((lb, ub, ms))
+            th = threading.Thread(target=self.attemptAllocation, args=(fid, constr,))
+            th.start()
+        return 0
+
+    def initController(self):
+        #bfrt.active.pipe.IngressDeparser.malloc_digest.callback_deregister()
+        bfrt.active.pipe.IngressDeparser.malloc_digest.callback_register(self.onMallocRequest)
+        print("Digest handler registered for malloc.")
+
+controller = ActiveP4Controller()
 
 fids = [1]
 
-installer.clear_all()
-installer.installForwardingTableEntries(config='default')
-installer.installInstructionTableEntries(1)
-installer.createSidToPortMapping()
-installer.setMirrorSessions()
-installer.addQuotas(1, recirculate=True)
+controller.clear_all()
+controller.installForwardingTableEntries(config='default')
+controller.installInstructionTableEntries(1)
+controller.createSidToPortMapping()
+controller.setMirrorSessions()
+controller.addQuotas(1, recirculate=True)
 
-#installer.getTrafficCounters(fids)
-#installer.resetTrafficCounters()
+controller.initController()
+
+#controller.getTrafficCounters(fids)
+#controller.resetTrafficCounters()

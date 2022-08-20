@@ -128,6 +128,13 @@ class ActiveP4Generator:
             for i in range(0, num_stages):
                 instr_id = i
                 tabledefs = self.getGeneratedTable(i, offset)
+                instr_tdefs = []
+                other_tdefs = []
+                for t in tabledefs[1]:
+                    if t.startswith('instruction'):
+                        instr_tdefs.append(t)
+                    else:
+                        other_tdefs.append(t)
                 registerdefs = self.getGeneratedRegister(i, offset)
                 hash_algo = hash_algos[hash_idx]
                 hash_idx = (hash_idx + 1) % len(hash_algos)
@@ -137,11 +144,12 @@ class ActiveP4Generator:
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
                 if self.truncate:
-                    set_tables = " ".join([ "%s.apply();" % x for x in tabledefs[1] ])
+                    set_tables = " ".join([ "%s.apply();" % x for x in instr_tdefs ])
                     table_names.append('if(hdr.instr[%d].isValid()) { %s hdr.instr[%d].setInvalid(); }' % (i, set_tables, i))
                     #table_names.append('if(hdr.meta.mbr == 0) hdr.meta.zero = true;')
                 else:
                     table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); }' % (i, x)) for x in tabledefs[1]]
+                table_names.append(" ".join([ "%s.apply();" % x for x in other_tdefs ]))
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
             p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
