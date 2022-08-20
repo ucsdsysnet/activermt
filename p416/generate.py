@@ -23,6 +23,7 @@ class ActiveP4Generator:
             'common-actions': 'templates/actions.common.p4',
             'data-actions'  : 'templates/actions.data.p4',
             'instruction'   : 'templates/instruction.p4',
+            'malloc'        : 'templates/malloc.p4',
             'p1-instruction': 'templates/instruction.p1.p4',
             'memory'        : 'templates/memory.p4',
             'hashing'       : 'templates/hashing.p4',
@@ -85,7 +86,7 @@ class ActiveP4Generator:
         with open(self.paths['instruction']) as f:
             template = f.read()
             instruction_id = stage_id
-            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n".join([ x + ';' for x in actions ]))
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id)).replace(ANNOTATION_ACTIONS, "\n\t\t".join([ x + ';' for x in actions ]))
             f.close()
         lines = p4code.splitlines()
         tables = []
@@ -94,6 +95,21 @@ class ActiveP4Generator:
                 tokens = line.split(' ')
                 tables.append(tokens[1])
         return (p4code, tables, p4code_actions)
+
+    def getGeneratedMalloc(self, stage_id):
+        p4code = None
+        with open(self.paths['malloc']) as f:
+            template = f.read()
+            instruction_id = stage_id
+            p4code = template.replace(ANNOTATION_STAGE_ID, str(stage_id)).replace(ANNOTATION_INSTRUCTION_ID, str(instruction_id))
+            f.close()
+        lines = p4code.splitlines()
+        tables = []
+        for line in lines:
+            if line.startswith('table'):
+                tokens = line.split(' ')
+                tables.append(tokens[1])
+        return (p4code, tables)
 
     def getGeneratedRegister(self, stage_id, offset):
         p4code = None
@@ -128,28 +144,22 @@ class ActiveP4Generator:
             for i in range(0, num_stages):
                 instr_id = i
                 tabledefs = self.getGeneratedTable(i, offset)
-                instr_tdefs = []
-                other_tdefs = []
-                for t in tabledefs[1]:
-                    if t.startswith('instruction'):
-                        instr_tdefs.append(t)
-                    else:
-                        other_tdefs.append(t)
+                mallocdefs = self.getGeneratedMalloc(i) if offset == 0 else ("", [])
                 registerdefs = self.getGeneratedRegister(i, offset)
                 hash_algo = hash_algos[hash_idx]
                 hash_idx = (hash_idx + 1) % len(hash_algos)
                 hashdefs = self.getGeneratedHashing(i, hash_algo)
-                table_code = table_code + "\n\n" + tabledefs[0]
+                table_code = table_code + "\n\n" + tabledefs[0] + "\n\n" + mallocdefs[0]
                 action_code = action_code + tabledefs[2]
                 register_code = register_code + "\n\n" + registerdefs
                 hashing_code = hashing_code + "\n\n" + hashdefs
                 if self.truncate:
-                    set_tables = " ".join([ "%s.apply();" % x for x in instr_tdefs ])
+                    set_tables = " ".join([ "%s.apply();" % x for x in tabledefs[1] ])
                     table_names.append('if(hdr.instr[%d].isValid()) { %s hdr.instr[%d].setInvalid(); }' % (i, set_tables, i))
                     #table_names.append('if(hdr.meta.mbr == 0) hdr.meta.zero = true;')
                 else:
                     table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); }' % (i, x)) for x in tabledefs[1]]
-                table_names.append(" ".join([ "%s.apply();" % x for x in other_tdefs ]))
+                table_names.append(" ".join([ "%s.apply();" % x for x in mallocdefs[1] ]))
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
             p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()

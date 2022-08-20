@@ -165,7 +165,7 @@ control Ingress(
     table allocation {
         key = {
             hdr.ih.fid              : exact;
-            hdr.ih.flag_getalloc    : exact;
+            hdr.ih.flag_reqalloc    : exact;
         }
         actions = {
             allocated;
@@ -180,7 +180,6 @@ control Ingress(
 
     table routeback {
         key = {
-            hdr.ih.flag_getalloc    : exact;
             hdr.ih.flag_reqalloc    : exact;
         }
         actions = {

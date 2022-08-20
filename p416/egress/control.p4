@@ -1317,7 +1317,7 @@ action jump_s0() {
 }
 
 action attempt_rejoin_s0() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[0].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[0].goto);
 }
 
 /*action memory_bulk_read_s0() {
@@ -1399,7 +1399,7 @@ action hash_s0() {
 }
 
 action attempt_rejoin_s1() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[1].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[1].goto);
 }
 
 /*action memory_bulk_read_s1() {
@@ -1481,7 +1481,7 @@ action hash_s1() {
 }
 
 action attempt_rejoin_s2() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[2].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[2].goto);
 }
 
 /*action memory_bulk_read_s2() {
@@ -1563,7 +1563,7 @@ action hash_s2() {
 }
 
 action attempt_rejoin_s3() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[3].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[3].goto);
 }
 
 /*action memory_bulk_read_s3() {
@@ -1645,7 +1645,7 @@ action hash_s3() {
 }
 
 action attempt_rejoin_s4() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[4].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[4].goto);
 }
 
 /*action memory_bulk_read_s4() {
@@ -1727,7 +1727,7 @@ action hash_s4() {
 }
 
 action attempt_rejoin_s5() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[5].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[5].goto);
 }
 
 /*action memory_bulk_read_s5() {
@@ -1809,7 +1809,7 @@ action hash_s5() {
 }
 
 action attempt_rejoin_s6() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[6].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[6].goto);
 }
 
 /*action memory_bulk_read_s6() {
@@ -1891,7 +1891,7 @@ action hash_s6() {
 }
 
 action attempt_rejoin_s7() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[7].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[7].goto);
 }
 
 /*action memory_bulk_read_s7() {
@@ -1973,7 +1973,7 @@ action hash_s7() {
 }
 
 action attempt_rejoin_s8() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[8].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[8].goto);
 }
 
 /*action memory_bulk_read_s8() {
@@ -2055,7 +2055,7 @@ action hash_s8() {
 }
 
 action attempt_rejoin_s9() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[9].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[9].goto);
 }
 
 /*action memory_bulk_read_s9() {
@@ -2159,72 +2159,57 @@ table instruction_0 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s0;
-attempt_rejoin_s0;
-memory_read_s0;
-memory_write_s0;
-memory_accumulate_s0;
-memory_increment_s0;
-memory_write_max_s0;
-memory_minread_s0;
-hash_s0;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s0;
+		attempt_rejoin_s0;
+		memory_read_s0;
+		memory_write_s0;
+		memory_accumulate_s0;
+		memory_increment_s0;
+		memory_write_max_s0;
+		memory_minread_s0;
+		hash_s0;
     }
     size = 512;
 }
 
-action get_allocation_s0(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[0].offset = offset_ig;
-    hdr.alloc[0].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(0)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(0)].size = size_eg;
-}
 
-table allocation_0 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s0;
-    }
-}
 
 table instruction_1 {
     key = {
@@ -2247,72 +2232,57 @@ table instruction_1 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s1;
-attempt_rejoin_s1;
-memory_read_s1;
-memory_write_s1;
-memory_accumulate_s1;
-memory_increment_s1;
-memory_write_max_s1;
-memory_minread_s1;
-hash_s1;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s1;
+		attempt_rejoin_s1;
+		memory_read_s1;
+		memory_write_s1;
+		memory_accumulate_s1;
+		memory_increment_s1;
+		memory_write_max_s1;
+		memory_minread_s1;
+		hash_s1;
     }
     size = 512;
 }
 
-action get_allocation_s1(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[1].offset = offset_ig;
-    hdr.alloc[1].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(1)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(1)].size = size_eg;
-}
 
-table allocation_1 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s1;
-    }
-}
 
 table instruction_2 {
     key = {
@@ -2335,72 +2305,57 @@ table instruction_2 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s2;
-attempt_rejoin_s2;
-memory_read_s2;
-memory_write_s2;
-memory_accumulate_s2;
-memory_increment_s2;
-memory_write_max_s2;
-memory_minread_s2;
-hash_s2;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s2;
+		attempt_rejoin_s2;
+		memory_read_s2;
+		memory_write_s2;
+		memory_accumulate_s2;
+		memory_increment_s2;
+		memory_write_max_s2;
+		memory_minread_s2;
+		hash_s2;
     }
     size = 512;
 }
 
-action get_allocation_s2(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[2].offset = offset_ig;
-    hdr.alloc[2].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(2)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(2)].size = size_eg;
-}
 
-table allocation_2 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s2;
-    }
-}
 
 table instruction_3 {
     key = {
@@ -2423,72 +2378,57 @@ table instruction_3 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s3;
-attempt_rejoin_s3;
-memory_read_s3;
-memory_write_s3;
-memory_accumulate_s3;
-memory_increment_s3;
-memory_write_max_s3;
-memory_minread_s3;
-hash_s3;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s3;
+		attempt_rejoin_s3;
+		memory_read_s3;
+		memory_write_s3;
+		memory_accumulate_s3;
+		memory_increment_s3;
+		memory_write_max_s3;
+		memory_minread_s3;
+		hash_s3;
     }
     size = 512;
 }
 
-action get_allocation_s3(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[3].offset = offset_ig;
-    hdr.alloc[3].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(3)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(3)].size = size_eg;
-}
 
-table allocation_3 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s3;
-    }
-}
 
 table instruction_4 {
     key = {
@@ -2511,72 +2451,57 @@ table instruction_4 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s4;
-attempt_rejoin_s4;
-memory_read_s4;
-memory_write_s4;
-memory_accumulate_s4;
-memory_increment_s4;
-memory_write_max_s4;
-memory_minread_s4;
-hash_s4;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s4;
+		attempt_rejoin_s4;
+		memory_read_s4;
+		memory_write_s4;
+		memory_accumulate_s4;
+		memory_increment_s4;
+		memory_write_max_s4;
+		memory_minread_s4;
+		hash_s4;
     }
     size = 512;
 }
 
-action get_allocation_s4(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[4].offset = offset_ig;
-    hdr.alloc[4].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(4)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(4)].size = size_eg;
-}
 
-table allocation_4 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s4;
-    }
-}
 
 table instruction_5 {
     key = {
@@ -2599,72 +2524,57 @@ table instruction_5 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s5;
-attempt_rejoin_s5;
-memory_read_s5;
-memory_write_s5;
-memory_accumulate_s5;
-memory_increment_s5;
-memory_write_max_s5;
-memory_minread_s5;
-hash_s5;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s5;
+		attempt_rejoin_s5;
+		memory_read_s5;
+		memory_write_s5;
+		memory_accumulate_s5;
+		memory_increment_s5;
+		memory_write_max_s5;
+		memory_minread_s5;
+		hash_s5;
     }
     size = 512;
 }
 
-action get_allocation_s5(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[5].offset = offset_ig;
-    hdr.alloc[5].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(5)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(5)].size = size_eg;
-}
 
-table allocation_5 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s5;
-    }
-}
 
 table instruction_6 {
     key = {
@@ -2687,72 +2597,57 @@ table instruction_6 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s6;
-attempt_rejoin_s6;
-memory_read_s6;
-memory_write_s6;
-memory_accumulate_s6;
-memory_increment_s6;
-memory_write_max_s6;
-memory_minread_s6;
-hash_s6;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s6;
+		attempt_rejoin_s6;
+		memory_read_s6;
+		memory_write_s6;
+		memory_accumulate_s6;
+		memory_increment_s6;
+		memory_write_max_s6;
+		memory_minread_s6;
+		hash_s6;
     }
     size = 512;
 }
 
-action get_allocation_s6(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[6].offset = offset_ig;
-    hdr.alloc[6].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(6)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(6)].size = size_eg;
-}
 
-table allocation_6 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s6;
-    }
-}
 
 table instruction_7 {
     key = {
@@ -2775,72 +2670,57 @@ table instruction_7 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s7;
-attempt_rejoin_s7;
-memory_read_s7;
-memory_write_s7;
-memory_accumulate_s7;
-memory_increment_s7;
-memory_write_max_s7;
-memory_minread_s7;
-hash_s7;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s7;
+		attempt_rejoin_s7;
+		memory_read_s7;
+		memory_write_s7;
+		memory_accumulate_s7;
+		memory_increment_s7;
+		memory_write_max_s7;
+		memory_minread_s7;
+		hash_s7;
     }
     size = 512;
 }
 
-action get_allocation_s7(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[7].offset = offset_ig;
-    hdr.alloc[7].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(7)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(7)].size = size_eg;
-}
 
-table allocation_7 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s7;
-    }
-}
 
 table instruction_8 {
     key = {
@@ -2863,72 +2743,57 @@ table instruction_8 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s8;
-attempt_rejoin_s8;
-memory_read_s8;
-memory_write_s8;
-memory_accumulate_s8;
-memory_increment_s8;
-memory_write_max_s8;
-memory_minread_s8;
-hash_s8;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s8;
+		attempt_rejoin_s8;
+		memory_read_s8;
+		memory_write_s8;
+		memory_accumulate_s8;
+		memory_increment_s8;
+		memory_write_max_s8;
+		memory_minread_s8;
+		hash_s8;
     }
     size = 512;
 }
 
-action get_allocation_s8(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[8].offset = offset_ig;
-    hdr.alloc[8].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(8)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(8)].size = size_eg;
-}
 
-table allocation_8 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s8;
-    }
-}
 
 table instruction_9 {
     key = {
@@ -2951,72 +2816,57 @@ table instruction_9 {
         fetch_qdelay;
         fetch_pktcount;
         complete;
-uncomplete;
-fork;
-copy_mbr2_mbr1;
-copy_mbr1_mbr2;
-mark_packet;
-memfault;
-min_mbr1_mbr2;
-min_mbr2_mbr1;
-mbr1_equals_mbr2;
-copy_mar_mbr;
-copy_mbr_mar;
-bit_and_mar_mbr;
-mar_add_mbr;
-mar_add_mbr2;
-mbr_add_mbr2;
-mar_mbr_add_mbr2;
-load_salt;
-mar_load_d0;
-d0_load_mar;
-mar_load_d1;
-d1_load_mar;
-mar_load_d2;
-d2_load_mar;
-mar_load_d3;
-d3_load_mar;
-mar_load_d4;
-d4_load_mar;
-mbr_load_d0;
-d0_load_mbr;
-mbr_load_d1;
-d1_load_mbr;
-mbr_load_d2;
-d2_load_mbr;
-mbr_load_d3;
-d3_load_mbr;
-mbr_load_d4;
-d4_load_mbr;
-jump_s9;
-attempt_rejoin_s9;
-memory_read_s9;
-memory_write_s9;
-memory_accumulate_s9;
-memory_increment_s9;
-memory_write_max_s9;
-memory_minread_s9;
-hash_s9;
+		uncomplete;
+		fork;
+		copy_mbr2_mbr1;
+		copy_mbr1_mbr2;
+		mark_packet;
+		memfault;
+		min_mbr1_mbr2;
+		min_mbr2_mbr1;
+		mbr1_equals_mbr2;
+		copy_mar_mbr;
+		copy_mbr_mar;
+		bit_and_mar_mbr;
+		mar_add_mbr;
+		mar_add_mbr2;
+		mbr_add_mbr2;
+		mar_mbr_add_mbr2;
+		load_salt;
+		mar_load_d0;
+		d0_load_mar;
+		mar_load_d1;
+		d1_load_mar;
+		mar_load_d2;
+		d2_load_mar;
+		mar_load_d3;
+		d3_load_mar;
+		mar_load_d4;
+		d4_load_mar;
+		mbr_load_d0;
+		d0_load_mbr;
+		mbr_load_d1;
+		d1_load_mbr;
+		mbr_load_d2;
+		d2_load_mbr;
+		mbr_load_d3;
+		d3_load_mbr;
+		mbr_load_d4;
+		d4_load_mbr;
+		jump_s9;
+		attempt_rejoin_s9;
+		memory_read_s9;
+		memory_write_s9;
+		memory_accumulate_s9;
+		memory_increment_s9;
+		memory_write_max_s9;
+		memory_minread_s9;
+		hash_s9;
     }
     size = 512;
 }
 
-action get_allocation_s9(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
-    hdr.alloc[9].offset = offset_ig;
-    hdr.alloc[9].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(9)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(9)].size = size_eg;
-}
 
-table allocation_9 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s9;
-    }
-}
 
     Counter<bit<32>, bit<32>>(65538, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
@@ -3047,25 +2897,25 @@ table allocation_9 {
         hdr.meta.eg_timestamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
         hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
-		allocation_0.apply();
+		
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
-		allocation_1.apply();
+		
 		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
-		allocation_2.apply();
+		
 		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].setInvalid(); }
-		allocation_3.apply();
+		
 		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
-		allocation_4.apply();
+		
 		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
-		allocation_5.apply();
+		
 		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
-		allocation_6.apply();
+		
 		if(hdr.instr[7].isValid()) { instruction_7.apply(); hdr.instr[7].setInvalid(); }
-		allocation_7.apply();
+		
 		if(hdr.instr[8].isValid()) { instruction_8.apply(); hdr.instr[8].setInvalid(); }
-		allocation_8.apply();
+		
 		if(hdr.instr[9].isValid()) { instruction_9.apply(); hdr.instr[9].setInvalid(); }
-		allocation_9.apply();
+		
         activep4_stats.count((bit<32>)hdr.ih.fid);
         if(hdr.meta.mirror_iter > 0 && hdr.meta.complete == 0) {
             recirculate();

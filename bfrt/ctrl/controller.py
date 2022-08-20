@@ -173,6 +173,10 @@ class ActiveP4Controller:
             }
         return (traffic_overall, traffic_by_fid)
 
+    def installControlEntries(self):
+        self.p4.Ingress.routeback.add_with_route_malloc(flag_reqalloc=1)
+        self.p4.Ingress.routeback.add_with_route_malloc(flag_reqalloc=2)
+
     """def resetTrafficCounters(self):
         self.p4.Ingress.activep4_stats.clear()
         self.p4.Egress.activep4_stats.clear()
@@ -251,13 +255,14 @@ controller = ActiveP4Controller()
 fids = [1]
 
 controller.clear_all()
+controller.installControlEntries()
 controller.installForwardingTableEntries(config='default')
 controller.installInstructionTableEntries(1)
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
 controller.addQuotas(1, recirculate=True)
 
-controller.initController()
+#controller.initController()
 
 #controller.getTrafficCounters(fids)
 #controller.resetTrafficCounters()

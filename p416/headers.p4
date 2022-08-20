@@ -17,6 +17,11 @@ enum bit<16> active_port_t {
     TCP = 6378
 }
 
+enum bit<2> active_malloc_t {
+    REQ = 1,
+    GET = 2
+}
+
 header ethernet_h {
     mac_addr_t   dst_addr;
     mac_addr_t   src_addr;
@@ -65,24 +70,23 @@ header tcp_h {
 }*/
 
 header active_initial_h {
-    bit<32>     ACTIVEP4;
-    bit<1>      opt_arg;
-    bit<1>      opt_data;
-    bit<1>      rst_seq;
-    bit<1>      flag_rts;
-    bit<1>      flag_marked;
-    bit<1>      flag_aux;
-    bit<1>      flag_ack;
-    bit<1>      flag_done;
-    bit<1>      flag_mfault;
-    bit<1>      flag_exceeded;
-    bit<1>      flag_reqalloc;
-    bit<1>      flag_getalloc;
-    bit<1>      flag_allocated;
-    bit<1>      flag_pending;
-    bit<2>      _padding;
-    bit<16>     fid;
-    bit<16>     seq;
+    bit<32>         ACTIVEP4;
+    bit<1>          opt_arg;
+    bit<1>          opt_data;
+    bit<1>          rst_seq;
+    bit<1>          flag_rts;
+    bit<1>          flag_marked;
+    bit<1>          flag_aux;
+    bit<1>          flag_ack;
+    bit<1>          flag_done;
+    bit<1>          flag_mfault;
+    bit<1>          flag_exceeded;
+    active_malloc_t flag_reqalloc;
+    bit<1>          flag_allocated;
+    bit<1>          flag_pending;
+    bit<2>          _padding;
+    bit<16>         fid;
+    bit<16>         seq;
 }
 
 header active_data_h {
@@ -100,7 +104,7 @@ header active_instruction_h {
     bit<8>      opcode;
 }
 
-header active_bulk_data_h {
+/*header active_bulk_data_h {
     bit<32>     data_0;
     bit<32>     data_1;
     bit<32>     data_2;
@@ -121,7 +125,7 @@ header active_bulk_data_h {
     bit<32>     data_17;
     bit<32>     data_18;
     bit<32>     data_19;
-}
+}*/
 
 header active_malloc_req_h {
     bit<8>      constr_lb_0;
@@ -161,8 +165,6 @@ header bridged_metadata_h {
     bit<1>      complete;
     bit<1>      rts;
     bit<1>      disabled; 
-    bit<16>     rtsid;
-    bit<16>     fwdid;
     bit<16>     randnum;
     bit<16>     tcp_length;
     bit<32>     hash_data_0;
@@ -173,7 +175,6 @@ header bridged_metadata_h {
     bit<32>     mar;
     bit<32>     mbr;
     bit<32>     mbr2;
-    bool        zero;
     bit<32>     ig_timestamp;
     bit<32>     eg_timestamp;
     bit<32>     qdelay;

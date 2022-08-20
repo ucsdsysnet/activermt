@@ -76,9 +76,14 @@ parser IngressParser(
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
+        transition check_alloc_req;
+    }
+
+    state check_alloc_req {
         transition select(hdr.ih.flag_reqalloc) {
-            1   : parse_malloc;
-            _   : parse_check_completion;
+            active_malloc_t.REQ : parse_malloc;
+            active_malloc_t.GET : parse_ipv4;
+            _                   : check_completion;  
         }
     }
 
@@ -87,7 +92,7 @@ parser IngressParser(
         transition parse_ipv4;
     }
 
-    state parse_check_completion {
+    state check_completion {
         transition select(hdr.ih.flag_done) {
             1   : parse_ipv4;
             _   : parse_active_args;

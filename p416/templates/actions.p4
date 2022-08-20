@@ -3,7 +3,7 @@ action jump_s<stage-id>() {
 }
 
 action attempt_rejoin_s<stage-id>() {
-    hdr.meta.disabled = (hdr.meta.disabled ^ hdr.instr[<instruction-id>].goto);
+    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[<instruction-id>].goto);
 }
 
 /*action memory_bulk_read_s<stage-id>() {
