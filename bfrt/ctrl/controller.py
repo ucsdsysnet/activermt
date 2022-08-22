@@ -1,8 +1,10 @@
 import os
 import math
 import sys
+import time
 import inspect
 import threading
+import logging
 
 VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
@@ -17,14 +19,17 @@ class ActiveP4Controller:
     global np
     global bfrt
     global math
+    global time
     global inspect
     global threading
+    global logging
     global IPAddress
 
     REG_MAX = 0xFFFFF
     DEBUG = True
 
     def __init__(self):
+        print(os.environ)
         self.p4 = bfrt.active.pipe
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
@@ -36,13 +41,7 @@ class ActiveP4Controller:
         self.allocation_shared = False
         self.base_path = "/usr/local/home/rajdeepd/activep4"
         #self.base_path = "/root/src/activep4-p416"
-        self.allocations = {
-            1       : {
-                'memory'        : (0, 0xFFFF),
-                'recirc_pct'    : 1.0,
-                'recirc_circs'  : 1
-            }
-        }
+        logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
         self.opcode_action = {}
         self.opcodes_memaccess = []
         with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
@@ -68,6 +67,7 @@ class ActiveP4Controller:
         self.ports = []
         self.queue = []
         self.allocation = np.zeros((self.max_stage_sharing, self.num_stages_total))
+        self.active = []
 
     # Taken from ICA examples
     def clear_all(self, verbose=True, batching=True):
@@ -263,8 +263,10 @@ class ActiveP4Controller:
 
     def allocate(self, fid, constr):
 
-        if fid in self.queue:
+        if fid in self.queue or fid in self.active:
             return
+
+        tsOverallStart = time.time()
 
         self.queue.append(fid)
 
@@ -276,6 +278,8 @@ class ActiveP4Controller:
 
         if self.DEBUG:
             print("Constraints", constr)
+
+        tsAllocationStart = time.time()
 
         numAccesses = len(constr)
         stageWiseAlloc = np.sum(self.allocation, axis=0)
@@ -296,16 +300,34 @@ class ActiveP4Controller:
             A[i, i-1] = -1
             A[i, i] = 1
         
+        numTrialsOuter = 0
+        numTrialsInner = 0
         allocationValid = False
         for i in range(0, self.max_iter):
             isValid = False
+            numTrialsOuter = numTrialsOuter + 1
             while not isValid:
                 memIdx = np.random.randint(0, self.num_stages_total - 1, numAccesses)
                 sep = np.transpose(np.matmul(A, np.transpose(memIdx)))
                 isValid = np.all(memIdx >= constrLB) and np.all(memIdx <= constrUB) and np.all(sep >= constrMS)
+                numTrialsInner = numTrialsInner + 1
             if not np.any(alloc[memIdx]):
                 allocationValid = True
                 break
+            
+        tsAllocationStop = time.time()
+
+        elapsedAllocation = tsAllocationStop - tsAllocationStart
+        if self.DEBUG:
+            print("Elapsed (allocation) time", elapsedAllocation)
+
+        if not self.allocation_shared and not allocationValid:
+            self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
+            bfrt.complete_operations()
+            self.queue.remove(fid)
+            if self.DEBUG:
+                print("Allocation failed for FID", fid)
+            return 
 
         alloc = []
         for i in range(0, len(memIdx)):
@@ -337,6 +359,7 @@ class ActiveP4Controller:
 
         if self.DEBUG:
             print(allocMap)
+            print(self.allocation)
 
         egIgMap = {}
 
@@ -385,7 +408,20 @@ class ActiveP4Controller:
         self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
         bfrt.complete_operations()
 
-        self.queue.remove(fid)  
+        self.active.append(fid)
+        self.queue.remove(fid)
+
+        tsOverallStop = time.time()
+
+        elapsedOverall = tsOverallStop - tsOverallStart
+        if self.DEBUG:
+            print("Elapsed (overall) time", elapsedOverall)
+
+        # stats
+        utilization = np.sum(self.allocation > 0) / (self.max_stage_sharing * self.num_stages_total)
+        occupiedFIDs = np.unique(self.allocation)
+        numOccupancy = len(occupiedFIDs) if 0 not in occupiedFIDs else len(occupiedFIDs) - 1
+        logging.info("[ELAPSED] allocation %f overall %f utilization %f occupancy %d iters %d trials %d", elapsedAllocation, elapsedOverall, utilization, numOccupancy, numTrialsOuter, numTrialsInner)
 
     def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
