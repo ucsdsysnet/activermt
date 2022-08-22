@@ -2263,11 +2263,16 @@ table instruction_0 {
 
 action get_allocation_s0(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[0].setValid();
-    hdr.alloc[0].offset = offset_ig;
-    hdr.alloc[0].size = size_ig;
+    hdr.alloc[0].start = offset_ig;
+    hdr.alloc[0].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(0)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(0)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(0)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(0)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(0)].end = size_eg;
+}
+
+action default_allocation_s0() {
+    hdr.alloc[0].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(0)].setValid();
 }
 
 table allocation_0 {
@@ -2277,7 +2282,9 @@ table allocation_0 {
     }
     actions = {
         get_allocation_s0;
+        default_allocation_s0;
     }
+    default_action = default_allocation_s0();
 }
 
 table instruction_1 {
@@ -2353,11 +2360,16 @@ table instruction_1 {
 
 action get_allocation_s1(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[1].setValid();
-    hdr.alloc[1].offset = offset_ig;
-    hdr.alloc[1].size = size_ig;
+    hdr.alloc[1].start = offset_ig;
+    hdr.alloc[1].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(1)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(1)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(1)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(1)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(1)].end = size_eg;
+}
+
+action default_allocation_s1() {
+    hdr.alloc[1].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(1)].setValid();
 }
 
 table allocation_1 {
@@ -2367,7 +2379,9 @@ table allocation_1 {
     }
     actions = {
         get_allocation_s1;
+        default_allocation_s1;
     }
+    default_action = default_allocation_s1();
 }
 
 table instruction_2 {
@@ -2443,11 +2457,16 @@ table instruction_2 {
 
 action get_allocation_s2(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[2].setValid();
-    hdr.alloc[2].offset = offset_ig;
-    hdr.alloc[2].size = size_ig;
+    hdr.alloc[2].start = offset_ig;
+    hdr.alloc[2].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(2)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(2)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(2)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(2)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(2)].end = size_eg;
+}
+
+action default_allocation_s2() {
+    hdr.alloc[2].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(2)].setValid();
 }
 
 table allocation_2 {
@@ -2457,7 +2476,9 @@ table allocation_2 {
     }
     actions = {
         get_allocation_s2;
+        default_allocation_s2;
     }
+    default_action = default_allocation_s2();
 }
 
 table instruction_3 {
@@ -2533,11 +2554,16 @@ table instruction_3 {
 
 action get_allocation_s3(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[3].setValid();
-    hdr.alloc[3].offset = offset_ig;
-    hdr.alloc[3].size = size_ig;
+    hdr.alloc[3].start = offset_ig;
+    hdr.alloc[3].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(3)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(3)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(3)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(3)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(3)].end = size_eg;
+}
+
+action default_allocation_s3() {
+    hdr.alloc[3].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(3)].setValid();
 }
 
 table allocation_3 {
@@ -2547,7 +2573,9 @@ table allocation_3 {
     }
     actions = {
         get_allocation_s3;
+        default_allocation_s3;
     }
+    default_action = default_allocation_s3();
 }
 
 table instruction_4 {
@@ -2623,11 +2651,16 @@ table instruction_4 {
 
 action get_allocation_s4(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[4].setValid();
-    hdr.alloc[4].offset = offset_ig;
-    hdr.alloc[4].size = size_ig;
+    hdr.alloc[4].start = offset_ig;
+    hdr.alloc[4].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(4)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(4)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(4)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(4)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(4)].end = size_eg;
+}
+
+action default_allocation_s4() {
+    hdr.alloc[4].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(4)].setValid();
 }
 
 table allocation_4 {
@@ -2637,7 +2670,9 @@ table allocation_4 {
     }
     actions = {
         get_allocation_s4;
+        default_allocation_s4;
     }
+    default_action = default_allocation_s4();
 }
 
 table instruction_5 {
@@ -2713,11 +2748,16 @@ table instruction_5 {
 
 action get_allocation_s5(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[5].setValid();
-    hdr.alloc[5].offset = offset_ig;
-    hdr.alloc[5].size = size_ig;
+    hdr.alloc[5].start = offset_ig;
+    hdr.alloc[5].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(5)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(5)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(5)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(5)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(5)].end = size_eg;
+}
+
+action default_allocation_s5() {
+    hdr.alloc[5].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(5)].setValid();
 }
 
 table allocation_5 {
@@ -2727,7 +2767,9 @@ table allocation_5 {
     }
     actions = {
         get_allocation_s5;
+        default_allocation_s5;
     }
+    default_action = default_allocation_s5();
 }
 
 table instruction_6 {
@@ -2803,11 +2845,16 @@ table instruction_6 {
 
 action get_allocation_s6(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[6].setValid();
-    hdr.alloc[6].offset = offset_ig;
-    hdr.alloc[6].size = size_ig;
+    hdr.alloc[6].start = offset_ig;
+    hdr.alloc[6].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(6)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(6)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(6)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(6)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(6)].end = size_eg;
+}
+
+action default_allocation_s6() {
+    hdr.alloc[6].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(6)].setValid();
 }
 
 table allocation_6 {
@@ -2817,7 +2864,9 @@ table allocation_6 {
     }
     actions = {
         get_allocation_s6;
+        default_allocation_s6;
     }
+    default_action = default_allocation_s6();
 }
 
 table instruction_7 {
@@ -2893,11 +2942,16 @@ table instruction_7 {
 
 action get_allocation_s7(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[7].setValid();
-    hdr.alloc[7].offset = offset_ig;
-    hdr.alloc[7].size = size_ig;
+    hdr.alloc[7].start = offset_ig;
+    hdr.alloc[7].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(7)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(7)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(7)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(7)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(7)].end = size_eg;
+}
+
+action default_allocation_s7() {
+    hdr.alloc[7].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(7)].setValid();
 }
 
 table allocation_7 {
@@ -2907,7 +2961,9 @@ table allocation_7 {
     }
     actions = {
         get_allocation_s7;
+        default_allocation_s7;
     }
+    default_action = default_allocation_s7();
 }
 
 table instruction_8 {
@@ -2983,11 +3039,16 @@ table instruction_8 {
 
 action get_allocation_s8(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[8].setValid();
-    hdr.alloc[8].offset = offset_ig;
-    hdr.alloc[8].size = size_ig;
+    hdr.alloc[8].start = offset_ig;
+    hdr.alloc[8].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(8)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(8)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(8)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(8)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(8)].end = size_eg;
+}
+
+action default_allocation_s8() {
+    hdr.alloc[8].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(8)].setValid();
 }
 
 table allocation_8 {
@@ -2997,7 +3058,9 @@ table allocation_8 {
     }
     actions = {
         get_allocation_s8;
+        default_allocation_s8;
     }
+    default_action = default_allocation_s8();
 }
 
 table instruction_9 {
@@ -3073,11 +3136,16 @@ table instruction_9 {
 
 action get_allocation_s9(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
     hdr.alloc[9].setValid();
-    hdr.alloc[9].offset = offset_ig;
-    hdr.alloc[9].size = size_ig;
+    hdr.alloc[9].start = offset_ig;
+    hdr.alloc[9].end = size_ig;
     hdr.alloc[EG_STAGE_OFFSET(9)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(9)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(9)].size = size_eg;
+    hdr.alloc[EG_STAGE_OFFSET(9)].start = offset_eg;
+    hdr.alloc[EG_STAGE_OFFSET(9)].end = size_eg;
+}
+
+action default_allocation_s9() {
+    hdr.alloc[9].setValid();
+    hdr.alloc[EG_STAGE_OFFSET(9)].setValid();
 }
 
 table allocation_9 {
@@ -3087,7 +3155,9 @@ table allocation_9 {
     }
     actions = {
         get_allocation_s9;
+        default_allocation_s9;
     }
+    default_action = default_allocation_s9();
 }
 
     // resource monitoring

@@ -155,8 +155,8 @@ header active_malloc_req_h {
 }
 
 header active_malloc_h {
-    bit<16>     offset;
-    bit<16>     size;
+    bit<16>     start;
+    bit<16>     end;
 }
 
 @flexible
