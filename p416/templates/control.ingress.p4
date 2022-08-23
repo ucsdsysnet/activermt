@@ -83,9 +83,6 @@ control Ingress(
     }
 
     action set_port() {
-        /*meta.port_change = 1;
-        meta.vport = (bit<16>)hdr.meta.mbr;*/
-        //hdr.ipv4.dst_addr = hdr.meta.mbr;
         ig_tm_md.ucast_egress_port = (bit<9>)hdr.meta.mbr;
     }
 

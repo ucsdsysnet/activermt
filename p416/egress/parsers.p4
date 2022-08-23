@@ -7,6 +7,7 @@ parser EgressParser(
 ) {
     state start {
         pkt.extract(eg_intr_md);
+        meta.egress_port = eg_intr_md.egress_port;
         transition parse_metadata;
     }
 

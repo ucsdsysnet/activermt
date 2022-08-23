@@ -43,8 +43,9 @@ def onPktRecv(p):
         return
     print( "[RECEIVED]", hex(flags), p[Ether].dst )
     if flags & 0x0008 > 0:
-        isAllocated = True
-        timing['stop'] = time.time()
+        if not isAllocated:
+            isAllocated = True
+            timing['stop'] = time.time()
         print("Allocation received")
         parseAllocation(p[ActiveAlloc])
     elif flags & 0x0004 > 0:

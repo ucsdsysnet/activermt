@@ -38,7 +38,8 @@ control Egress(
     }
 
     action set_port() {
-        // TODO re-circulate
+        meta.port_change = 1;
+        meta.egress_port = (bit<9>)hdr.meta.mbr;
     }
 
     action load_5_tuple_tcp() {
@@ -68,7 +69,7 @@ control Egress(
 
     table mirror_cfg {
         key = {
-            eg_intr_md.egress_port  : exact;
+            meta.egress_port  : exact;
         }
         actions = {
             set_mirror;
@@ -83,7 +84,7 @@ control Egress(
         hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;
         <generated-ctrlflow>
         activep4_stats.count((bit<32>)hdr.ih.fid);
-        if(hdr.meta.mirror_iter > 0 && hdr.meta.complete == 0) {
+        if(hdr.meta.mirror_iter > 0 && (hdr.meta.complete == 0 || meta.port_change == 1)) {
             recirculate();
             if(hdr.meta.duplicate == 0) {
                 drop();

@@ -29,8 +29,8 @@ class ActiveP4Controller:
     DEBUG = True
 
     def __init__(self):
-        print(os.environ)
         self.p4 = bfrt.active.pipe
+        self.watchdog = True
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
@@ -442,9 +442,10 @@ class ActiveP4Controller:
         bfrt.active.pipe.IngressDeparser.malloc_digest.callback_register(self.onMallocRequest)
         print("Digest handler registered for malloc.")
 
-    def main(self):
+    def monitor(self):
         # main control loop (for ageing, etc.)
-        pass
+        while self.watchdog:
+            pass
 
 controller = ActiveP4Controller()
 
@@ -453,10 +454,11 @@ fids = [1]
 controller.clear_all()
 controller.installControlEntries()
 controller.installForwardingTableEntries(config='default')
-controller.installInstructionTableEntries(1)
+for fid in fids:
+    controller.installInstructionTableEntries(fid)
+    controller.addQuotas(fid, recirculate=True)
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
-controller.addQuotas(1, recirculate=True)
 
 controller.initController()
 

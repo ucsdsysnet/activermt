@@ -211,8 +211,9 @@ struct ig_metadata_t {
 }
 
 struct eg_metadata_t {
-    bit<16>     instr_count;
     bit<10>     mirror_sessid;
+    bit<9>      egress_port;
+    bit<1>      port_change;
 }
 
 struct ingress_headers_t {
