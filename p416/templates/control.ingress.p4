@@ -194,7 +194,6 @@ control Ingress(
             routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
-                bypass_egress();
             }
             allocation.apply();
             quota_recirc.apply();
@@ -202,6 +201,7 @@ control Ingress(
             check_prior_exec();
         } else bypass_egress();
         <generated-ctrlflow>
+        <generated-malloc>
         if (hdr.ipv4.isValid()) {
             ipv4_host.apply();
             /*overall_stats.count(0);

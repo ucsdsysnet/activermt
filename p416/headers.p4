@@ -94,7 +94,6 @@ header active_data_h {
     bit<32>     data_1;
     bit<32>     data_2;
     bit<32>     data_3;
-    bit<32>     data_4;
 }
 
 header active_instruction_h {
@@ -175,6 +174,7 @@ header bridged_metadata_h {
     bit<32>     mar;
     bit<32>     mbr;
     bit<32>     mbr2;
+    bit<32>     inc;
     bit<32>     ig_timestamp;
     bit<32>     eg_timestamp;
     bit<32>     qdelay;

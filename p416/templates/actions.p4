@@ -16,29 +16,6 @@ action attempt_rejoin_s<stage-id>() {
     heap_bulk_write_s<stage-id>.execute((bit<32>)hdr.meta.mar);
 }*/
 
-/*action memory_read_s<stage-id>() {
-    hdr.meta.mbr2 = 0;
-    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
-}*/
-
-/*action memory_write_s<stage-id>() {
-    hdr.meta.mbr2 = 0x1FFFFFFF;
-    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
-}*/
-
-/*action memory_increment_s<stage-id>() {
-    hdr.meta.mbr = 0x1FFFFFFF;
-    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
-}*/
-
-/*action memory_increment_conditional_s<stage-id>() {
-    hdr.meta.mbr2 = heap_conditional_increment_s<stage-id>.execute(hdr.meta.mar);
-}*/
-
-/*action memory_swap_conditional_s<stage-id>() {
-    hdr.meta.mbr = heap_conditional_swap_s<stage-id>.execute(hdr.meta.mar);
-}*/
-
 action memory_read_s<stage-id>() {
     hdr.meta.mbr = 0;
     hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
@@ -48,17 +25,16 @@ action memory_write_s<stage-id>() {
     hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
 }
 
-action memory_accumulate_s<stage-id>() {
-    hdr.meta.mbr = heap_accumulate_s<stage-id>.execute(hdr.meta.mar);
-}
-
 action memory_increment_s<stage-id>() {
-    hdr.meta.mbr2 = 1;
-    memory_accumulate_s<stage-id>();
+    hdr.meta.mbr = heap_accumulate_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_write_max_s<stage-id>() {
     hdr.meta.mbr = heap_conditional_rw_max_s<stage-id>.execute(hdr.meta.mar);
+}
+
+action memory_write_zero_s<stage-id>() {
+    hdr.meta.mbr = heap_conditional_rw_zero_s<stage-id>.execute(hdr.meta.mar);
 }
 
 action memory_minread_s<stage-id>() {
@@ -67,9 +43,10 @@ action memory_minread_s<stage-id>() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
-/*action memory_eq_increment_s<stage-id>() {
-    hdr.meta.mbr = heap_conditional_write_s<stage-id>.execute(hdr.meta.mar);
-}*/
+action memory_minreadinc_s<stage-id>() {
+    hdr.meta.mbr = heap_accumulate_s<stage-id>.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
 action hash_s<stage-id>() {
     hdr.meta.mar = (bit<32>)crc_16_s<stage-id>.get({

@@ -21,5 +21,5 @@ table allocation_<stage-id> {
         get_allocation_s<stage-id>;
         default_allocation_s<stage-id>;
     }
-    default_action = default_allocation_s<stage-id>();
+    //default_action = default_allocation_s<stage-id>;
 }

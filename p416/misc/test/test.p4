@@ -16,6 +16,8 @@ header ethernet_h {
 
 struct ig_metadata_t {
     bit<32>     mbr;
+    bit<32>     mbr2;
+    bit<32>     mbr3;
 }
 
 struct eg_metadata_t {}
@@ -41,7 +43,8 @@ parser IngressParser(
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        meta.mbr = (bit<32>)hdr.ethernet.src_addr;
+        meta.mbr = 32w255;
+        meta.mbr2 = 32w253;
         transition accept;
     }
 }
@@ -75,11 +78,15 @@ control Ingress(
         const default_action = drop();
     }
 
+    action lt() {
+        meta.mbr3 = meta.mbr2 - meta.mbr;
+    }
+
     apply {
         if(hdr.ethernet.isValid()) {
-            if(meta.mbr > 0) {
-                fwd.apply();
-            }
+            send(0);
+            lt();
+            hdr.ethernet.dst_addr = (bit<48>) meta.mbr3;
         }
     }
 }

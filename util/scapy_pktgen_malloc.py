@@ -65,7 +65,7 @@ def sendPkt(fid, flags):
         pkt = (
             Ether(dst="00:00:00:00:00:02", src='00:00:00:00:00:01')/
             ActiveInitialHeader(fid=fid, flags=flags)/
-            ActiveMalloc(constr_lb_0=3, constr_ub_0=10, constr_ms_0=3, constr_lb_1=7, constr_ub_1=20, constr_ms_1=4)/
+            ActiveMalloc(constr_lb_0=2, constr_ub_0=9, constr_ms_0=3, constr_lb_1=6, constr_ub_1=19, constr_ms_1=4)/
             IP(src="10.0.0.1", dst="10.0.0.2")/
             TCP(dport=6378)
         )

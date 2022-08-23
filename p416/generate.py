@@ -5,6 +5,7 @@ ANNOTATION_INSTRUCTION_ID   = '<instruction-id>'
 ANNOTATION_ACTIONS          = '<generated-actions>'
 ANNOTATION_ACTIONDEFS       = '<generated-actions-defs>'
 ANNOTATION_TABLES           = '<generated-tables>'
+ANNOTATION_MALLOC           = '<generated-malloc>'
 ANNOTATION_CTRLFLOW         = '<generated-ctrlflow>'
 ANNOTATION_MEMORY           = '<register-defs>'
 ANNOTATION_POLY_COEFF       = '<poly-param-coeff>'
@@ -34,7 +35,7 @@ class ActiveP4Generator:
             'crc_16'        : ('0x18005', 'true', '0x0000', '0x0000')
         }
         self.registers = ('mar', 'mbr')
-        self.num_data = 5
+        self.num_data = 4
 
     def getActionDefinitions(self, code):
         actions = []
@@ -139,6 +140,7 @@ class ActiveP4Generator:
             register_code = ""
             hashing_code = ""
             table_names = []
+            malloc_tables = []
             hash_idx = 0
             hash_algos = list(self.crc_16_params.keys())
             for i in range(0, num_stages):
@@ -159,9 +161,9 @@ class ActiveP4Generator:
                     #table_names.append('if(hdr.meta.mbr == 0) hdr.meta.zero = true;')
                 else:
                     table_names = table_names + [('if(hdr.instr[%d].isValid()) { %s.apply(); }' % (i, x)) for x in tabledefs[1]]
-                table_names.append(" ".join([ "%s.apply();" % x for x in mallocdefs[1] ]))
+                malloc_tables.append(" ".join([ "%s.apply();" % x for x in mallocdefs[1] ]))
                 #table_names = table_names + [('if(hdr.instr[%d].isValid()) { meta.instr_count = meta.instr_count + 4; %s.apply(); hdr.instr[%d].flags = 1; }' % (i, x, i)) for x in tabledefs[1]]
-            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
+            p4code = template.replace(ANNOTATION_ACTIONDEFS, action_code).replace(ANNOTATION_TABLES, table_code).replace(ANNOTATION_CTRLFLOW, "\n\t\t".join(table_names)).replace(ANNOTATION_MALLOC, "\n\t\t".join(malloc_tables)).replace(ANNOTATION_MEMORY, register_code).replace(ANNOTATION_HASHDEFS, hashing_code)
             f.close()
         return p4code
 

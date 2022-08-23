@@ -68,6 +68,7 @@ class ActiveP4Controller:
         self.queue = []
         self.allocation = np.zeros((self.max_stage_sharing, self.num_stages_total))
         self.active = []
+        self.installed = []
 
     # Taken from ICA examples
     def clear_all(self, verbose=True, batching=True):
@@ -178,8 +179,11 @@ class ActiveP4Controller:
         bfrt.complete_operations()
 
     def installInstructionTableEntries(self, fid):
+        if fid in self.installed:
+            return
         self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
         self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
+        self.installed.append(fid)
 
     def addQuotas(self, fid, recirculate=False):
         #rand_thresh = math.floor(recirc_pct * 0xFFFF)
@@ -235,99 +239,9 @@ class ActiveP4Controller:
                 print("Duplicate entry")
         bfrt.batch_end()"""
 
-    def deallocate(self, fid):
+    def updateAllocationTables(self, fid, memIdx):
 
-        for stageId in range(0, self.num_stages_egress):
-            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
-            if fid in entries:
-                for entry in entries[fid]:
-                    entry.remove()
-
-        for stageId in range(0, self.num_stages_ingress):
-            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
-            if fid in entries:
-                for entry in entries[fid]:
-                    entry.remove()
-            allocs = self.fetchAllocationTableEntries(stageId)
-            if fid in entries:
-                for entry in entries[fid]:
-                    entry.remove()
-
-        allocreqs = self.p4.Ingress.allocation.dump(return_ents=True)
-        for entry in allocreqs:
-            afid = entry.key.get(b'hdr.ih.fid')
-            if afid == fid:
-                entry.remove()
-
-        bfrt.complete_operations()
-
-    def allocate(self, fid, constr):
-
-        if fid in self.queue or fid in self.active:
-            return
-
-        tsOverallStart = time.time()
-
-        self.queue.append(fid)
-
-        if self.DEBUG:
-            print("Attempting allocation for FID", fid)
-
-        self.p4.Ingress.allocation.add_with_pending(fid=fid, flag_reqalloc=2)
-        bfrt.complete_operations()
-
-        if self.DEBUG:
-            print("Constraints", constr)
-
-        tsAllocationStart = time.time()
-
-        numAccesses = len(constr)
         stageWiseAlloc = np.sum(self.allocation, axis=0)
-        alloc = stageWiseAlloc > np.zeros(self.num_stages_total)
-
-        constrLB = np.zeros(numAccesses)
-        constrUB = np.zeros(numAccesses)
-        constrMS = np.zeros(numAccesses)
-
-        for i in range(0, numAccesses):
-            constrLB[i] = constr[i][0]
-            constrUB[i] = constr[i][1]
-            constrMS[i] = constr[i][2]
-
-        A = np.zeros((numAccesses, numAccesses))
-        A[0, 0] = 1
-        for i in range(1, numAccesses):
-            A[i, i-1] = -1
-            A[i, i] = 1
-        
-        numTrialsOuter = 0
-        numTrialsInner = 0
-        allocationValid = False
-        for i in range(0, self.max_iter):
-            isValid = False
-            numTrialsOuter = numTrialsOuter + 1
-            while not isValid:
-                memIdx = np.random.randint(0, self.num_stages_total - 1, numAccesses)
-                sep = np.transpose(np.matmul(A, np.transpose(memIdx)))
-                isValid = np.all(memIdx >= constrLB) and np.all(memIdx <= constrUB) and np.all(sep >= constrMS)
-                numTrialsInner = numTrialsInner + 1
-            if not np.any(alloc[memIdx]):
-                allocationValid = True
-                break
-            
-        tsAllocationStop = time.time()
-
-        elapsedAllocation = tsAllocationStop - tsAllocationStart
-        if self.DEBUG:
-            print("Elapsed (allocation) time", elapsedAllocation)
-
-        if not self.allocation_shared and not allocationValid:
-            self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
-            bfrt.complete_operations()
-            self.queue.remove(fid)
-            if self.DEBUG:
-                print("Allocation failed for FID", fid)
-            return 
 
         alloc = []
         for i in range(0, len(memIdx)):
@@ -352,10 +266,15 @@ class ActiveP4Controller:
                 alloc.append((fid, k, 0, 0xFFFF))
         
         allocMap = {}
+        stagesAllocated = {}
         for a in alloc:
             if a[1] not in allocMap:
                 allocMap[a[1]] = []
             allocMap[a[1]].append(a)
+            if a[0] not in stagesAllocated:
+                stagesAllocated[a[0]] = []
+            stageId = a[1] % self.num_stages_ingress
+            stagesAllocated[a[0]].append(stageId)
 
         if self.DEBUG:
             print(allocMap)
@@ -404,6 +323,119 @@ class ActiveP4Controller:
                 egSize = 0 if egIgMap[stageId][sfid]['eg'] is None else egIgMap[stageId][sfid]['eg'][1]
                 actionSpec(fid=sfid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
 
+        for sfid in stagesAllocated:
+            for stageId in range(0, self.num_stages_ingress):
+                allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
+                actionSpec = getattr(allocTable, 'add_with_default_allocation_s%d' % stageId)
+                if stageId not in stagesAllocated[sfid]:
+                    actionSpec(fid=sfid, flag_allocated=1)
+
+        return alloc
+
+    def allocatorRandomized(self, constr):
+
+        numAccesses = len(constr)
+        stageWiseAlloc = np.sum(self.allocation, axis=0)
+        alloc = stageWiseAlloc > np.zeros(self.num_stages_total)
+
+        constrLB = np.zeros(numAccesses)
+        constrUB = np.zeros(numAccesses)
+        constrMS = np.zeros(numAccesses)
+
+        for i in range(0, numAccesses):
+            constrLB[i] = constr[i][0]
+            constrUB[i] = constr[i][1]
+            constrMS[i] = constr[i][2]
+
+        A = np.zeros((numAccesses, numAccesses))
+        A[0, 0] = 1
+        for i in range(1, numAccesses):
+            A[i, i-1] = -1
+            A[i, i] = 1
+        
+        numTrialsOuter = 0
+        numTrialsInner = 0
+        allocationValid = False
+        for i in range(0, self.max_iter):
+            isValid = False
+            numTrialsOuter = numTrialsOuter + 1
+            while not isValid:
+                memIdx = np.random.randint(0, self.num_stages_total - 1, numAccesses)
+                sep = np.transpose(np.matmul(A, np.transpose(memIdx)))
+                isValid = np.all(memIdx >= constrLB) and np.all(memIdx <= constrUB) and np.all(sep >= constrMS)
+                numTrialsInner = numTrialsInner + 1
+            if not np.any(alloc[memIdx]):
+                allocationValid = True
+                break
+        
+        return (memIdx, allocationValid, numTrialsOuter, numTrialsInner)
+
+    def deallocate(self, fid):
+
+        for stageId in range(0, self.num_stages_egress):
+            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
+            if fid in entries:
+                for entry in entries[fid]:
+                    entry.remove()
+
+        for stageId in range(0, self.num_stages_ingress):
+            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
+            if fid in entries:
+                for entry in entries[fid]:
+                    entry.remove()
+            allocs = self.fetchAllocationTableEntries(stageId)
+            if fid in entries:
+                for entry in entries[fid]:
+                    entry.remove()
+
+        allocreqs = self.p4.Ingress.allocation.dump(return_ents=True)
+        for entry in allocreqs:
+            afid = entry.key.get(b'hdr.ih.fid')
+            if afid == fid:
+                entry.remove()
+
+        bfrt.complete_operations()
+
+    def allocate(self, fid, constr):
+
+        if fid in self.queue or fid in self.active:
+            return
+
+        tsOverallStart = time.time()
+
+        self.queue.append(fid)
+
+        if self.DEBUG:
+            print("Attempting allocation for FID", fid)
+
+        self.p4.Ingress.allocation.add_with_pending(fid=fid, flag_reqalloc=2)
+        bfrt.complete_operations()
+
+        if self.DEBUG:
+            print("Constraints", constr)
+
+        tsAllocationStart = time.time()
+
+        (memIdx, allocationValid, numTrialsOuter, numTrialsInner) = self.allocatorRandomized(constr)
+            
+        tsAllocationStop = time.time()
+
+        elapsedAllocation = tsAllocationStop - tsAllocationStart
+        if self.DEBUG:
+            print("Elapsed (allocation) time", elapsedAllocation)
+
+        if not self.allocation_shared and not allocationValid:
+            self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
+            bfrt.complete_operations()
+            self.queue.remove(fid)
+            if self.DEBUG:
+                print("Allocation failed for FID", fid)
+            return 
+
+        self.installInstructionTableEntries(fid)
+        self.updateAllocationTables(fid, memIdx)
+        self.addQuotas(fid, recirculate=True)
+
         self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
         self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
         bfrt.complete_operations()
@@ -449,18 +481,24 @@ class ActiveP4Controller:
 
 controller = ActiveP4Controller()
 
-fids = [1]
-
 controller.clear_all()
 controller.installControlEntries()
 controller.installForwardingTableEntries(config='default')
-for fid in fids:
-    controller.installInstructionTableEntries(fid)
-    controller.addQuotas(fid, recirculate=True)
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
 
-controller.initController()
+TOTAL_STAGES = 20
+testMode = True
+fids = [1]
+
+if testMode:
+    memIdx = range(0, TOTAL_STAGES)
+    for fid in fids:
+        controller.installInstructionTableEntries(fid)
+        controller.updateAllocationTables(fid, memIdx)
+        controller.addQuotas(fid, recirculate=True)
+else:
+    controller.initController()
 
 #controller.getTrafficCounters(fids)
 #controller.resetTrafficCounters()

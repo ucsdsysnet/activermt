@@ -76,6 +76,7 @@ parser IngressParser(
 
     state parse_active_ih {
         pkt.extract(hdr.ih);
+        hdr.meta.inc = 32w1;
         transition check_alloc_req;
     }
 

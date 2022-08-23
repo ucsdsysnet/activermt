@@ -48,6 +48,10 @@ action copy_mbr_mar() {
     hdr.meta.mbr = hdr.meta.mar;
 }
 
+action copy_inc_mbr() {
+    hdr.meta.inc = hdr.meta.mbr;
+}
+
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
 }
