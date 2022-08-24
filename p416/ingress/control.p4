@@ -77,13 +77,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_rw_max_s0 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_rw_zero_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -178,13 +183,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_rw_max_s1 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_rw_zero_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -279,13 +289,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_rw_max_s2 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_rw_zero_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -380,13 +395,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_rw_max_s3 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_rw_zero_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -481,13 +501,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_rw_max_s4 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_rw_zero_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -582,13 +607,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_max_s5 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_zero_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -683,13 +713,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_max_s6 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_zero_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -784,13 +819,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_rw_max_s7 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_rw_zero_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -885,13 +925,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_rw_max_s8 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_rw_zero_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 
@@ -986,13 +1031,18 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_rw_max_s9 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
+    Cases: obj = 0, obj = mbr, obj != mbr.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_rw_zero_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
+        if(obj == hdr.meta.mbr2) {
+            rv = 0;    
+        }
         if(obj == 0) {
-            obj = hdr.meta.mbr;
-        } 
+            obj = hdr.meta.mbr2;
+            rv = 0;
+        }
     }
 };
 

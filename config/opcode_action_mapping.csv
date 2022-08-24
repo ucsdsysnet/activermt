@@ -47,7 +47,7 @@ MEM_INCREMENT,memory_increment_s#
 MEM_MINREAD,memory_minread_s#
 MEM_MINREADINC,memory_minreadinc_s#
 MEM_WRITE_CONDMAX,memory_write_max_s#
-MEM_WRITE_CONDZERO,memory_write_zero_s#
+MEM_WRITE_CONDZERO,memory_write_zero_s#,1
 HASH,hash_s#
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
 LOAD_QDELAY,fetch_qdelay
