@@ -45,10 +45,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s0;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_rw_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -77,7 +77,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_rw_max_s0 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_rw_zero_s0 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -151,10 +151,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s1;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_rw_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -183,7 +183,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_rw_max_s1 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_rw_zero_s1 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -257,10 +257,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s2;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_rw_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -289,7 +289,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_rw_max_s2 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_rw_zero_s2 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -363,10 +363,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s3;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_rw_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -395,7 +395,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_rw_max_s3 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_rw_zero_s3 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -469,10 +469,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s4;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_rw_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -501,7 +501,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_rw_max_s4 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_rw_zero_s4 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -575,10 +575,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s5;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_rw_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -607,7 +607,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_max_s5 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_zero_s5 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -681,10 +681,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s6;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_rw_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -713,7 +713,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_max_s6 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_zero_s6 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -787,10 +787,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s7;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_rw_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -819,7 +819,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_rw_max_s7 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_rw_zero_s7 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -893,10 +893,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s8;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_rw_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -925,7 +925,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_rw_max_s8 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_rw_zero_s8 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -999,10 +999,10 @@ Register<bit<32>, bit<32>>(32w65536) heap_s9;
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_rw_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
+        rv = obj;
         if(hdr.meta.mbr > 0) {
             obj = hdr.meta.mbr;
         }
-        rv = obj;
     }
 };
 
@@ -1031,7 +1031,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_rw_max_s9 = 
 /*
     Conditional write (if not zero). 
     Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr, obj != mbr.
+    Cases: obj = 0, obj = mbr2, obj != mbr2.
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s9) heap_conditional_rw_zero_s9 = {
     void apply(inout bit<32> obj, out bit<32> rv) {
@@ -1320,6 +1320,10 @@ action copy_inc_mbr() {
     hdr.meta.inc = hdr.meta.mbr;
 }
 
+action copy_hash_data_mbr() {
+    hdr.meta.hash_data_0 = hdr.meta.mbr;
+}
+
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
 }
@@ -1339,18 +1343,6 @@ action mbr_add_mbr2() {
 action mar_mbr_add_mbr2() {
     hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
 }
-
-//Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
-/*action hash_5_tuple() {
-    hdr.meta.mbr = crc16.get({
-        hdr.meta.hash_data_0,
-        hdr.meta.hash_data_1,
-        hdr.meta.hash_data_2,
-        hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
-    });
-}*/
 
 action load_salt() {
     hdr.meta.mbr = CONST_SALT;
@@ -1461,14 +1453,19 @@ action memory_minreadinc_s0() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s0() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s0.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s0() {
     hdr.meta.mar = (bit<32>)crc_16_s0.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s1() {
     hdr.meta.disabled = 1;
@@ -1520,14 +1517,19 @@ action memory_minreadinc_s1() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s1() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s1.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s1() {
     hdr.meta.mar = (bit<32>)crc_16_s1.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s2() {
     hdr.meta.disabled = 1;
@@ -1579,14 +1581,19 @@ action memory_minreadinc_s2() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s2() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s2.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s2() {
     hdr.meta.mar = (bit<32>)crc_16_s2.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s3() {
     hdr.meta.disabled = 1;
@@ -1638,14 +1645,19 @@ action memory_minreadinc_s3() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s3() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s3.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s3() {
     hdr.meta.mar = (bit<32>)crc_16_s3.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s4() {
     hdr.meta.disabled = 1;
@@ -1697,14 +1709,19 @@ action memory_minreadinc_s4() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s4() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s4.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s4() {
     hdr.meta.mar = (bit<32>)crc_16_s4.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s5() {
     hdr.meta.disabled = 1;
@@ -1756,14 +1773,19 @@ action memory_minreadinc_s5() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s5() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s5.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s5() {
     hdr.meta.mar = (bit<32>)crc_16_s5.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s6() {
     hdr.meta.disabled = 1;
@@ -1815,14 +1837,19 @@ action memory_minreadinc_s6() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s6() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s6() {
     hdr.meta.mar = (bit<32>)crc_16_s6.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s7() {
     hdr.meta.disabled = 1;
@@ -1874,14 +1901,19 @@ action memory_minreadinc_s7() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s7() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s7.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s7() {
     hdr.meta.mar = (bit<32>)crc_16_s7.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s8() {
     hdr.meta.disabled = 1;
@@ -1933,14 +1965,19 @@ action memory_minreadinc_s8() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s8() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s8.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s8() {
     hdr.meta.mar = (bit<32>)crc_16_s8.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }action jump_s9() {
     hdr.meta.disabled = 1;
@@ -1992,14 +2029,19 @@ action memory_minreadinc_s9() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s9() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s9.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s9() {
     hdr.meta.mar = (bit<32>)crc_16_s9.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }
 
@@ -2040,6 +2082,7 @@ table instruction_0 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2071,6 +2114,7 @@ table instruction_0 {
 		memory_write_zero_s0;
 		memory_minread_s0;
 		memory_minreadinc_s0;
+		memory_minreadset_s0;
 		hash_s0;
     }
     size = 512;
@@ -2135,6 +2179,7 @@ table instruction_1 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2166,6 +2211,7 @@ table instruction_1 {
 		memory_write_zero_s1;
 		memory_minread_s1;
 		memory_minreadinc_s1;
+		memory_minreadset_s1;
 		hash_s1;
     }
     size = 512;
@@ -2230,6 +2276,7 @@ table instruction_2 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2261,6 +2308,7 @@ table instruction_2 {
 		memory_write_zero_s2;
 		memory_minread_s2;
 		memory_minreadinc_s2;
+		memory_minreadset_s2;
 		hash_s2;
     }
     size = 512;
@@ -2325,6 +2373,7 @@ table instruction_3 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2356,6 +2405,7 @@ table instruction_3 {
 		memory_write_zero_s3;
 		memory_minread_s3;
 		memory_minreadinc_s3;
+		memory_minreadset_s3;
 		hash_s3;
     }
     size = 512;
@@ -2420,6 +2470,7 @@ table instruction_4 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2451,6 +2502,7 @@ table instruction_4 {
 		memory_write_zero_s4;
 		memory_minread_s4;
 		memory_minreadinc_s4;
+		memory_minreadset_s4;
 		hash_s4;
     }
     size = 512;
@@ -2515,6 +2567,7 @@ table instruction_5 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2546,6 +2599,7 @@ table instruction_5 {
 		memory_write_zero_s5;
 		memory_minread_s5;
 		memory_minreadinc_s5;
+		memory_minreadset_s5;
 		hash_s5;
     }
     size = 512;
@@ -2610,6 +2664,7 @@ table instruction_6 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2641,6 +2696,7 @@ table instruction_6 {
 		memory_write_zero_s6;
 		memory_minread_s6;
 		memory_minreadinc_s6;
+		memory_minreadset_s6;
 		hash_s6;
     }
     size = 512;
@@ -2705,6 +2761,7 @@ table instruction_7 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2736,6 +2793,7 @@ table instruction_7 {
 		memory_write_zero_s7;
 		memory_minread_s7;
 		memory_minreadinc_s7;
+		memory_minreadset_s7;
 		hash_s7;
     }
     size = 512;
@@ -2800,6 +2858,7 @@ table instruction_8 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2831,6 +2890,7 @@ table instruction_8 {
 		memory_write_zero_s8;
 		memory_minread_s8;
 		memory_minreadinc_s8;
+		memory_minreadset_s8;
 		hash_s8;
     }
     size = 512;
@@ -2895,6 +2955,7 @@ table instruction_9 {
 		copy_mar_mbr;
 		copy_mbr_mar;
 		copy_inc_mbr;
+		copy_hash_data_mbr;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2926,6 +2987,7 @@ table instruction_9 {
 		memory_write_zero_s9;
 		memory_minread_s9;
 		memory_minreadinc_s9;
+		memory_minreadset_s9;
 		hash_s9;
     }
     size = 512;

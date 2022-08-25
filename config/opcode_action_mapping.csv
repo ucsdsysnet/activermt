@@ -2,6 +2,7 @@ EOF,mark_termination
 NOP,skip
 RETURN,complete
 CRET,complete,1
+CRETI,complete,0
 DROP,drop
 FORK,fork
 SET_DST,set_port
@@ -41,11 +42,13 @@ COPY_MBR2_MBR,copy_mbr2_mbr1
 COPY_MBR_MBR2,copy_mbr1_mbr2
 COPY_MAR_MBR,copy_mar_mbr
 COPY_MBR_MAR,copy_mbr_mar
+COPY_HASHDATA_MBR,copy_hash_data_mbr
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#
 MEM_MINREAD,memory_minread_s#
 MEM_MINREADINC,memory_minreadinc_s#
+MEM_MINREADSET,memory_minreadset_s#
 MEM_WRITE_CONDMAX,memory_write_max_s#
 MEM_WRITE_CONDZERO,memory_write_zero_s#,1
 HASH,hash_s#

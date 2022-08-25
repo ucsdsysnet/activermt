@@ -52,6 +52,10 @@ action copy_inc_mbr() {
     hdr.meta.inc = hdr.meta.mbr;
 }
 
+action copy_hash_data_mbr() {
+    hdr.meta.hash_data_0 = hdr.meta.mbr;
+}
+
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
 }
@@ -71,18 +75,6 @@ action mbr_add_mbr2() {
 action mar_mbr_add_mbr2() {
     hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
 }
-
-//Hash<bit<16>>(HashAlgorithm_t.CRC16) crc16;
-/*action hash_5_tuple() {
-    hdr.meta.mbr = crc16.get({
-        hdr.meta.hash_data_0,
-        hdr.meta.hash_data_1,
-        hdr.meta.hash_data_2,
-        hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
-    });
-}*/
 
 action load_salt() {
     hdr.meta.mbr = CONST_SALT;

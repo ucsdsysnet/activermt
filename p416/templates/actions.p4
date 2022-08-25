@@ -48,13 +48,18 @@ action memory_minreadinc_s<stage-id>() {
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
 }
 
+action memory_minreadset_s<stage-id>() {
+    hdr.meta.mbr = 1;
+    hdr.meta.mbr = heap_rw_s<stage-id>.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
+
 action hash_s<stage-id>() {
     hdr.meta.mar = (bit<32>)crc_16_s<stage-id>.get({
         hdr.meta.hash_data_0,
         hdr.meta.hash_data_1,
         hdr.meta.hash_data_2,
         hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4,
-        hdr.meta.mbr
+        hdr.meta.hash_data_4
     });
 }
