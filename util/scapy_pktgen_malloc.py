@@ -14,6 +14,7 @@ else:
 
 from headers import *
 
+DEBUG = False
 FLAGS_REQ = 0x0010
 FLAGS_GET = 0x0020
 NUM_STAGES_IG = 10
@@ -36,24 +37,28 @@ def parseAllocation(alloc):
             print("Allocation[%d]:" % i, mem_start_ig, mem_end_ig, mem_start_eg, mem_end_eg)
 
 def onPktRecv(p):
-    global timing, isAllocated
+    global timing, isAllocated, DEBUG
     flags = p[ActiveInitialHeader].flags
     dstMac = "00:00:00:00:00:02"
     if p[Ether].dst == dstMac:
         return
-    print( "[RECEIVED]", hex(flags), p[Ether].dst )
+    if DEBUG:
+        print( "[RECEIVED]", hex(flags), p[Ether].dst )
     if flags & 0x0008 > 0:
         if not isAllocated:
             isAllocated = True
             timing['stop'] = time.time()
-        print("Allocation received")
-        parseAllocation(p[ActiveAlloc])
+            print("Allocation received")
+            parseAllocation(p[ActiveAlloc])
     elif flags & 0x0004 > 0:
-        print("Allocation pending")
+        #print("Allocation pending")
+        pass
     elif flags & 0x0020 > 0:
-        print("Allocation failed")
+        #print("Allocation failed")
+        pass
     elif flags & 0x0010 > 0:
-        print("Allocation requested")
+        #print("Allocation requested")
+        pass
 
 def recvPackets(iface, dstMac):
     print("Sniffing packets on", iface)
@@ -90,18 +95,29 @@ def sendPkt(fid, flags):
 
     sendp(pkt, iface="veth0", verbose=False)
 
-fid = 5
+ALLOCATION_TIMEOUT_SEC = 3
+MAX_APPS = 16
 
 th = threading.Thread(target=recvPackets, args=("veth1", "00:00:00:00:00:02", ))
 th.start()
 
-timing['start'] = time.time()
-sendPkt(fid, FLAGS_REQ)
-while not isAllocated:
-    sendPkt(fid, FLAGS_GET)
-
-elapsed = timing['stop'] - timing['start']
-print("elapsed", elapsed)
+memoryFull = False
+for i in range(0, MAX_APPS):
+    if memoryFull:
+        break
+    isAllocated = False
+    fid = i + 1
+    timing['start'] = time.time()
+    sendPkt(fid, FLAGS_REQ)
+    while not isAllocated:
+        allocTime = time.time() - timing['start']
+        if allocTime > ALLOCATION_TIMEOUT_SEC:
+            print("Allocation timed out for FID", fid)
+            memoryFull = True
+            break
+        sendPkt(fid, FLAGS_GET)
+    elapsed = timing['stop'] - timing['start']
+    print("FID %d Elapsed %f seconds" % (fid, elapsed))
 
 print("Press Ctrl-C to exit ... ")
 th.join()

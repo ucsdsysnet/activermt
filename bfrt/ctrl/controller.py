@@ -500,8 +500,8 @@ def getReferenceOpcodes(basePath, sourceName):
     return opcodes
 
 TOTAL_STAGES = 20
-testMode = True
-restrictedInstructionSet = True
+testMode = False
+restrictedInstructionSet = False
 referenceProgram = "condition"
 basePath = "/usr/local/home/rajdeepd/activep4"
 #basePath = "/root/src/activep4-p416"
