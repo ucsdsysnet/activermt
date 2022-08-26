@@ -2051,12 +2051,12 @@ action hash_s9() {
 
 table instruction_0 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[0].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2148,12 +2148,12 @@ table allocation_0 {
 
 table instruction_1 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[1].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2245,12 +2245,12 @@ table allocation_1 {
 
 table instruction_2 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[2].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2342,12 +2342,12 @@ table allocation_2 {
 
 table instruction_3 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[3].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2439,12 +2439,12 @@ table allocation_3 {
 
 table instruction_4 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[4].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2536,12 +2536,12 @@ table allocation_4 {
 
 table instruction_5 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[5].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2633,12 +2633,12 @@ table allocation_5 {
 
 table instruction_6 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[6].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2730,12 +2730,12 @@ table allocation_6 {
 
 table instruction_7 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[7].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2827,12 +2827,12 @@ table allocation_7 {
 
 table instruction_8 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[8].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {
@@ -2924,12 +2924,12 @@ table allocation_8 {
 
 table instruction_9 {
     key = {
-        hdr.ih.fid                              : exact;
+        hdr.meta.fid                            : range;
         hdr.instr[9].opcode      : exact;
         hdr.meta.complete                       : exact;
         hdr.meta.disabled                       : exact;
-        //hdr.meta.zero                           : exact;
-        hdr.meta.mbr[19:0]                      : range;
+        hdr.meta.mbr                            : lpm;
+        //hdr.meta.carry                          : exact;
         hdr.meta.mar[19:0]                      : range;
     }
     actions = {

@@ -183,7 +183,9 @@ header bridged_metadata_h {
     bit<10>     mirror_sessid;
     bit<1>      mirror_en;
     bit<7>      mirror_iter;
-    bit<3>      _padding;
+    bit<2>      _padding;
+    bit<1>      carry;
+    bit<8>      fid;
 }
 
 header resubmit_header_t {

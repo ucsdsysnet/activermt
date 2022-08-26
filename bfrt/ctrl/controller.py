@@ -28,7 +28,7 @@ class ActiveP4Controller:
     REG_MAX = 0xFFFFF
     DEBUG = True
 
-    def __init__(self):
+    def __init__(self, custom=None, basePath=""):
         self.p4 = bfrt.active.pipe
         self.watchdog = True
         self.num_stages_ingress = 10
@@ -39,9 +39,9 @@ class ActiveP4Controller:
         self.max_iter = 100
         self.recirculation_enabled = True
         self.allocation_shared = False
-        self.base_path = "/usr/local/home/rajdeepd/activep4"
-        #self.base_path = "/root/src/activep4-p416"
+        self.base_path = basePath
         logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
+        self.customInstructionSet = custom
         self.opcode_action = {}
         self.opcodes_memaccess = []
         with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
@@ -50,8 +50,10 @@ class ActiveP4Controller:
                 m = mapping[opcode].split(',')
                 pnemonic = m[0]
                 action = m[1]
-                conditional = (bool(m[2]) if len(m) == 3 else None)
+                conditional = ((m[2] == '1') if len(m) == 3 else None)
                 meminstr = pnemonic.startswith('MEM')
+                if self.customInstructionSet is not None and opcode not in self.customInstructionSet:
+                    continue
                 self.opcode_action[pnemonic] = {
                     'opcode'    : opcode,
                     'action'    : action,
@@ -62,6 +64,9 @@ class ActiveP4Controller:
                 if meminstr:
                     self.opcodes_memaccess.append(opcode)
             f.close()
+        if self.customInstructionSet is not None:
+            print("Using restricted instruction set.")
+            print(self.opcode_action)
         self.sid_to_port_mapping = {}
         self.dst_port_mapping = {}
         self.ports = []
@@ -71,7 +76,7 @@ class ActiveP4Controller:
         self.installed = []
 
     # Taken from ICA examples
-    def clear_all(self, verbose=True, batching=True):
+    def clear_all(self, verbose=DEBUG, batching=True):
         for table_types in (['MATCH_DIRECT', 'MATCH_INDIRECT_SELECTOR'],
                             ['SELECTOR'],
                             ['ACTION_PROFILE']):
@@ -155,35 +160,37 @@ class ActiveP4Controller:
         add_method = getattr(instr_table, 'add_with_%s' % act['action'].replace('#', str(stageId)))
         add_method_skip = getattr(instr_table, 'add_with_skip')
         add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(stageId))
+        fid_start = fid if act['memory'] else 0
+        fid_end = fid if act['memory'] else 0xFF
         if act['condition'] is not None:
-            mbr_19_0__start = 1 if act['condition'] else 0
-            mbr_19_0__end = self.REG_MAX if act['condition'] else 0
-            add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=mbr_19_0__start, mbr_19_0__end=mbr_19_0__end, mar_19_0__start=memStart, mar_19_0__end=memEnd)
-            mbr_19_0__start_default = 0 if act['condition'] else 1
-            mbr_19_0__end_default = 0 if act['condition'] else self.REG_MAX
-            add_method_skip(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=mbr_19_0__start_default, mbr_19_0__end=mbr_19_0__end_default, mar_19_0__start=0, mar_19_0__end=self.REG_MAX)
+            if act['condition']:
+                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+            else:
+                add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
         else:
             if act['opcode'] == 0:
-                add_method(fid=fid, opcode=act['opcode'], complete=1, disabled=0, mbr_19_0__start=0, mbr_19_0__end=self.REG_MAX, mar_19_0__start=memStart, mar_19_0__end=memEnd)
-            add_method(fid=fid, opcode=act['opcode'], complete=0, disabled=0, mbr_19_0__start=0, mbr_19_0__end=self.REG_MAX, mar_19_0__start=memStart, mar_19_0__end=memEnd)
-        hdl = add_method_rejoin(fid=fid, opcode=act['opcode'], complete=0, disabled=1, mbr_19_0__start=0, mbr_19_0__end=self.REG_MAX, mar_19_0__start=0, mar_19_0__end=self.REG_MAX)
+                add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=1, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+            add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+        add_method_rejoin(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+        #instr_table.dump(table=True)
 
-    def installInstructionTableEntriesGress(self, fid, gress, num_stages, offset=0):
+    def installInstructionTableEntriesGress(self, gress, num_stages, offset=0):
         for i in range(offset, num_stages + offset):
+            numEntries = 0
             for a in self.opcode_action:
                 act = self.opcode_action[a]
                 if act['action'] == 'NULL' or act['memory']: 
                     continue
-                self.installInstructionTableEntry(fid, act, gress, i)
-            #instr_table.dump(table=True)
+                self.installInstructionTableEntry(0, act, gress, i)
+                numEntries = numEntries + 1
+            #print(gress, "%d entries installed on stage %d" % (numEntries, i))
         bfrt.complete_operations()
 
-    def installInstructionTableEntries(self, fid):
-        if fid in self.installed:
-            return
-        self.installInstructionTableEntriesGress(fid, self.p4.Ingress, self.num_stages_ingress)
-        self.installInstructionTableEntriesGress(fid, self.p4.Egress, self.num_stages_egress)
-        self.installed.append(fid)
+    def installInstructionTableEntries(self):
+        self.installInstructionTableEntriesGress(self.p4.Ingress, self.num_stages_ingress)
+        self.installInstructionTableEntriesGress(self.p4.Egress, self.num_stages_egress)
 
     def addQuotas(self, fid, recirculate=False):
         #rand_thresh = math.floor(recirc_pct * 0xFFFF)
@@ -432,7 +439,6 @@ class ActiveP4Controller:
                 print("Allocation failed for FID", fid)
             return 
 
-        self.installInstructionTableEntries(fid)
         self.updateAllocationTables(fid, memIdx)
         self.addQuotas(fid, recirculate=True)
 
@@ -479,22 +485,44 @@ class ActiveP4Controller:
         while self.watchdog:
             pass
 
-controller = ActiveP4Controller()
+# Custom settings.
+
+def getReferenceOpcodes(basePath, sourceName):
+    opcodes = set()
+    bytecodeFile = os.path.join(basePath, "%s.apo" % sourceName)
+    with open(bytecodeFile, 'rb') as f:
+        data = list(f.read())
+        f.close()
+        i = 0
+        while i < len(data):
+            opcodes.add(data[i + 1])
+            i = i + 2
+    return opcodes
+
+TOTAL_STAGES = 20
+testMode = True
+restrictedInstructionSet = True
+referenceProgram = "condition"
+basePath = "/usr/local/home/rajdeepd/activep4"
+#basePath = "/root/src/activep4-p416"
+fids = [1]
+
+customInstructions = None
+if restrictedInstructionSet:
+    customInstructions = getReferenceOpcodes("/usr/local/home/rajdeepd/activep4/apps/test", referenceProgram)
+
+controller = ActiveP4Controller(custom=customInstructions, basePath=basePath)
 
 controller.clear_all()
 controller.installControlEntries()
 controller.installForwardingTableEntries(config='default')
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
-
-TOTAL_STAGES = 20
-testMode = True
-fids = [1]
+controller.installInstructionTableEntries()
 
 if testMode:
     memIdx = range(0, TOTAL_STAGES)
     for fid in fids:
-        controller.installInstructionTableEntries(fid)
         controller.updateAllocationTables(fid, memIdx)
         controller.addQuotas(fid, recirculate=True)
 else:

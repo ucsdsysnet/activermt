@@ -90,7 +90,7 @@ def sendPkt(fid, flags):
 
     sendp(pkt, iface="veth0", verbose=False)
 
-fid = 2
+fid = 5
 
 th = threading.Thread(target=recvPackets, args=("veth1", "00:00:00:00:00:02", ))
 th.start()
