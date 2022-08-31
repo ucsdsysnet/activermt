@@ -5,6 +5,7 @@ import time
 import inspect
 import threading
 import logging
+import random
 
 VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
@@ -23,6 +24,7 @@ class ActiveP4Controller:
     global inspect
     global threading
     global logging
+    global random
     global IPAddress
 
     REG_MAX = 0xFFFFF
@@ -31,6 +33,7 @@ class ActiveP4Controller:
     def __init__(self, custom=None, basePath=""):
         self.p4 = bfrt.active.pipe
         self.watchdog = True
+        self.block_size = 8192
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
@@ -257,20 +260,22 @@ class ActiveP4Controller:
             if stageWiseAlloc[k] > 0:
                 occupancy = np.unique(self.allocation[ : , k])
                 occupancy.append(fid)
-                blockSize = np.round(self.max_stage_sharing / len(occupancy))
+                cardinality = len(occupancy)
+                blockSize = np.round(self.max_stage_sharing / cardinality)
+                random.shuffle(occupancy)
                 offset = 0
                 for j in range(0, len(occupancy)):
                     limit = min(offset + blockSize, self.max_stage_sharing)
-                    memStart = offset * 8192
-                    memSize = (limit - offset) * 8192 - 1
+                    memStart = offset * self.block_size
+                    memEnd = limit * self.block_size - 1
                     for l in range(offset, limit):
                         self.occupancy[l, k] = occupancy[j]
-                    alloc.append((occupancy[j], k, memStart, memSize))
+                    alloc.append((occupancy[j], k, memStart, memEnd, True))
             # allocate exclusive stages
             else:
                 for j in range(0, self.max_stage_sharing):
                     self.allocation[j, k] = fid
-                alloc.append((fid, k, 0, 0xFFFF))
+                alloc.append((fid, k, 0, 0xFFFF, False))
         
         allocMap = {}
         stagesAllocated = {}

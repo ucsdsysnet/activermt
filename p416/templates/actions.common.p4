@@ -2,9 +2,9 @@ action complete() {
     hdr.meta.complete = 1;
 }
 
-action uncomplete() {
+/*action uncomplete() {
     hdr.meta.complete = 0;
-}
+}*/
 
 action fork() {
     hdr.meta.duplicate = 1;
@@ -18,9 +18,9 @@ action copy_mbr1_mbr2() {
     hdr.meta.mbr = hdr.meta.mbr2;
 }
 
-action mark_packet() {
+/*action mark_packet() {
     hdr.ih.flag_marked = 1;
-}
+}*/
 
 action memfault() {
     hdr.ih.flag_mfault = 1;
@@ -76,6 +76,29 @@ action mar_mbr_add_mbr2() {
     hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
 }
 
-action load_salt() {
+/*action load_salt() {
     hdr.meta.mbr = CONST_SALT;
+}*/
+
+action not_mbr() {
+    hdr.meta.mbr = ~hdr.meta.mbr;
+}
+
+action mbr_or_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr | hdr.meta.mbr2;
+}
+
+action mbr_subtract_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr - hdr.meta.mbr2;
+}
+
+action swap_mbr_mbr2() {
+    bit<32> tmp;
+    tmp = hdr.meta.mbr;
+    hdr.meta.mbr = hdr.meta.mbr2;
+    hdr.meta.mbr2 = tmp;
+}
+
+action max_mbr_mbr2() {
+    hdr.meta.mbr = (hdr.meta.mbr >= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
 }

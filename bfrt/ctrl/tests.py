@@ -1,14 +1,15 @@
 import os
+import time
 
-NUM_STAGES_IG = 10
+"""NUM_STAGES_IG = 10
 
 FIDS = [1]
 
 for fid in FIDS:
-    """for i in range(0, NUM_STAGES_IG):
+    for i in range(0, NUM_STAGES_IG):
         table = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % i)
         spec = getattr(table, 'add_with_get_allocation_s%d' % i)
-        spec(fid=fid, flag_allocated=1, offset_ig=0, size_ig=0xFFFF, offset_eg=0, size_eg=0xFFFF)"""
+        spec(fid=fid, flag_allocated=1, offset_ig=0, size_ig=0xFFFF, offset_eg=0, size_eg=0xFFFF)
     bfrt.active.pipe.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
 
 entries = bfrt.active.pipe.Ingress.allocation.dump(return_ents=True)
@@ -24,6 +25,13 @@ entries = bfrt.active.pipe.Ingress.instruction_1.dump(return_ents=True)
 for entry in entries:
     stageId = 1
     print("Opcode", entry.key.get(b'hdr.instr$%d.opcode' % stageId))
-    break
+    break"""
+
+tsBegin = time.time()
+regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True)
+tsEnd = time.time()
+elapsed = tsEnd - tsBegin
+print("Elapsed (seconds)", elapsed)
+print("Entries", len(regvals))
 
 bfrt.complete_operations()
