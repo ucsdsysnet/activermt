@@ -29,9 +29,9 @@ if ELASTIC_EN == 1
     cacheConstrMinSep = [3 4 0 0 0 0 0 0 0 0 0 0 0 0 0];
     cacheConstrOpt = 3:15;
 else
-    cacheConstrLB = [3 7];
-    cacheConstrUB = [10 20];
-    cacheConstrMinSep = [3 4];
+    cacheConstrLB = [3 6 9];
+    cacheConstrUB = [11 14 17];
+    cacheConstrMinSep = [3 3 3];
     cacheConstrOpt = [];
 end
 

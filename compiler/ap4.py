@@ -44,6 +44,10 @@ class ActiveProgram:
         self.labels = {}
         self.num_data = 0
         self.data_idx = []
+        self.memidx = []
+        for i in range(0, len(program)):
+            if 'MEM' in program[i][0]:
+                self.memidx.append(i)
         program.reverse()
         for i in range(0, len(program)):
             opcode = program[i][0]
@@ -118,6 +122,9 @@ class ActiveProgram:
                 args.append((arg, idx, self.args[arg]['didx'], is_bulk))
         return args
 
+    def getMemoryAccessIndices(self):
+        return self.memidx
+
 if len(sys.argv) < 2:
     print('Usage: %s <program.ap4>' % sys.argv[0])
     exit(0)
@@ -136,5 +143,8 @@ with open(sys.argv[1]) as f:
         out.close()
     with open(sys.argv[1].replace('.ap4', '.args.csv'), 'w') as out:
         out.write("\n".join([ ",".join([str(y) for y in x]) for x in ap.getArgumentMap() ]))
+        out.close()
+    with open(sys.argv[1].replace('.ap4', '.memidx.csv'), 'w') as out:
+        out.write(",".join([str(x) for x in ap.getMemoryAccessIndices()]))
         out.close()
     f.close()
