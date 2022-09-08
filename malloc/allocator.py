@@ -90,6 +90,9 @@ class Allocator:
         self.num_stages = 20
         self.max_occupancy = 8
         self.WT_OVERFLOW = 1000
+        self.reset()
+
+    def reset(self):
         self.allocation = set()
         self.allocationMap = {}
         for i in range(0, self.num_stages):
@@ -128,25 +131,31 @@ class Allocator:
         else:
             enumSizes = []
             fids = []
+            weights = {}
             for fid in self.activeFuncs:
                 fids.append(fid)
                 enumSizes.append(self.activeFuncs[fid].getEnumerationSize())
-            #fids.append(activeFunc.getFID())
+                weights[fid] = self.activeFuncs[fid].wt
             radix = len(fids)
             current = np.zeros(radix, dtype=np.int32)
             while True:
-                demand = np.zeros((radix, self.num_stages), dtype=np.uint8)
+                allocationMap = {}
                 for i in range(0, radix):
                     variant = self.activeFuncs[fids[i]].getVariant(current[i])
                     for j in range(0, len(variant)):
-                        demand[i, variant[j]] = 1
-                overlap = np.greater(np.sum(demand, axis=0), np.ones((1, self.num_stages)))
-                numOverlaps = np.sum(overlap)
+                        if variant[j] not in allocationMap:
+                            allocationMap[variant[j]] = set()
+                        allocationMap[variant[j]].add(fids[i])
+                cost = 0
+                for idx in allocationMap:
+                    if len(allocationMap[idx]) > 1:
+                        for fid in allocationMap[idx]:
+                            cost += weights[fid]
                 if optimal is None:
-                    minCost = numOverlaps
+                    minCost = cost
                     optimal = np.copy(current)
-                if numOverlaps <    minCost:
-                    minCost = numOverlaps
+                if cost < minCost:
+                    minCost = cost
                     optimal = np.copy(current)
                 pos = radix - 1
                 while pos >= 0 and current[pos] + 1 >= enumSizes[pos]:
@@ -161,13 +170,21 @@ class Allocator:
                 for idx in optimal:
                     self.allocation.add(idx)
                     self.allocationMap[idx].add(activeFunc.getFID())
+                utilization = len(self.allocation) / self.num_stages
             else:
-                self.allocation = set()
-                self.allocationMap = {}
-                # TODO add allocations
+                allocation = set()
+                allocationMap = {}
+                for i in range(0, self.num_stages):
+                    allocationMap[i] = set()
+                for i in range(0, radix):
+                    variant = self.activeFuncs[fids[i]].getVariant(optimal[i])
+                    for idx in variant:
+                        allocation.add(idx)
+                        allocationMap[idx].add(fids[i])
+                optimal = allocationMap
+                utilization = len(allocation) / self.num_stages
         tsAllocElapsed = time.time() - tsAllocStart
-        utilization = len(self.allocation) / self.num_stages
-        return (optimal,    minCost, utilization, tsAllocElapsed)
+        return (optimal, minCost, utilization, tsAllocElapsed)
 
 # main
 
@@ -190,11 +207,16 @@ def simAllocation(expId, appCfg, allocator, sequence, online=True):
         (allocation, cost, utilization, allocTime) = allocator.allocate(activeFunc, online=online)
         tsEnd = time.time()
         elapsedSec = tsEnd - tsBegin
-        logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization)
+        logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
         print("Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
         print("Allocation:")
         print(allocation, '/', allocator.getCurrentAllocation())
         iter += 1
+
+def simCompareAllocation(expId, appCfg, allocator, sequence):
+    simAllocation(expId, appCfg, allocator, sequence, online=True)
+    allocator.reset()
+    simAllocation(expId, appCfg, allocator, sequence, online=False)
 
 # analyses
 
@@ -218,8 +240,9 @@ appCfg = {
 
 apps = [ 'cache', 'cheetahlb', 'cms' ]
 
-appSeqLen = 10
-isOnline = True
+appSeqLen = 5
+isOnline = False
+compare = True
 
 def analysisExclusiveApp(expId, appSeqLen, isOnline):
     for appname in apps:
@@ -234,7 +257,10 @@ def analysisSampling(expId, appSeqLen, isOnline):
     allocator = Allocator()
     for i in range(0, appSeqLen):
         sequence.append(apps[random.randint(0, len(apps) - 1)])
-    simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
+    if compare:
+        simCompareAllocation(expId, appCfg, allocator, sequence)
+    else:    
+        simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
 
 def printUsage():
     print("Usage: %s <exclusive|random|test> [num_repeats|appname]" % sys.argv[0])
@@ -246,6 +272,10 @@ if len(sys.argv) < 2:
 analysisType = sys.argv[1]
 
 logging.basicConfig(filename=os.path.join(BASE_PATH, 'logs/controller/alloc_%s.log' % analysisType), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
+
+# ANALYSIS: one app (of each type)
+# ANALYSIS: probabilistic sampling (uniform)
+# ANALYSIS: sorted by demand (decreasing)
 
 if analysisType == "exclusive":
     numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -267,7 +297,3 @@ elif analysisType == "test":
     print("\n".join([ ",".join([ str(x) for x in y ]) for y in enumeration ]))
 else:
     printUsage()
-
-# ANALYSIS: one app (of each type)
-# ANALYSIS: probabilistic sampling (uniform)
-# ANALYSIS: sorted by demand (decreasing)
