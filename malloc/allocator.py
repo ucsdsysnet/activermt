@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+import random
 import logging
 
 VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
@@ -13,15 +14,21 @@ import numpy as np
 # active function
 
 class ActiveFunction:
-    def __init__(self, fid, accessIdx, progLen, weight=1, enumerate=False):
+    def __init__(self, fid, accessIdx, igLim, progLen, weight=1, enumerate=False):
         self.num_stages = 20
+        self.num_stage_ig = 10
         self.fid = fid
         self.wt = weight
+        self.igLim = igLim
         self.progLen = progLen
         self.numAccesses = len(accessIdx)
         self.A = self.getDeltaMatrix(self.numAccesses)
         self.constrLB = np.copy(accessIdx)
         self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
+        if self.igLim >= 0:
+            for i in range(0, self.numAccesses):
+                if self.constrLB[i] < self.igLim:
+                    self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
         self.constrDelta = np.matmul(self.A, self.constrLB)
         self.enumeration = []
         self.enumTime = None
@@ -97,7 +104,7 @@ class Allocator:
         for idx in memIdx:
             if idx in self.allocation:
                 if len(self.allocationMap[idx]) > self.max_occupancy:
-                    wtSum += WT_OVERFLOW
+                    wtSum += self.WT_OVERFLOW
                 else:
                     for fid in self.allocationMap[idx]:
                         wtSum += self.activeFuncs[fid].wt
@@ -124,6 +131,7 @@ class Allocator:
             for fid in self.activeFuncs:
                 fids.append(fid)
                 enumSizes.append(self.activeFuncs[fid].getEnumerationSize())
+            #fids.append(activeFunc.getFID())
             radix = len(fids)
             current = np.zeros(radix, dtype=np.int32)
             while True:
@@ -165,33 +173,101 @@ class Allocator:
 
 BASE_PATH = os.environ['ACTIVEP4_SRC'] if 'ACTIVEP4_SRC' in os.environ else os.getcwd()
 
-logging.basicConfig(filename=os.path.join(BASE_PATH, 'logs/controller/allocator.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
+def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocTime, enumTime, utilization, isOnline=True):
+    logging.info("[%d] %s,%s,%d,%d,%f,%f,%f,%f", expId, appname, ('ONLINE' if isOnline else 'OFFLINE'), numApps, cost, elapsedTime, allocTime, enumTime, utilization)
 
-def logAllocation(numApps, allocation, cost, elapsedTime, allocTime, enumTime, utilization, isOnline=True):
-    logging.info("%s,%d,%d,%f,%f,%f,%f", ('ONLINE' if isOnline else 'OFFLINE'), numApps, cost, elapsedTime, allocTime, enumTime, utilization)
+def simAllocation(expId, appCfg, allocator, sequence, online=True):
+    iter = 0
+    for appname in sequence:
+        print("Iteration", iter, "App", appname)
+        accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
+        progLen = appCfg[appname]['applen']
+        igLim = appCfg[appname]['iglim']
+        fid = iter + 1
+        tsBegin = time.time()
+        activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, enumerate=True)
+        activeFunc.setFID(fid)
+        (allocation, cost, utilization, allocTime) = allocator.allocate(activeFunc, online=online)
+        tsEnd = time.time()
+        elapsedSec = tsEnd - tsBegin
+        logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization)
+        print("Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
+        print("Allocation:")
+        print(allocation, '/', allocator.getCurrentAllocation())
+        iter += 1
 
-progLen = 12
-accessIdx = np.transpose(np.array([3, 6, 9], dtype=np.uint32))
+# analyses
 
-allocator = Allocator()
+appCfg = {
+    'cache'     : {
+        'idx'       : [3, 6, 9],
+        'iglim'     : 8,
+        'applen'    : 12
+    },
+    'cheetahlb' : {
+        'idx'       : [1, 8, 10],
+        'iglim'     : -1,
+        'applen'    : 18
+    },
+    'cms'       : {
+        'idx'       : [0, 1, 2, 3, 6, 8, 10, 18],
+        'iglim'     : -1,
+        'applen'    : 20
+    }
+}
 
-numApps = 10
+apps = [ 'cache', 'cheetahlb', 'cms' ]
 
-for i in range(0, numApps):
-    print("Iteration", i)
-    tsBegin = time.time()
-    activeFunc = ActiveFunction(1, accessIdx, progLen, enumerate=True)
-    activeFunc.setFID(i + 1)
-    (allocation, cost, utilization, allocTime) = allocator.allocate(activeFunc, online=True)
-    tsEnd = time.time()
-    elapsedSec = tsEnd - tsBegin
-    logAllocation(i + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization)
-    print("Cost", cost, "TIME_SECS", elapsedSec)
-    print("Allocation:")
-    print(allocation, '/', allocator.getCurrentAllocation())
-    # print("Overall:")
-    # print(allocator.getCurrentAllocation())
+appSeqLen = 10
+isOnline = True
 
-#allocator.enumerate(callback=accumulate)
-#print("Enum size", len(enumeration))
-# print("\n".join([ ",".join([ str(x) for x in y ]) for y in enumeration ]))
+def analysisExclusiveApp(expId, appSeqLen, isOnline):
+    for appname in apps:
+        sequence = []
+        allocator = Allocator()
+        for i in range(0, appSeqLen):
+            sequence.append(appname)
+        simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
+
+def analysisSampling(expId, appSeqLen, isOnline):
+    sequence = []
+    allocator = Allocator()
+    for i in range(0, appSeqLen):
+        sequence.append(apps[random.randint(0, len(apps) - 1)])
+    simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
+
+def printUsage():
+    print("Usage: %s <exclusive|random|test> [num_repeats|appname]" % sys.argv[0])
+    sys.exit(1)
+
+if len(sys.argv) < 2:
+    printUsage()
+
+analysisType = sys.argv[1]
+
+logging.basicConfig(filename=os.path.join(BASE_PATH, 'logs/controller/alloc_%s.log' % analysisType), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
+
+if analysisType == "exclusive":
+    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    for i in range(0, numRepeats):
+        analysisExclusiveApp(i, appSeqLen, isOnline)
+elif analysisType == "random":
+    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    for i in range(0, numRepeats):
+        analysisSampling(i, appSeqLen, isOnline)
+elif analysisType == "test":
+    allocator = Allocator()
+    appname = sys.argv[2] if len(sys.argv) > 2 else 'cache'
+    accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
+    progLen = appCfg[appname]['applen']
+    igLim = appCfg[appname]['iglim']
+    activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, enumerate=True)
+    enumeration = activeFunc.getEnumeration()
+    print("Enum size", len(enumeration))
+    print("\n".join([ ",".join([ str(x) for x in y ]) for y in enumeration ]))
+else:
+    printUsage()
+
+# ANALYSIS: one app (of each type)
+# ANALYSIS: probabilistic sampling (uniform)
+# ANALYSIS: sorted by demand (decreasing)

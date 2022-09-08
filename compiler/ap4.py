@@ -29,6 +29,7 @@ class ActiveProgram:
     def __init__(self, program):
         self.max_args = 5
         self.opt_data = False
+        self.IG_ONLY = ['SET_DST', 'RTS', 'CRTS']
         self.OPCODES = {}
         self.MNEMONICS = {}
         opcodeList = open(os.path.join(os.environ['ACTIVEP4_SRC'], 'config', 'opcode_action_mapping.csv')).read().strip().splitlines()
@@ -45,9 +46,13 @@ class ActiveProgram:
         self.num_data = 0
         self.data_idx = []
         self.memidx = []
+        self.memlim = []
+        self.iglim = -1
         for i in range(0, len(program)):
             if 'MEM' in program[i][0]:
                 self.memidx.append(i)
+            if program[i][0] in self.IG_ONLY:
+                self.iglim = i if i > self.iglim else self.iglim
         program.reverse()
         for i in range(0, len(program)):
             opcode = program[i][0]
@@ -145,6 +150,8 @@ with open(sys.argv[1]) as f:
         out.write("\n".join([ ",".join([str(y) for y in x]) for x in ap.getArgumentMap() ]))
         out.close()
     with open(sys.argv[1].replace('.ap4', '.memidx.csv'), 'w') as out:
-        out.write(",".join([str(x) for x in ap.getMemoryAccessIndices()]))
+        memDef = ",".join([str(x) for x in ap.getMemoryAccessIndices()])
+        memDef += "\n" + str(ap.iglim) + "\n"
+        out.write(memDef)
         out.close()
     f.close()
