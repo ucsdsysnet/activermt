@@ -127,30 +127,24 @@ header active_instruction_h {
 }*/
 
 header active_malloc_req_h {
-    bit<8>      constr_lb_0;
-    bit<8>      constr_ub_0;
-    bit<8>      constr_ms_0;
-    bit<8>      constr_lb_1;
-    bit<8>      constr_ub_1;
-    bit<8>      constr_ms_1;
-    bit<8>      constr_lb_2;
-    bit<8>      constr_ub_2;
-    bit<8>      constr_ms_2;
-    bit<8>      constr_lb_3;
-    bit<8>      constr_ub_3;
-    bit<8>      constr_ms_3;
-    bit<8>      constr_lb_4;
-    bit<8>      constr_ub_4;
-    bit<8>      constr_ms_4;
-    bit<8>      constr_lb_5;
-    bit<8>      constr_ub_5;
-    bit<8>      constr_ms_5;
-    bit<8>      constr_lb_6;
-    bit<8>      constr_ub_6;
-    bit<8>      constr_ms_6;
-    bit<8>      constr_lb_7;
-    bit<8>      constr_ub_7;
-    bit<8>      constr_ms_7;
+    bit<16>     proglen;
+    bit<8>      iglim;
+    bit<8>      mem_0;
+    bit<8>      mem_1;
+    bit<8>      mem_2;
+    bit<8>      mem_3;
+    bit<8>      mem_4;
+    bit<8>      mem_5;
+    bit<8>      mem_6;
+    bit<8>      mem_7;
+    bit<8>      dem_0;
+    bit<8>      dem_1;
+    bit<8>      dem_2;
+    bit<8>      dem_3;
+    bit<8>      dem_4;
+    bit<8>      dem_5;
+    bit<8>      dem_6;
+    bit<8>      dem_7;
 }
 
 header active_malloc_h {
@@ -250,28 +244,22 @@ struct egress_headers_t {
 
 struct malloc_digest_t {
     bit<16>     fid;
-    bit<8>      constr_lb_0;
-    bit<8>      constr_ub_0;
-    bit<8>      constr_ms_0;
-    bit<8>      constr_lb_1;
-    bit<8>      constr_ub_1;
-    bit<8>      constr_ms_1;
-    bit<8>      constr_lb_2;
-    bit<8>      constr_ub_2;
-    bit<8>      constr_ms_2;
-    bit<8>      constr_lb_3;
-    bit<8>      constr_ub_3;
-    bit<8>      constr_ms_3;
-    bit<8>      constr_lb_4;
-    bit<8>      constr_ub_4;
-    bit<8>      constr_ms_4;
-    bit<8>      constr_lb_5;
-    bit<8>      constr_ub_5;
-    bit<8>      constr_ms_5;
-    bit<8>      constr_lb_6;
-    bit<8>      constr_ub_6;
-    bit<8>      constr_ms_6;
-    bit<8>      constr_lb_7;
-    bit<8>      constr_ub_7;
-    bit<8>      constr_ms_7;      
+    bit<16>     proglen;
+    bit<8>      iglim;
+    bit<8>      mem_0;
+    bit<8>      mem_1;
+    bit<8>      mem_2;
+    bit<8>      mem_3;
+    bit<8>      mem_4;
+    bit<8>      mem_5;
+    bit<8>      mem_6;
+    bit<8>      mem_7;
+    bit<8>      dem_0;
+    bit<8>      dem_1;
+    bit<8>      dem_2;
+    bit<8>      dem_3;
+    bit<8>      dem_4;
+    bit<8>      dem_5;
+    bit<8>      dem_6;
+    bit<8>      dem_7;      
 } 

@@ -18,11 +18,10 @@ def simAllocation(expId, appCfg, allocator, sequence, online=True, debug=False):
         minDemand = appCfg[appname]['mindemand']
         fid = iter + 1
         tsBegin = time.time()
-        activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, minDemand=minDemand, enumerate=True)
-        activeFunc.setFID(fid)
+        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
         (allocation, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc, online=online)
-        if allocation is not None:
-            (changes, remaps) = allocator.updateAllocation(overallAlloc, allocationMap)
+        if allocation is not None and cost < allocator.WT_OVERFLOW:
+            (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
             print("Changes", changes)
             allocator.applyQueuedAllocation()
         else:
@@ -31,8 +30,6 @@ def simAllocation(expId, appCfg, allocator, sequence, online=True, debug=False):
         elapsedSec = tsEnd - tsBegin
         logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
         print("Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
-        # print("Allocation:")
-        # print(allocation, '/', allocator.getCurrentAllocation())
         iter += 1
 
 def simCompareAllocation(expId, appCfg, allocator, sequence):
@@ -87,7 +84,7 @@ def analysisExclusiveApp(expId, appSeqLen, isOnline):
 
 def analysisSampling(expId, appSeqLen, isOnline):
     sequence = []
-    allocator = Allocator(debug=True)
+    allocator = Allocator(debug=False)
     for i in range(0, appSeqLen):
         sequence.append(apps[random.randint(0, len(apps) - 1)])
     if compare:

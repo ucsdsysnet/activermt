@@ -30,7 +30,7 @@ class ActiveP4Controller:
     REG_MAX = 0xFFFFF
     DEBUG = True
 
-    def __init__(self, custom=None, basePath=""):
+    def __init__(self, allocator=None, custom=None, basePath=""):
         self.p4 = bfrt.active.pipe
         self.watchdog = True
         self.block_size = 8192
@@ -41,7 +41,6 @@ class ActiveP4Controller:
         self.max_stage_sharing = 8
         self.max_iter = 100
         self.recirculation_enabled = True
-        self.allocation_shared = False
         self.base_path = basePath
         logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
         self.customInstructionSet = custom
@@ -74,9 +73,9 @@ class ActiveP4Controller:
         self.dst_port_mapping = {}
         self.ports = []
         self.queue = []
-        self.allocation = np.zeros((self.max_stage_sharing, self.num_stages_total))
         self.active = []
         self.installed = []
+        self.allocator = allocator
 
     # Taken from ICA examples
     def clear_all(self, verbose=DEBUG, batching=True):
@@ -249,102 +248,115 @@ class ActiveP4Controller:
                 print("Duplicate entry")
         bfrt.batch_end()"""
 
-    def updateAllocationTables(self, fid, memIdx):
+    def getMemoryRange(self, allocationBlocks):
+        blockStart = allocationBlocks[0]
+        blockEnd = allocationBlocks[-1]
+        memStart = self.block_size * blockStart
+        memEnd = self.block_size * (blockEnd + 1) - 1
+        return (memStart, memEnd)
 
-        stageWiseAlloc = np.sum(self.allocation, axis=0)
+    def installMemoryAccessEntries(self, gress, stageIdGress, fid, allocationBlocks):
+        (memStart, memEnd) = self.getMemoryRange(allocationBlocks)
+        for pnemonic in self.opcode_action:
+            act = self.opcode_action[pnemonic]
+            if act['memory']:
+                self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
 
-        alloc = []
-        for i in range(0, len(memIdx)):
-            k = memIdx[i]
-            # split shared stages
-            if stageWiseAlloc[k] > 0:
-                occupancy = np.unique(self.allocation[ : , k])
-                occupancy.append(fid)
-                cardinality = len(occupancy)
-                blockSize = np.round(self.max_stage_sharing / cardinality)
-                random.shuffle(occupancy)
-                offset = 0
-                for j in range(0, len(occupancy)):
-                    limit = min(offset + blockSize, self.max_stage_sharing)
-                    memStart = offset * self.block_size
-                    memEnd = limit * self.block_size - 1
-                    for l in range(offset, limit):
-                        self.occupancy[l, k] = occupancy[j]
-                    alloc.append((occupancy[j], k, memStart, memEnd, True))
-            # allocate exclusive stages
-            else:
-                for j in range(0, self.max_stage_sharing):
-                    self.allocation[j, k] = fid
-                alloc.append((fid, k, 0, 0xFFFF, False))
+    def updateAllocation(self, fid, allocation, remaps):
+
+        # build data structure for remapping.
+        remappedStages = {}
+        for tid in remaps:
+            stageId = remaps[tid][0]
+            if stageId not in remappedStages:
+                remappedStages[stageId] = []
+            remappedStages[stageId].append((tid, remaps[tid][2], remaps[tid][1], remaps[tid][3]))
+
+        # update memory access entries for remapped apps.
+        for stageId in remappedStages:
+            gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
+            stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
+            accessTEntries = self.fetchMemoryAccessEntries(stageIdGress, gress)
+            for remap in remappedStages[stageId]:
+                tid = remap[0]
+                if tid in accessTEntries:
+                    for entry in accessTEntries[tid]:
+                        entry.delete()
+                self.installMemoryAccessEntries(gress, stageIdGress, tid, remap[3])
+
+        # build data structures for allocation tables and items to purge.
+        allocRemapTable = {}
+        staleAllocs = {}
+        for stageId in remappedStages:
+            stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
+            if stageIdGress not in staleAllocs:
+                staleAllocs[stageIdGress] = {}
+            for remap in remappedStages[stageId]:
+                tid = remap[0]
+                if tid not in staleAllocs[stageIdGress]:
+                    staleAllocs[stageIdGress][tid] = True
+                tStageId = remap[1]
+                tAllocation = remap[3]
+                tstageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
+                if tid not in allocRemapTable:
+                    allocRemapTable[tid] = {}
+                if tstageIdGress not in allocRemapTable[tid]:
+                    allocRemapTable[tid][tstageIdGress] = np.zeros(2)
+                if tstageId < self.num_stages_ingress:
+                    allocRemapTable[tid][tstageIdGress][0] = tAllocation
+                else:
+                    allocRemapTable[tid][tstageIdGress][1] = tAllocation
+
+        # purge stale allocation table entries.
+        for stageIdGress in staleAllocs:
+            allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageIdGress)
+            allocTableActionSpecDefault = getattr(allocTable, 'add_with_default_allocation_s%d' % stageIdGress)
+            allocTEntries = self.fetchAllocationTableEntries(stageIdGress)
+            for tid in staleAllocs[stageIdGress]:
+                if tid in allocTEntries:
+                    for entry in allocTEntries[tid]:
+                        entry.delete()
+                allocTableActionSpecDefault(fid=tid, flag_allocated=1)
         
-        allocMap = {}
-        stagesAllocated = {}
-        for a in alloc:
-            if a[1] not in allocMap:
-                allocMap[a[1]] = []
-            allocMap[a[1]].append(a)
-            if a[0] not in stagesAllocated:
-                stagesAllocated[a[0]] = []
-            stageId = a[1] % self.num_stages_ingress
-            stagesAllocated[a[0]].append(stageId)
-
-        if self.DEBUG:
-            print(allocMap)
-            print(self.allocation)
-
-        egIgMap = {}
-
-        # update instruction tables
-        for stage in allocMap:
-            stageId = stage - self.num_stages_ingress if stage >= self.num_stages_ingress else stage
-            isIg = stage < self.num_stages_ingress
-            gress = self.p4.Ingress if isIg else self.p4.Egress
-            if self.allocation_shared:
-                entries = self.fetchMemoryAccessEntries(stageId, gress)
-                # TODO implement sharing - runtime reallocation protocol.
-                for f in entries:
-                    if f != fid:
-                        # notify apps (instead of snatching memory).
-                        pass
-            if stageId not in egIgMap:
-                egIgMap[stageId] = {}
-            for salloc in allocMap[stage]:
-                sfid = salloc[0]
-                memStart = salloc[2]
-                memEnd = memStart + salloc[3] - 1
-                for pnemonic in self.opcode_action:
-                    act = self.opcode_action[pnemonic]
-                    if act['memory']:
-                        self.installInstructionTableEntry(sfid, act, gress, stageId, memStart=memStart, memEnd=memEnd)
-                if sfid not in egIgMap[stageId]:
-                    egIgMap[stageId][sfid] = {
-                        'ig'    : None,
-                        'eg'    : None
-                    }
-                gressKey = 'ig' if isIg else 'eg'
-                egIgMap[stageId][sfid][gressKey] = (memStart, salloc[3])
-
-        # update allocation tables
-        for stageId in egIgMap:
-            allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
-            actionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % stageId)
-            for sfid in egIgMap[stageId]:
-                igOffset = 0 if egIgMap[stageId][sfid]['ig'] is None else egIgMap[stageId][sfid]['ig'][0]
-                igSize = 0 if egIgMap[stageId][sfid]['ig'] is None else egIgMap[stageId][sfid]['ig'][1]
-                egOffset = 0 if egIgMap[stageId][sfid]['eg'] is None else egIgMap[stageId][sfid]['eg'][0]
-                egSize = 0 if egIgMap[stageId][sfid]['eg'] is None else egIgMap[stageId][sfid]['eg'][1]
-                actionSpec(fid=sfid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
-
-        for sfid in stagesAllocated:
-            for stageId in range(0, self.num_stages_ingress):
+        # install remapped allocation table entries.
+        for tid in allocRemapTable:
+            for stageId in allocRemapTable[tid]:
+                (memStartIg, memEndIg) = self.getMemoryRange(allocRemapTable[tid][0])
+                (memStartEg, memEndEg) = self.getMemoryRange(allocRemapTable[tid][1])
                 allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
-                actionSpec = getattr(allocTable, 'add_with_default_allocation_s%d' % stageId)
-                if stageId not in stagesAllocated[sfid]:
-                    actionSpec(fid=sfid, flag_allocated=1)
+                allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % stageId)
+                allocTableActionSpec(fid=tid, flag_allocated=1, offset_ig=memStartIg, size_ig=memEndIg, offset_eg=memStartEg, size_eg=memEndEg)
+                
+        # build data structure for allocation table entries.
+        allocationTableGroups = np.zeros((4, self.num_stage_ig))
+        for stageId in allocation:
+            gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
+            stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
+            self.installMemoryAccessEntries(gress, stageIdGress, fid, allocation[stageId])
+            (memStart, memEnd) = self.getMemoryRange(allocation[stageId])
+            if stageId < self.num_stages_ingress:
+                allocationTableGroups[0, stageId] = memStart
+                allocationTableGroups[1, stageId] = memEnd
+            else:
+                allocationTableGroups[2, stageIdGress] = memStart
+                allocationTableGroups[3, stageIdGress] = memEnd
 
-        return alloc
+        # install allocation table entries.
+        validity = np.sum(allocationTableGroups, axis=0)
+        for i in range(0, self.num_stage_ig):
+            allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % i)
+            allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % i)
+            allocTableActionSpecDefault = getattr(allocTable, 'add_with_default_allocation_s%d' % i)
+            if validity[i] > 0:
+                igOffset = allocationTableGroups[0, i]
+                igSize = allocationTableGroups[1, i]
+                egOffset = allocationTableGroups[2, i]
+                egSize = allocationTableGroups[3, i]
+                allocTableActionSpec(fid=fid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
+            else:
+                allocTableActionSpecDefault(fid=fid, flag_allocated=1)
 
-    def allocatorRandomized(self, constr):
+    """def allocatorRandomized(self, constr):
 
         numAccesses = len(constr)
         stageWiseAlloc = np.sum(self.allocation, axis=0)
@@ -380,7 +392,7 @@ class ActiveP4Controller:
                 allocationValid = True
                 break
         
-        return (memIdx, allocationValid, numTrialsOuter, numTrialsInner)
+        return (memIdx, allocationValid, numTrialsOuter, numTrialsInner)"""
 
     def deallocate(self, fid):
 
@@ -408,7 +420,7 @@ class ActiveP4Controller:
 
         bfrt.complete_operations()
 
-    def allocate(self, fid, constr):
+    def allocate(self, fid, proglen, igLim, constr):
 
         if fid in self.queue or fid in self.active:
             return
@@ -428,7 +440,16 @@ class ActiveP4Controller:
 
         tsAllocationStart = time.time()
 
-        (memIdx, allocationValid, numTrialsOuter, numTrialsInner) = self.allocatorRandomized(constr)
+        accessIdx = []
+        minDemand = []
+        for c in constr:
+            accessIdx.append(c[0])
+            minDemand.append(c[1])
+        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
+
+        (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc)
+        if allocation is not None and cost < allocator.WT_OVERFLOW:
+            (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
             
         tsAllocationStop = time.time()
 
@@ -436,7 +457,7 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("Elapsed (allocation) time", elapsedAllocation)
 
-        if not self.allocation_shared and not allocationValid:
+        if cost > self.controller.WT_OVERFLOW:
             self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
             bfrt.complete_operations()
             self.queue.remove(fid)
@@ -444,15 +465,18 @@ class ActiveP4Controller:
                 print("Allocation failed for FID", fid)
             return 
 
-        self.updateAllocationTables(fid, memIdx)
-        self.addQuotas(fid, recirculate=True)
-
-        self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
-        self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
-        bfrt.complete_operations()
-
-        self.active.append(fid)
-        self.queue.remove(fid)
+        if not changes:
+            allocator.applyQueuedAllocation()
+            self.updateAllocation(fid, allocator.getAllocationBlocks(fid), remaps)
+            self.addQuotas(fid, recirculate=True)
+            self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
+            self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
+            bfrt.complete_operations()
+            self.active.append(fid)
+            self.queue.remove(fid)
+        else:
+            # TODO start memory management process.
+            pass
 
         tsOverallStop = time.time()
 
@@ -460,23 +484,18 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("Elapsed (overall) time", elapsedOverall)
 
-        # stats
-        utilization = np.sum(self.allocation > 0) / (self.max_stage_sharing * self.num_stages_total)
-        occupiedFIDs = np.unique(self.allocation)
-        numOccupancy = len(occupiedFIDs) if 0 not in occupiedFIDs else len(occupiedFIDs) - 1
-        logging.info("[ELAPSED] allocation %f overall %f utilization %f occupancy %d iters %d trials %d", elapsedAllocation, elapsedOverall, utilization, numOccupancy, numTrialsOuter, numTrialsInner)
-
     def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
             fid = digest['fid']
+            progLen = digest['proglen']
+            igLim = digest['iglim']
             constr = []
             for i in range(0, self.max_constraints):
-                lb = digest['constr_lb_%d' % i]
-                ub = digest['constr_ub_%d' % i]
-                ms = digest['constr_ms_%d' % i]
-                if lb > 0 and ub > 0 and ms  > 0:
-                    constr.append((lb, ub, ms))
-            th = threading.Thread(target=self.allocate, args=(fid, constr,))
+                memIdx = digest['mem_%d' % i]
+                demand = digest['dem_%d' % i]
+                if demand > 0:
+                    constr.append((memIdx, demand))
+            th = threading.Thread(target=self.allocate, args=(fid, progLen, igLim, constr,))
             th.start()
         return 0
 

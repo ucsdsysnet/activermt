@@ -16,7 +16,9 @@ import numpy as np
 # active function
 
 class ActiveFunction:
-    def __init__(self, fid, accessIdx, igLim, progLen, weight=1, minDemand=1, enumerate=False):
+    def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False):
+        assert len(accessIdx) == len(minDemand)
+        assert progLen <= 20
         self.num_stages = 20
         self.num_stage_ig = 10
         self.fid = fid
@@ -116,9 +118,6 @@ class Allocator:
             'allocationMatrix'  : None
         }
 
-    def getCurrentAllocation(self):
-        return self.allocationMap
-
     # cost = sum of weighted overlaps.
     def getCost(self, memIdx, activeFunc):
         wtSum = 0
@@ -134,14 +133,6 @@ class Allocator:
             if minDemand > self.max_occupancy:
                 wtSum += self.WT_OVERFLOW
             i += 1
-            """if idx in self.allocation:
-                if len(self.allocationMap[idx]) > self.max_occupancy:
-                    wtSum += self.WT_OVERFLOW
-                else:
-                    # how costly is it to use a particular stage?
-                    for fid in self.allocationMap[idx]:
-                        wtSum += self.activeFuncs[fid].wt
-                    wtSum += activeFunc.wt"""
         return wtSum
 
     def computeChanges(self, allocationMap):
@@ -245,6 +236,7 @@ class Allocator:
             else:
                 allocation = set()
                 allocationMap = {}
+                # TODO update allocation for active function object.
                 for i in range(0, self.num_stages):
                     allocationMap[i] = set()
                 for i in range(0, radix):
@@ -313,7 +305,7 @@ class Allocator:
                 offset += numBlocks[fid]
         return allocationMatrix
 
-    def updateAllocation(self, allocation, allocationMap):
+    def enqueueAllocation(self, allocation, allocationMap):
         allocationMatrix = self.computeAllocationMatrix(allocationMap)
         changes = self.computeChanges(allocationMap)
         if allocationMatrix is None:
@@ -372,3 +364,14 @@ class Allocator:
         self.revAllocationMap = copy.deepcopy(self.queue['revAllocationMap'])
         self.allocationMatrix = copy.deepcopy(self.queue['allocationMatrix'])
         self.resetQueue()
+
+    def getAllocationBlocks(self, fid):
+        allocation = {}
+        for i in range(0, self.num_stages):
+            blocks = []
+            for j in range(0, self.max_occupancy):
+                if self.allocationMatrix[j, i] == fid:
+                    blocks.append(j)
+            if len(blocks) > 0:
+                allocation[i] = blocks
+        return allocation
