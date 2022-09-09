@@ -21,9 +21,9 @@ class ActiveFunction:
         self.num_stage_ig = 10
         self.fid = fid
         self.wt = weight
-        self.minDemand = minDemand
         self.igLim = igLim
         self.progLen = progLen
+        self.minDemand = minDemand
         self.numAccesses = len(accessIdx)
         self.A = self.getDeltaMatrix(self.numAccesses)
         self.constrLB = np.copy(accessIdx)
@@ -33,6 +33,7 @@ class ActiveFunction:
                 if self.constrLB[i] < self.igLim:
                     self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
         self.constrDelta = np.matmul(self.A, self.constrLB)
+        self.allocation = None
         self.enumeration = []
         self.enumTime = None
         if enumerate:
@@ -89,10 +90,11 @@ class ActiveFunction:
 # allocator
 
 class Allocator:
-    def __init__(self):
+    def __init__(self, debug=False):
         self.num_stages = 20
         self.max_occupancy = 8
         self.WT_OVERFLOW = 1000
+        self.DEBUG = debug
         self.reset()
 
     def reset(self):
@@ -103,6 +105,9 @@ class Allocator:
             self.allocationMap[i] = set()
         self.activeFuncs = {}
         self.allocationMatrix = np.zeros((self.max_occupancy, self.num_stages), dtype=np.uint32)
+        self.resetQueue()
+
+    def resetQueue(self):
         self.queue = {
             'fid'               : None,
             'allocation'        : set(),
@@ -117,17 +122,18 @@ class Allocator:
     # cost = sum of weighted overlaps.
     def getCost(self, memIdx, activeFunc):
         wtSum = 0
+        i = 0
         for idx in memIdx:
             minDemand = 0
             for fid in self.allocationMap[idx]:
                 wtSum += self.activeFuncs[fid].wt
-                minDemand += self.activeFuncs[fid].minDemand
-            minDemand += activeFunc.minDemand
+                minDemand += self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[idx]]
+            minDemand += activeFunc.minDemand[i]
             if len(self.allocationMap[idx]) != 0:
                 wtSum += activeFunc.wt
             if minDemand > self.max_occupancy:
                 wtSum += self.WT_OVERFLOW
-            pass
+            i += 1
             """if idx in self.allocation:
                 if len(self.allocationMap[idx]) > self.max_occupancy:
                     wtSum += self.WT_OVERFLOW
@@ -137,10 +143,6 @@ class Allocator:
                         wtSum += self.activeFuncs[fid].wt
                     wtSum += activeFunc.wt"""
         return wtSum
-
-    def compareAllocations(self, A, B):
-        result = np.equal(A, B)
-        return np.all(result)
 
     def computeChanges(self, allocationMap):
         revAllocationMap = {}
@@ -154,10 +156,13 @@ class Allocator:
                     revAllocationMap[fid] = []
                 revAllocationMap[fid].append(i)
         changes = {}
-        print(sharing)
-        print(currentSharing)
-        print(revAllocationMap)
-        print(self.revAllocationMap)
+        if self.DEBUG:
+            print("=====CHANGES=====")
+            print(currentSharing)
+            print(sharing)
+            print(self.revAllocationMap)
+            print(revAllocationMap)
+            print("=================")
         for fid in revAllocationMap:
             if fid not in self.revAllocationMap:
                 continue
@@ -172,6 +177,7 @@ class Allocator:
         return changes
 
     def computeAllocation(self, activeFunc, online=True):
+        self.resetQueue()
         self.queue['fid'] = activeFunc.getFID()
         self.activeFuncs[activeFunc.getFID()] = activeFunc
         minCost = None
@@ -228,9 +234,13 @@ class Allocator:
             if online:
                 allocation = self.allocation.copy()
                 allocationMap = copy.deepcopy(self.allocationMap)
+                self.activeFuncs[activeFunc.getFID()].allocation = {}
+                i = 0
                 for idx in optimal:
                     allocation.add(idx)
                     allocationMap[idx].add(activeFunc.getFID())
+                    self.activeFuncs[activeFunc.getFID()].allocation[idx] = i
+                    i += 1
                 utilization = len(allocation) / self.num_stages
             else:
                 allocation = set()
@@ -256,17 +266,18 @@ class Allocator:
         for i in range(0, self.num_stages):
             if len(allocationMap[i]) == 0:
                 continue
-            apps = [ (fid, self.activeFuncs[fid].wt, self.activeFuncs[fid].minDemand) for fid in allocationMap[i] ]
+            apps = [ (fid, self.activeFuncs[fid].wt, self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[i]]) for fid in allocationMap[i] ]
             sharing = len(apps)
             numBlocks = {}
             wtSum = 0
             maxWt = 0
-            dominantFID = None
             apps.sort(key=lambda x: x[0])
             # assuming ordered in increasing FID value.
+            dominantFID = None
             for app in apps:
                 wtSum += app[1]
-                if app[1] >= maxWt:
+                # only elastic apps can dominate.
+                if app[2] == 1 and app[1] >= maxWt:
                     maxWt = app[1]
                     dominantFID = app[0]
             sumBlocks = 0
@@ -277,19 +288,20 @@ class Allocator:
                 wt = app[1]
                 minDemand = app[2]
                 if remaining <= 0:
-                    print("Error: out of memory!")
-                    return None
+                    print("Assigned blocks", numBlocks)
+                    sys.exit("Error: out of memory!")
                 # in increasing order of weights (to avoid starvation of apps).
-                numBlocks[fid] = min(max(math.floor(wt * self.max_occupancy / wtSum), minDemand), remaining)
+                numBlocks[fid] = int(min(max(math.floor(wt * self.max_occupancy / wtSum), minDemand), remaining))
                 if minDemand > 1:
                     numBlocks[fid] = minDemand
                 sumBlocks += numBlocks[fid]
                 remaining -= numBlocks[fid]
             if remaining < 0:
-                print("Error: out of memory!")
-                return None
+                print("Assigned blocks", numBlocks)
+                sys.exit("Error: out of memory!")
             # assign remaining to one with max weight or newest app (maximize utilization).
-            numBlocks[dominantFID] += remaining
+            if dominantFID is not None:
+                numBlocks[dominantFID] += remaining
             # retain previously allocated blocks for inelastic apps by pinning them in order of arrival.
             apps.sort(key=lambda x: x[0] if x[2] > 1 else self.WT_OVERFLOW)
             # update the allocation matrix.
@@ -304,8 +316,13 @@ class Allocator:
     def updateAllocation(self, allocation, allocationMap):
         allocationMatrix = self.computeAllocationMatrix(allocationMap)
         changes = self.computeChanges(allocationMap)
-        print("Changes", changes)
+        if allocationMatrix is None:
+            self.resetQueue()
+            return (None, None)
+        if self.DEBUG:
+            print(allocationMatrix)
         remaps = {}
+        updatedChanges = {}
         for fid in changes:
             remaps[fid] = []
             for remap in changes[fid]:
@@ -318,8 +335,15 @@ class Allocator:
                             prevAlloc.append(i)
                         if allocationMatrix[i, remap[1]] == fid:
                             newAlloc.append(i)
-                    remaps[fid].append((remap[0], prevAlloc, remap[1], newAlloc))
-                    print("FID", fid, "Stage (from)", remap[0], "blocks", prevAlloc, "Stage (to)", remap[1], "blocks", newAlloc)
+                    if not (remap[0] == remap[1] and prevAlloc == newAlloc):
+                        # inelastic apps should not be remapped/relocated within a stage.
+                        assert not ((remap[0] == remap[1]) and self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[remap[0]]] > 1)
+                        if fid not in updatedChanges:
+                            updatedChanges[fid] = []
+                        updatedChanges[fid].append(remap)
+                        remaps[fid].append((remap[0], prevAlloc, remap[1], newAlloc))
+                        if self.DEBUG:
+                            print("FID", fid, "Stage (from)", remap[0], "blocks", prevAlloc, "Stage (to)", remap[1], "blocks", newAlloc)
                 else:
                     # TODO (optional) relocated (applicable for globally optimal allocations).
                     pass
@@ -338,143 +362,13 @@ class Allocator:
         # TODO move memory objects between these locations.
         # TODO apply changes.
 
-        return (changes, remaps)
+        return (updatedChanges, remaps)
 
     def applyQueuedAllocation(self):
+        if self.queue['fid'] is None:
+            return
         self.allocation = copy.deepcopy(self.queue['allocation'])
         self.allocationMap = copy.deepcopy(self.queue['allocationMap'])
         self.revAllocationMap = copy.deepcopy(self.queue['revAllocationMap'])
         self.allocationMatrix = copy.deepcopy(self.queue['allocationMatrix'])
-
-# main
-
-BASE_PATH = os.environ['ACTIVEP4_SRC'] if 'ACTIVEP4_SRC' in os.environ else os.getcwd()
-
-def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocTime, enumTime, utilization, isOnline=True):
-    logging.info("[%d] %s,%s,%d,%d,%f,%f,%f,%f", expId, appname, ('ONLINE' if isOnline else 'OFFLINE'), numApps, cost, elapsedTime, allocTime, enumTime, utilization)
-
-def simAllocation(expId, appCfg, allocator, sequence, online=True, debug=False):
-    iter = 0
-    for appname in sequence:
-        print("Iteration", iter, "App", appname)
-        accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
-        progLen = appCfg[appname]['applen']
-        igLim = appCfg[appname]['iglim']
-        minDemand = appCfg[appname]['mindemand']
-        fid = iter + 1
-        tsBegin = time.time()
-        activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, minDemand=minDemand, enumerate=True)
-        activeFunc.setFID(fid)
-        (allocation, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc, online=online)
-        if allocation is not None:
-            (changes, remaps) = allocator.updateAllocation(overallAlloc, allocationMap)
-            allocator.applyQueuedAllocation()
-        else:
-            print("Allocation failed for", appname, "Seq", iter)
-        tsEnd = time.time()
-        elapsedSec = tsEnd - tsBegin
-        logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
-        print("Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
-        print("Allocation:")
-        print(allocation, '/', allocator.getCurrentAllocation())
-        iter += 1
-
-def simCompareAllocation(expId, appCfg, allocator, sequence):
-    simAllocation(expId, appCfg, allocator, sequence, online=True)
-    allocator.reset()
-    simAllocation(expId, appCfg, allocator, sequence, online=False)
-
-# analyses
-
-appCfg = {
-    'cache'     : {
-        'idx'       : [3, 6, 9],
-        'iglim'     : 8,
-        'applen'    : 12,
-        'mindemand' : 1
-    },
-    'cheetahlb' : {
-        'idx'       : [1, 8, 10],
-        'iglim'     : -1,
-        'applen'    : 18,
-        'mindemand' : 4
-    },
-    'cms'       : {
-        'idx'       : [0, 1, 2, 3, 6, 8, 10, 18],
-        'iglim'     : -1,
-        'applen'    : 20,
-        'mindemand' : 1
-    }
-}
-
-apps = [ 'cache', 'cheetahlb', 'cms' ]
-
-appSeqLen = 5
-isOnline = False
-compare = True
-
-def testSequence(appname, appSeqLen, online=True):
-    sequence = []
-    allocator = Allocator()
-    for i in range(0, appSeqLen):
-        sequence.append(appname)
-    expId = 0
-    simAllocation(expId, appCfg, allocator, sequence, online=online, debug=True)
-
-def analysisExclusiveApp(expId, appSeqLen, isOnline):
-    for appname in apps:
-        sequence = []
-        allocator = Allocator()
-        for i in range(0, appSeqLen):
-            sequence.append(appname)
-        simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
-
-def analysisSampling(expId, appSeqLen, isOnline):
-    sequence = []
-    allocator = Allocator()
-    for i in range(0, appSeqLen):
-        sequence.append(apps[random.randint(0, len(apps) - 1)])
-    if compare:
-        simCompareAllocation(expId, appCfg, allocator, sequence)
-    else:    
-        simAllocation(expId, appCfg, allocator, sequence, online=isOnline)
-
-def printUsage():
-    print("Usage: %s <exclusive|random|test> [num_repeats|appname]" % sys.argv[0])
-    sys.exit(1)
-
-if len(sys.argv) < 2:
-    printUsage()
-
-analysisType = sys.argv[1]
-
-logging.basicConfig(filename=os.path.join(BASE_PATH, 'logs/controller/alloc_%s.log' % analysisType), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
-
-# ANALYSIS: one app (of each type)
-# ANALYSIS: probabilistic sampling (uniform)
-# ANALYSIS: sorted by demand (decreasing)
-
-if analysisType == "exclusive":
-    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    for i in range(0, numRepeats):
-        analysisExclusiveApp(i, appSeqLen, isOnline)
-elif analysisType == "random":
-    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    for i in range(0, numRepeats):
-        analysisSampling(i, appSeqLen, isOnline)
-elif analysisType == "test":
-    allocator = Allocator()
-    appname = sys.argv[2] if len(sys.argv) > 2 else 'cache'
-    accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
-    progLen = appCfg[appname]['applen']
-    igLim = appCfg[appname]['iglim']
-    activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, enumerate=True)
-    enumeration = activeFunc.getEnumeration()
-    print("Enum size", len(enumeration))
-    print("\n".join([ ",".join([ str(x) for x in y ]) for y in enumeration ]))
-elif analysisType == "testseq":
-    allocator = Allocator()
-    appname = sys.argv[2] if len(sys.argv) > 2 else 'cache'
-    testSequence(appname, appSeqLen)
-else:
-    printUsage()
+        self.resetQueue()
