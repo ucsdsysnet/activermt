@@ -103,9 +103,13 @@ class Allocator:
             self.allocationMap[i] = set()
         self.activeFuncs = {}
         self.allocationMatrix = np.zeros((self.max_occupancy, self.num_stages), dtype=np.uint32)
-        self.pinned = np.zeros((self.max_occupancy, self.num_stages), dtype=np.uint32)
-        # TODO add pinned blocks for inelastic apps
-        # TODO add allocation matrix
+        self.queue = {
+            'fid'               : None,
+            'allocation'        : set(),
+            'allocationMap'     : {},
+            'revAllocationMap'  : {},
+            'allocationMatrix'  : None
+        }
 
     def getCurrentAllocation(self):
         return self.allocationMap
@@ -168,6 +172,7 @@ class Allocator:
         return changes
 
     def computeAllocation(self, activeFunc, online=True):
+        self.queue['fid'] = activeFunc.getFID()
         self.activeFuncs[activeFunc.getFID()] = activeFunc
         minCost = None
         optimal = None
@@ -300,7 +305,9 @@ class Allocator:
         allocationMatrix = self.computeAllocationMatrix(allocationMap)
         changes = self.computeChanges(allocationMap)
         print("Changes", changes)
+        remaps = {}
         for fid in changes:
+            remaps[fid] = []
             for remap in changes[fid]:
                 if remap[2]:
                     # resized 
@@ -311,23 +318,33 @@ class Allocator:
                             prevAlloc.append(i)
                         if allocationMatrix[i, remap[1]] == fid:
                             newAlloc.append(i)
-                    # TODO move memory objects between these locations.
-                    print("FID", fid, "Stage", remap[0], "old", prevAlloc, "new", newAlloc)
+                    remaps[fid].append((remap[0], prevAlloc, remap[1], newAlloc))
+                    print("FID", fid, "Stage (from)", remap[0], "blocks", prevAlloc, "Stage (to)", remap[1], "blocks", newAlloc)
                 else:
                     # TODO (optional) relocated (applicable for globally optimal allocations).
                     pass
 
-        # update to new allocation.    
-        self.allocation = copy.deepcopy(allocation)
-        self.allocationMap = copy.deepcopy(allocationMap)
-        self.revAllocationMap = {}
+        # queue new allocation.
+        self.queue['allocation'] = copy.deepcopy(allocation)
+        self.queue['allocationMap'] = copy.deepcopy(allocationMap)
+        self.queue['revAllocationMap'] = {}
         for i in range(0, self.num_stages):
-            for fid in self.allocationMap[i]:
-                if fid not in self.revAllocationMap:
-                    self.revAllocationMap[fid] = []
-                self.revAllocationMap[fid].append(i)
-        self.allocationMatrix = copy.deepcopy(allocationMatrix)
-        # TODO apply changes
+            for fid in self.queue['allocationMap'][i]:
+                if fid not in self.queue['revAllocationMap']:
+                    self.queue['revAllocationMap'][fid] = []
+                self.queue['revAllocationMap'][fid].append(i)
+        self.queue['allocationMatrix'] = copy.deepcopy(allocationMatrix)
+        
+        # TODO move memory objects between these locations.
+        # TODO apply changes.
+
+        return (changes, remaps)
+
+    def applyQueuedAllocation(self):
+        self.allocation = copy.deepcopy(self.queue['allocation'])
+        self.allocationMap = copy.deepcopy(self.queue['allocationMap'])
+        self.revAllocationMap = copy.deepcopy(self.queue['revAllocationMap'])
+        self.allocationMatrix = copy.deepcopy(self.queue['allocationMatrix'])
 
 # main
 
@@ -350,7 +367,8 @@ def simAllocation(expId, appCfg, allocator, sequence, online=True, debug=False):
         activeFunc.setFID(fid)
         (allocation, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc, online=online)
         if allocation is not None:
-            allocator.updateAllocation(overallAlloc, allocationMap)
+            (changes, remaps) = allocator.updateAllocation(overallAlloc, allocationMap)
+            allocator.applyQueuedAllocation()
         else:
             print("Allocation failed for", appname, "Seq", iter)
         tsEnd = time.time()
