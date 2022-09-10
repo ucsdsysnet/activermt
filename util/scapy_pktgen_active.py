@@ -26,6 +26,12 @@ timing = {
     'stop'  : 0
 }
 
+def mockDrain(fid):
+    print("Waiting to drain ... ")
+    time.sleep(1)
+    print("Drain complete.")
+    sendPkt(fid, FLAGS_REMAPPED | FLAGS_ACK)
+
 def onPktRecv(p):
     global timing, DEBUG
     flags = p[ActiveInitialHeader].flags
@@ -34,12 +40,21 @@ def onPktRecv(p):
         return"""
     if DEBUG:
         print( "[RECEIVED]", hex(flags), p[Ether].dst )
-    if flags & FLAGS_REMAPPED > 0:
+    isRemap = (flags & FLAGS_REMAPPED > 0)
+    isAck = (flags & FLAGS_ACK > 0)
+    isInit = (flags & FLAGS_INITIATED > 0)
+    if isRemap:
         print("Remap flag set!")
-    if flags & FLAGS_ACK > 0:
+    if isAck:
         print("Ack flag set!")
-    if flags & FLAGS_INITIATED > 0:
+    if isInit:
         print("Init flag set!")
+    # handlers
+    fid = p[ActiveInitialHeader].fid
+    if isRemap and not isAck and not isInit:
+        sendPkt(fid, FLAGS_REMAPPED | FLAGS_INITIATED)
+        th = threading.Thread(target=mockDrain, args=(fid,))
+        th.start()
 
 def recvPackets(iface, dstMac):
     print("Sniffing packets on", iface)
@@ -55,18 +70,6 @@ def sendPkt(fid, flags):
         IP(src="10.0.0.1", dst="10.0.0.2")/
         TCP(dport=6378)
     )
-
-    """(ans, uans) = srp(
-        pkt,
-        iface="veth0",
-        verbose=0,
-        timeout=1
-    )
-    if len(ans):
-        print(ans)
-    else:
-        print(uans)"""
-
     sendp(pkt, iface="veth0", verbose=False)
 
 th = threading.Thread(target=recvPackets, args=("veth1", "00:00:00:00:00:02", ))

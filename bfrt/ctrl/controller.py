@@ -579,18 +579,24 @@ class ActiveP4Controller:
             if not isRemap:
                 continue
             if isInitiated:
+                if self.DEBUG:
+                    print("Drain initiated by FID", fid)
                 self.p4.Ingress.remap_check.delete(fid=fid)
+                bfrt.complete_operations()
             if isAck:
-                remaps = self.remoteDrainQueue[fid]
-                if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
-                    self.resumeAllocation(self.remoteDrainInitiator, remaps)
-                self.remoteDrainQueue.pop(fid)
+                if self.DEBUG:
+                    print("Drain complete by FID", fid)
+                if fid in self.remoteDrainQueue:
+                    remaps = self.remoteDrainQueue[fid]
+                    if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
+                        self.resumeAllocation(self.remoteDrainInitiator, remaps)
+                    self.remoteDrainQueue.pop(fid)
         return 0
 
     def initController(self):
         #bfrt.active.pipe.IngressDeparser.malloc_digest.callback_deregister()
         bfrt.active.pipe.IngressDeparser.malloc_digest.callback_register(self.onMallocRequest)
-        bfrt.active.pipe.IngressDeparser.remap_digest.callback_register(self.onRemapAck)
+        bfrt.active.pipe.IngressDeparser.pipe.IngressDeparser.remap_digest.callback_register(self.onRemapAck)
         print("Digest handler registered for malloc.")
 
     def monitor(self):
@@ -642,8 +648,8 @@ if testMode:
     for app in demoApps:
         controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
         controller.addQuotas(app['fid'], recirculate=True)
-else:
-    controller.initController()
+    
+controller.initController()
 
 #controller.getTrafficCounters(fids)
 #controller.resetTrafficCounters()
