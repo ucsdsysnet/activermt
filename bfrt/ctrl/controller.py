@@ -75,7 +75,12 @@ class ActiveP4Controller:
         self.queue = []
         self.active = []
         self.installed = []
+        self.coredumps = {}
+        self.coredumpQueue = set()
+        self.remoteDrainQueue = {}
+        self.remoteDrainInitiator = None
         self.allocator = allocator
+        self.mutex = threading.Lock()
 
     # Taken from ICA examples
     def clear_all(self, verbose=DEBUG, batching=True):
@@ -216,6 +221,7 @@ class ActiveP4Controller:
         for sid in self.sid_to_port_mapping:
             bfrt.mirror.cfg.add_with_normal(sid=sid, direction='EGRESS', session_enable=True, ucast_egress_port=self.sid_to_port_mapping[sid], ucast_egress_port_valid=1, max_pkt_len=16384)
             self.p4.Egress.mirror_cfg.add_with_set_mirror(egress_port=self.sid_to_port_mapping[sid], sessid=sid)
+            self.p4.Egress.mirror_ack.add_with_ack(remap=1, ingress_port=self.sid_to_port_mapping[sid], sessid=sid)
         #bfrt.mirror.dump()
 
     def getTrafficCounters(self, fids):
@@ -234,6 +240,20 @@ class ActiveP4Controller:
         self.p4.Ingress.routeback.add_with_route_malloc(flag_reqalloc=1)
         self.p4.Ingress.routeback.add_with_route_malloc(flag_reqalloc=2)
 
+    def getMemoryDump(self, memId, memRange):
+        gress = self.p4.Ingress if memId < self.num_stages_ingress else self.p4.Egress
+        memIdGress = memId if memId < self.num_stages_ingress else memId - self.num_stages_ingress
+        register = getattr(gress, 'heap_s%d' % memIdGress)
+        regValues = register.dump(return_ents=True, from_hw=True)
+        data = []
+        for item in regValues:
+            regId = item.key[b'$REGISTER_INDEX']
+            regVal = item.data[b'Ingress.heap_s%d.f1' % memIdGress]
+            if regId >= memRange[0] and regId <= memRange[1]:
+                data.append((regId, regVal))
+        data.sort(key=lambda x: x[0])
+        return data    
+
     """def resetTrafficCounters(self):
         self.p4.Ingress.activep4_stats.clear()
         self.p4.Egress.activep4_stats.clear()
@@ -248,6 +268,28 @@ class ActiveP4Controller:
                 print("Duplicate entry")
         bfrt.batch_end()"""
 
+    def coredump(self, remaps, fid, callback=None):
+        if fid in self.coredumpQueue:
+            return
+        tStart = time.time()
+        for tid in remaps:
+            self.coredumpQueue.add(tid)
+            self.coredumps[tid] = {}
+            for remap in remaps[tid]:
+                stageId = remap[0]
+                allocation = remap[1]
+                memRange = self.getMemoryRange(allocation)
+                data = self.getMemoryDump(stageId, memRange)
+                self.coredumps[tid][stageId] = data
+            self.coredumpQueue.remove(tid)
+            self.p4.Ingress.remap_check.delete(fid=tid)
+            bfrt.complete_operations()
+        tElapsed = time.time() - tStart
+        if self.DEBUG:
+            print("Coredump (elapsed)", tElapsed)
+        if callback is not None:
+            callback(fid, remaps)
+
     def getMemoryRange(self, allocationBlocks):
         blockStart = allocationBlocks[0]
         blockEnd = allocationBlocks[-1]
@@ -261,6 +303,22 @@ class ActiveP4Controller:
             act = self.opcode_action[pnemonic]
             if act['memory']:
                 self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
+
+    def resumeAllocation(self, fid, remaps):
+        self.mutex.acquire()
+        if self.remoteDrainInitiator is None:
+            self.mutex.release()
+            return
+        self.allocator.applyQueuedAllocation()
+        self.updateAllocation(fid, allocator.getAllocationBlocks(fid), remaps)
+        self.addQuotas(fid, recirculate=True)
+        self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
+        self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
+        bfrt.complete_operations()
+        self.active.append(fid)
+        self.queue.remove(fid)
+        self.remoteDrainInitiator = None
+        self.mutex.release()
 
     def updateAllocation(self, fid, allocation, remaps):
 
@@ -447,9 +505,9 @@ class ActiveP4Controller:
             minDemand.append(c[1])
         activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
 
-        (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc)
-        if allocation is not None and cost < allocator.WT_OVERFLOW:
-            (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
+        (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = self.allocator.computeAllocation(activeFunc)
+        if allocation is not None and cost < self.allocator.WT_OVERFLOW:
+            (changes, remaps) = self.allocator.enqueueAllocation(overallAlloc, allocationMap)
             
         tsAllocationStop = time.time()
 
@@ -466,17 +524,14 @@ class ActiveP4Controller:
             return 
 
         if not changes:
-            allocator.applyQueuedAllocation()
-            self.updateAllocation(fid, allocator.getAllocationBlocks(fid), remaps)
-            self.addQuotas(fid, recirculate=True)
-            self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
-            self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
-            bfrt.complete_operations()
-            self.active.append(fid)
-            self.queue.remove(fid)
+            self.resumeAllocation(fid, remaps)
         else:
-            # TODO start memory management process.
-            pass
+            self.remoteDrainInitiator = fid
+            th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
+            th.start()
+            for tid in remaps:
+                self.remoteDrainQueue[tid] = remaps
+                self.p4.Ingress.remap_check.add_with_remapped(fid=tid)
 
         tsOverallStop = time.time()
 
@@ -497,6 +552,16 @@ class ActiveP4Controller:
                     constr.append((memIdx, demand))
             th = threading.Thread(target=self.allocate, args=(fid, progLen, igLim, constr,))
             th.start()
+        return 0
+
+    def onRemapAck(self, dev_id, pipe_id, directon, parser_id, session, msg):
+        for digest in msg:
+            fid = digest['fid']
+            remaps = self.remoteDrainQueue[fid]
+            if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
+                self.resumeAllocation(self.remoteDrainInitiator, remaps)
+            self.remoteDrainQueue.pop(fid)
+            self.p4.Ingress.remap_check.delete(fid=fid)
         return 0
 
     def initController(self):

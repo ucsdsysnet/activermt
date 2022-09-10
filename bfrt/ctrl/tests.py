@@ -28,10 +28,15 @@ for entry in entries:
     break"""
 
 tsBegin = time.time()
-regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True)
+regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True, from_hw=True)
 tsEnd = time.time()
 elapsed = tsEnd - tsBegin
 print("Elapsed (seconds)", elapsed)
 print("Entries", len(regvals))
+
+print("Index", regvals[0].key[b'$REGISTER_INDEX'])
+
+key = b'Ingress.heap_s%d.f1' % 0
+print("Value", regvals[0].data[key])
 
 bfrt.complete_operations()

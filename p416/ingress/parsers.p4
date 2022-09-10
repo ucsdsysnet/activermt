@@ -10,6 +10,7 @@ parser IngressParser(
     state start {
         pkt.extract(ig_intr_md);
         hdr.meta.setValid();
+        hdr.meta.ingress_port = ig_intr_md.ingress_port;
         transition select(ig_intr_md.resubmit_flag) {
             1   : parse_resubmit;
             0   : parse_port_metadata;
@@ -134,6 +135,7 @@ control IngressDeparser(
     Checksum() tcp_checksum;
     Resubmit() resubmit;
     Digest<malloc_digest_t>() malloc_digest;
+    Digest<remap_digest_t>() remap_digest;
     apply {
         if(ig_dprsr_md.resubmit_type == RESUBMIT_TYPE_DEFAULT) {
             resubmit.emit<resubmit_header_t>({
@@ -162,6 +164,11 @@ control IngressDeparser(
                 hdr.malloc.dem_5,
                 hdr.malloc.dem_6,
                 hdr.malloc.dem_7
+            });
+        }
+        if(ig_dprsr_md.digest_type == 2) {
+            remap_digest.pack({
+                hdr.ih.fid
             });
         }
         if(hdr.ipv4.isValid()) {

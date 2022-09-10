@@ -80,7 +80,7 @@ header active_initial_h {
     bit<1>          flag_ack;
     bit<1>          flag_done;
     bit<1>          flag_mfault;
-    bit<1>          flag_exceeded;
+    bit<1>          flag_remapped;
     active_malloc_t flag_reqalloc;
     bit<1>          flag_allocated;
     bit<1>          flag_pending;
@@ -177,8 +177,10 @@ header bridged_metadata_h {
     bit<10>     mirror_sessid;
     bit<1>      mirror_en;
     bit<7>      mirror_iter;
-    bit<2>      _padding;
+    bit<10>      _padding;
+    bit<9>      ingress_port;
     bit<1>      carry;
+    bit<1>      remap;
     bit<8>      fid;
 }
 
@@ -262,4 +264,8 @@ struct malloc_digest_t {
     bit<8>      dem_5;
     bit<8>      dem_6;
     bit<8>      dem_7;      
-} 
+}
+
+struct remap_digest_t {
+    bit<16>     fid;
+}

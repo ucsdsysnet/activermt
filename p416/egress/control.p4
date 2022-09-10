@@ -2782,6 +2782,23 @@ table instruction_9 {
         hdr.meta.mirror_iter = hdr.meta.mirror_iter - 1;
     }
 
+    action ack(bit<10> sessid) {
+        meta.mirror_sessid = sessid;
+        eg_dprsr_md.mirror_type = 1;
+        hdr.meta.remap = 0;
+        hdr.ih.flag_remapped = 1;
+    }
+
+    table mirror_ack {
+        key = {
+            hdr.meta.remap          : exact;
+            hdr.meta.ingress_port   : exact;
+        }
+        actions = {
+            ack;
+        }
+    }
+
     action set_mirror(bit<10> sessid) {
         hdr.meta.mirror_en = 1;
         hdr.meta.mirror_sessid = sessid;
@@ -2821,6 +2838,7 @@ table instruction_9 {
                 hdr.meta.duplicate = 0;
             }
         } else {
+            mirror_ack.apply();
             hdr.meta.setInvalid();
         }
     }

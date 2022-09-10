@@ -3144,16 +3144,33 @@ table allocation_9 {
         }
     }
 
+    action remapped() {
+        hdr.meta.remap = 1;
+    }
+
+    table remap_check {
+        key = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            remapped;
+        }
+    }
+
     // control flow
 
     apply {
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
+        remap_check.apply();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
             routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
+            }
+            if(hdr.ih.flag_remapped == 1 && hdr.ih.flag_ack == 1) {
+                ig_dprsr_md.digest_type = 2;
             }
             allocation.apply();
             quota_recirc.apply();
