@@ -168,7 +168,10 @@ control IngressDeparser(
         }
         if(ig_dprsr_md.digest_type == 2) {
             remap_digest.pack({
-                hdr.ih.fid
+                hdr.ih.fid,
+                hdr.ih.flag_remapped,
+                hdr.ih.flag_ack,
+                hdr.ih.flag_initiated
             });
         }
         if(hdr.ipv4.isValid()) {

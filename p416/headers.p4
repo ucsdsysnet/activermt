@@ -76,7 +76,7 @@ header active_initial_h {
     bit<1>          rst_seq;
     bit<1>          flag_rts;
     bit<1>          flag_marked;
-    bit<1>          flag_aux;
+    bit<1>          flag_initiated;
     bit<1>          flag_ack;
     bit<1>          flag_done;
     bit<1>          flag_mfault;
@@ -268,4 +268,7 @@ struct malloc_digest_t {
 
 struct remap_digest_t {
     bit<16>     fid;
+    bit<1>      flag_remapped;
+    bit<1>      flag_ack;
+    bit<1>      flag_initiated;
 }

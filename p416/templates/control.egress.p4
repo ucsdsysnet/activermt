@@ -109,8 +109,9 @@ control Egress(
                 hdr.meta.duplicate = 0;
             }
         } else {
-            mirror_ack.apply();
-            hdr.meta.setInvalid();
+            if(mirror_ack.apply().miss) {
+                hdr.meta.setInvalid();
+            }
         }
     }
 }

@@ -209,7 +209,7 @@ control Ingress(
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
             }
-            if(hdr.ih.flag_remapped == 1 && hdr.ih.flag_ack == 1) {
+            if(hdr.ih.flag_remapped == 1) {
                 ig_dprsr_md.digest_type = 2;
             }
             allocation.apply();

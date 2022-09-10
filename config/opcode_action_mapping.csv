@@ -6,7 +6,6 @@ CRETI,complete,0
 DROP,drop
 FORK,fork
 SET_DST,set_port
-MARK_IF,mark_packet,1
 CJUMP,jump_s#,1
 CJUMPI,jump_s#,0
 UJUMP,jump_s#

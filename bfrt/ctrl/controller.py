@@ -10,6 +10,12 @@ import random
 VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
 
+basePath = "/usr/local/home/rajdeepd/activep4"
+#basePath = "/root/src/activep4-p416"
+
+sys.path.insert(0, os.path.join(basePath, 'malloc'))
+
+import allocator as ap4alloc
 import numpy as np
 
 from netaddr import IPAddress
@@ -26,11 +32,16 @@ class ActiveP4Controller:
     global logging
     global random
     global IPAddress
+    global ap4alloc
 
     REG_MAX = 0xFFFFF
     DEBUG = True
 
     def __init__(self, allocator=None, custom=None, basePath=""):
+        if allocator is None:
+            self.allocator = ap4alloc.Allocator(debug=self.DEBUG)
+        else:
+            self.allocator = allocator
         self.p4 = bfrt.active.pipe
         self.watchdog = True
         self.block_size = 8192
@@ -79,7 +90,6 @@ class ActiveP4Controller:
         self.coredumpQueue = set()
         self.remoteDrainQueue = {}
         self.remoteDrainInitiator = None
-        self.allocator = allocator
         self.mutex = threading.Lock()
 
     # Taken from ICA examples
@@ -478,7 +488,7 @@ class ActiveP4Controller:
 
         bfrt.complete_operations()
 
-    def allocate(self, fid, proglen, igLim, constr):
+    def allocate(self, fid, progLen, igLim, accessIdx, minDemand):
 
         if fid in self.queue or fid in self.active:
             return
@@ -493,20 +503,20 @@ class ActiveP4Controller:
         self.p4.Ingress.allocation.add_with_pending(fid=fid, flag_reqalloc=2)
         bfrt.complete_operations()
 
-        if self.DEBUG:
-            print("Constraints", constr)
-
         tsAllocationStart = time.time()
 
-        accessIdx = []
-        minDemand = []
-        for c in constr:
-            accessIdx.append(c[0])
-            minDemand.append(c[1])
-        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
+        accessIdx = np.array(accessIdx, dtype=np.uint32)
+        minDemand = np.array(minDemand, dtype=np.uint32)
+
+        if self.DEBUG:
+            print("Constraints:")
+            print(accessIdx)
+            print(minDemand)
+
+        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
 
         (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = self.allocator.computeAllocation(activeFunc)
-        if allocation is not None and cost < self.allocator.WT_OVERFLOW:
+        if memIdx is not None and cost < self.allocator.WT_OVERFLOW:
             (changes, remaps) = self.allocator.enqueueAllocation(overallAlloc, allocationMap)
             
         tsAllocationStop = time.time()
@@ -515,7 +525,7 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("Elapsed (allocation) time", elapsedAllocation)
 
-        if cost > self.controller.WT_OVERFLOW:
+        if cost > self.allocator.WT_OVERFLOW:
             self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
             bfrt.complete_operations()
             self.queue.remove(fid)
@@ -524,8 +534,12 @@ class ActiveP4Controller:
             return 
 
         if not changes:
+            if self.DEBUG:
+                print("No changes detected. Applying allocation ... ")
             self.resumeAllocation(fid, remaps)
         else:
+            if self.DEBUG:
+                print("Initiating remote drain for FID", fid)
             self.remoteDrainInitiator = fid
             th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
             th.start()
@@ -544,29 +558,39 @@ class ActiveP4Controller:
             fid = digest['fid']
             progLen = digest['proglen']
             igLim = digest['iglim']
-            constr = []
+            accessIdx = []
+            minDemand = []
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]
                 demand = digest['dem_%d' % i]
                 if demand > 0:
-                    constr.append((memIdx, demand))
-            th = threading.Thread(target=self.allocate, args=(fid, progLen, igLim, constr,))
+                    accessIdx.append(memIdx)
+                    minDemand.append(demand)
+            th = threading.Thread(target=self.allocate, args=(fid, progLen, igLim, accessIdx, minDemand, ))
             th.start()
         return 0
 
     def onRemapAck(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
             fid = digest['fid']
-            remaps = self.remoteDrainQueue[fid]
-            if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
-                self.resumeAllocation(self.remoteDrainInitiator, remaps)
-            self.remoteDrainQueue.pop(fid)
-            self.p4.Ingress.remap_check.delete(fid=fid)
+            isRemap = (int(digest['flag_remapped']) == 1)
+            isAck = (int(digest['flag_ack']) == 1)
+            isInitiated = (int(digest['flag_initiated']) == 1)
+            if not isRemap:
+                continue
+            if isInitiated:
+                self.p4.Ingress.remap_check.delete(fid=fid)
+            if isAck:
+                remaps = self.remoteDrainQueue[fid]
+                if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
+                    self.resumeAllocation(self.remoteDrainInitiator, remaps)
+                self.remoteDrainQueue.pop(fid)
         return 0
 
     def initController(self):
         #bfrt.active.pipe.IngressDeparser.malloc_digest.callback_deregister()
         bfrt.active.pipe.IngressDeparser.malloc_digest.callback_register(self.onMallocRequest)
+        bfrt.active.pipe.IngressDeparser.remap_digest.callback_register(self.onRemapAck)
         print("Digest handler registered for malloc.")
 
     def monitor(self):
@@ -589,12 +613,17 @@ def getReferenceOpcodes(basePath, sourceName):
     return opcodes
 
 TOTAL_STAGES = 20
-testMode = False
+testMode = True
+debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"
-basePath = "/usr/local/home/rajdeepd/activep4"
-#basePath = "/root/src/activep4-p416"
-fids = [1]
+demoApps = [{
+    'fid'       : 1,
+    'idx'       : [3, 6, 9],
+    'iglim'     : 8,
+    'applen'    : 12,
+    'mindemand' : [1, 1, 1]
+}]
 
 customInstructions = None
 if restrictedInstructionSet:
@@ -610,10 +639,9 @@ controller.setMirrorSessions()
 controller.installInstructionTableEntries()
 
 if testMode:
-    memIdx = range(0, TOTAL_STAGES)
-    for fid in fids:
-        controller.updateAllocationTables(fid, memIdx)
-        controller.addQuotas(fid, recirculate=True)
+    for app in demoApps:
+        controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
+        controller.addQuotas(app['fid'], recirculate=True)
 else:
     controller.initController()
 
