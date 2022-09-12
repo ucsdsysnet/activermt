@@ -2,24 +2,32 @@
 #define ACTIVEP4_H
 
 #define TRUE            1
+#define MAXINSTRSET     256
 #define MAXARGS         10
 #define MAXPROGLEN      50
 #define MAXPROGSIZE     512
 #define MAXFILESIZE     1024
+#define BUFLEN          128
+#define MNEMONIC_MAXLEN 50
 #define ACTIVEP4SIG     0x12345678
 #define AP4_INSTR_LEN   2
-#define AP4_DATA_LEN    5
+#define AP4_DATA_LEN    4
+#define TGT_MAX_STAGES  32
 
-#define AP4FLAGMASK_OPT_ARGS    0x8000
-#define AP4FLAGMASK_OPT_DATA    0x4000
-#define AP4FLAGMASK_FLAG_EOE    0x0100
-#define AP4FLAGMASK_FLAG_MARKED 0x0800
+#define AP4FLAGMASK_OPT_ARGS        0x8000
+#define AP4FLAGMASK_OPT_DATA        0x4000
+#define AP4FLAGMASK_FLAG_EOE        0x0100
+#define AP4FLAGMASK_FLAG_MARKED     0x0800
+#define AP4FLAGMASK_FLAG_REMAPPED   0x0040
+#define AP4FLAGMASK_FLAG_ACK        0x0200
+#define AP4FLAGMASK_FLAG_INITIATED  0x0400
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <malloc.h>
+#include <ctype.h>
 
 typedef struct {
     uint32_t    SIG;
@@ -71,6 +79,14 @@ typedef struct {
 } activep4_argval;
 
 typedef struct {
+    int         stageIdx[TGT_MAX_STAGES];
+    int         numStages;
+    uint16_t    memStart[TGT_MAX_STAGES];
+    uint16_t    memEnd[TGT_MAX_STAGES];
+    int         memSize[TGT_MAX_STAGES];
+} activep4_malloc_t;
+
+typedef struct {
     activep4_instr  ap4_prog[MAXPROGLEN];
     activep4_arg    ap4_args[MAXARGS];
     int             num_args;
@@ -80,6 +96,49 @@ typedef struct {
     uint16_t        addr_mask;
     uint16_t        addr_offset;
 } activep4_t;
+
+typedef struct {
+    char    mnemonic[MNEMONIC_MAXLEN];
+    char    action[MNEMONIC_MAXLEN];
+    int     options;
+} opcode_action_map_t;
+
+typedef struct {
+    opcode_action_map_t map[MAXINSTRSET];
+    int                 num_instr;
+} pnemonic_opcode_t;
+
+static inline int pnemonic_to_opcode(pnemonic_opcode_t* instr_set, char* pnemonic) {
+    int i;
+    for(i = 0; i < instr_set->num_instr; i++) {
+        if(strcmp(instr_set->map[i].mnemonic, pnemonic) == 0) return i;
+    }
+    return -1;
+}
+
+static inline void read_opcode_action_map(char* filename, pnemonic_opcode_t* instr_set) {
+    int i = 0, tokidx;
+    char buf[BUFLEN];
+    const char* tok;
+    FILE* fp = fopen(filename, "r");
+    if(fp == NULL) {
+        perror("fopen");
+        return;
+    }
+    while(fgets(buf, BUFLEN, fp) != NULL) {
+        tokidx = 0;
+        for(tok = strtok(buf, ",\n"); tok && *tok; tok = strtok(NULL, ",\n")) {
+            if(isspace(tok[0])) continue;
+            if(tokidx == 0) strcpy(instr_set->map[i].mnemonic, tok);
+            else if(tokidx == 1) strcpy(instr_set->map[i].action, tok);
+            else instr_set->map[i].options = atoi(tok);
+            tokidx++;
+        }
+        i++;
+    }
+    fclose(fp);
+    instr_set->num_instr = i;
+}
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {
     int i, instr_len = sizeof(activep4_instr);
@@ -206,5 +265,43 @@ static inline int is_activep4(char* buf) {
     uint32_t* signature = (uint32_t*) buf;
     return (ntohl(*signature) == ACTIVEP4SIG);
 }
+
+static inline void add_instruction(activep4_t* program, pnemonic_opcode_t* instr_set, char* instr) {
+    int opcode = pnemonic_to_opcode(instr_set, instr);
+    if(opcode >= 0) {
+        program->ap4_prog[program->ap4_len].flags = 0;
+        program->ap4_prog[program->ap4_len].opcode = opcode;
+        program->ap4_len++;
+    } else printf("Instruction Unknown!");
+}
+
+static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_t* cache) {
+    if(stageId > TGT_MAX_STAGES || stageId == 0) return NULL;
+    if(cache[stageId].fid > 0) return &cache[stageId];
+    int rts_inserted = 0, i = 0;
+    add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
+    while(i < TGT_MAX_STAGES - 1) {
+        if(i >= stageId) {
+            add_instruction(&cache[stageId], instr_set, "MEM_READ"); i++;
+            add_instruction(&cache[stageId], instr_set, "DATA_1_LOAD_MBR"); i++;
+            break;
+        } else if(rts_inserted == 0) {
+            add_instruction(&cache[stageId], instr_set, "RTS"); i++;
+            rts_inserted = 1;
+        } else {
+            add_instruction(&cache[stageId], instr_set, "NOP"); i++;
+        }
+    }
+    if(rts_inserted == 0) {
+        add_instruction(&cache[stageId], instr_set, "RTS");
+        i++;
+    }
+    add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
+    cache[stageId].ap4_len = i;
+    cache[stageId].fid = fid;
+    return &cache[stageId];
+}
+
+static inline void build_sync_buffer(int numStages, int* stageIdx, activep4_malloc_t* allocation, char* syncbuf) {}
 
 #endif

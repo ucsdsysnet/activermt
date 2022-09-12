@@ -28,7 +28,8 @@ for entry in entries:
     break"""
 
 tsBegin = time.time()
-regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True, from_hw=True)
+bfrt.active.pipe.Ingress.heap_s0.operation_register_sync()
+regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True)
 tsEnd = time.time()
 elapsed = tsEnd - tsBegin
 print("Elapsed (seconds)", elapsed)

@@ -254,7 +254,8 @@ class ActiveP4Controller:
         gress = self.p4.Ingress if memId < self.num_stages_ingress else self.p4.Egress
         memIdGress = memId if memId < self.num_stages_ingress else memId - self.num_stages_ingress
         register = getattr(gress, 'heap_s%d' % memIdGress)
-        regValues = register.dump(return_ents=True, from_hw=True)
+        register.operation_register_sync()
+        regValues = register.dump(return_ents=True)
         data = []
         for item in regValues:
             regId = item.key[b'$REGISTER_INDEX']
@@ -423,6 +424,8 @@ class ActiveP4Controller:
                 allocTableActionSpec(fid=fid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
             else:
                 allocTableActionSpecDefault(fid=fid, flag_allocated=1)
+
+        bfrt.complete_operations()
 
     """def allocatorRandomized(self, constr):
 
@@ -597,7 +600,7 @@ class ActiveP4Controller:
         #bfrt.active.pipe.IngressDeparser.malloc_digest.callback_deregister()
         bfrt.active.pipe.IngressDeparser.malloc_digest.callback_register(self.onMallocRequest)
         bfrt.active.pipe.IngressDeparser.pipe.IngressDeparser.remap_digest.callback_register(self.onRemapAck)
-        print("Digest handler registered for malloc.")
+        print("Digest handler registered for malloc/remap.")
 
     def monitor(self):
         # main control loop (for ageing, etc.)
