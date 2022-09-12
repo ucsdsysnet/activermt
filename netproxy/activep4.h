@@ -12,6 +12,7 @@
 #define ACTIVEP4SIG     0x12345678
 #define AP4_INSTR_LEN   2
 #define AP4_DATA_LEN    4
+#define MAX_MEMACCESS   8
 #define TGT_MAX_STAGES  32
 
 #define AP4FLAGMASK_OPT_ARGS        0x8000
@@ -21,6 +22,8 @@
 #define AP4FLAGMASK_FLAG_REMAPPED   0x0040
 #define AP4FLAGMASK_FLAG_ACK        0x0200
 #define AP4FLAGMASK_FLAG_INITIATED  0x0400
+#define AP4FLAGMASK_FLAG_REQALLOC   0x0010
+#define AP4FLAGMASK_FLAG_GETALLOC   0x0020
 
 #include <stdio.h>
 #include <string.h>
@@ -65,6 +68,18 @@ typedef struct {
     uint32_t    bulk_data_16;
     uint32_t    bulk_data_17;
 } __attribute__((packed)) activep4_bulk_data_t;
+
+typedef struct {
+    uint16_t    proglen;
+    uint8_t     iglim;
+    uint8_t     mem[MAX_MEMACCESS];
+    uint8_t     dem[MAX_MEMACCESS];
+} __attribute__((packed)) activep4_malloc_req_t;
+
+typedef struct {
+    uint16_t    start;
+    uint16_t    end;
+} __attribute__((packed)) activep4_malloc_block_t;
 
 typedef struct {
     char        argname[20];

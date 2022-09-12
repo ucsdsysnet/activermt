@@ -1,6 +1,7 @@
 #ifndef ACTIVEP4_PKTGEN_H
 #define ACTIVEP4_PKTGEN_H
 
+#define NUM_STAGES      20
 #define IPADDRSIZE      16
 #define BUFSIZE         16384
 #define QUEUELEN        8192
@@ -34,12 +35,14 @@ typedef struct {
 } devinfo_t;
 
 typedef struct {
-    activep4_ih         ap4ih;
-    activep4_data_t     ap4data;
-    activep4_instr      ap4code[MAXPROGLEN];
-    int                 codelen;
-    char*               ipv4_dstaddr;
-    unsigned char*      eth_dstaddr;
+    activep4_ih             ap4ih;
+    activep4_data_t         ap4data;
+    activep4_instr          ap4code[MAXPROGLEN];
+    int                     codelen;
+    char*                   ipv4_dstaddr;
+    unsigned char*          eth_dstaddr;
+    activep4_malloc_req_t   ap4malloc;
+    activep4_malloc_block_t ap4alloc[NUM_STAGES];
 } active_program_t;
 
 typedef struct {
@@ -264,6 +267,12 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
             memcpy(pptr, (char*)&program->ap4ih, sizeof(activep4_ih));
             
             pptr += sizeof(activep4_ih);
+
+            if((ntohs(program->ap4ih.flags) & AP4FLAGMASK_FLAG_REQALLOC) > 0) {
+                memcpy(pptr, (char*)&program->ap4malloc, sizeof(activep4_malloc_req_t));
+                pptr += sizeof(activep4_malloc_req_t);
+                ap4len += sizeof(activep4_malloc_req_t);
+            }
 
             if((ntohs(program->ap4ih.flags) & AP4FLAGMASK_OPT_ARGS) > 0) {
                 memcpy(pptr, (char*)&program->ap4data, sizeof(activep4_data_t));

@@ -569,6 +569,8 @@ class ActiveP4Controller:
             igLim = digest['iglim']
             accessIdx = []
             minDemand = []
+            if fid in self.active:
+                continue
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]
                 demand = digest['dem_%d' % i]

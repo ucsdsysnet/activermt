@@ -7,6 +7,10 @@
 #define MAX_DATA    65536
 
 typedef struct {
+    activep4_malloc_block_t mem_range[NUM_STAGES];
+} __attribute__((packed)) activep4_malloc_res_t;
+
+typedef struct {
     uint16_t    data[MAX_DATA];
     uint8_t     valid[MAX_DATA];
     int         mem_start;
@@ -48,6 +52,7 @@ void *run_rxtx(void *vargp) {
 memory_t coredump;
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data) {
+    printf("FLAGS 0x%x\n", ntohs(ap4ih->flags));
     if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) == 0) return;
     uint16_t index, stageId, value, fid;
     fid = ntohs(ap4ih->fid);
@@ -74,6 +79,8 @@ void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activ
     activep4_t* program;
     active_program_t txprog;
 
+    memset((char*)&txprog, 0, sizeof(active_program_t));
+
     program = construct_memsync_program(fid, stageId, instr_set, cache);
 
     txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
@@ -87,6 +94,55 @@ void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activ
 
     memcpy((char*)&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
     txprog.codelen = program->ap4_len;
+
+    txprog.ipv4_dstaddr = ipv4dst;
+    txprog.eth_dstaddr = hwaddr;
+
+    enqueue_program(queue, &txprog);
+}
+
+void send_malloc_request(active_queue_t* queue, int fid, int num_accesses, int* access_idx, int* demand, int proglen, int iglim, char* ipv4dst, unsigned char* hwaddr) {
+
+    uint16_t flags = AP4FLAGMASK_FLAG_REQALLOC;
+    
+    active_program_t txprog;
+
+    memset((char*)&txprog, 0, sizeof(active_program_t));
+
+    txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
+    txprog.ap4ih.fid = htons(fid);
+    txprog.ap4ih.flags = htons(flags);
+
+    txprog.codelen = 0;
+
+    int i;
+
+    txprog.ap4malloc.proglen = htons(proglen);
+    txprog.ap4malloc.iglim = iglim;
+    for(i = 0; i < num_accesses; i++) {
+        txprog.ap4malloc.mem[i] = access_idx[i];
+        txprog.ap4malloc.dem[i] = demand[i];
+    }
+
+    txprog.ipv4_dstaddr = ipv4dst;
+    txprog.eth_dstaddr = hwaddr;
+
+    enqueue_program(queue, &txprog);
+}
+
+void send_malloc_fetch(active_queue_t* queue, int fid, char* ipv4dst, unsigned char* hwaddr) {
+
+    uint16_t flags = AP4FLAGMASK_FLAG_GETALLOC;
+    
+    active_program_t txprog;
+
+    memset((char*)&txprog, 0, sizeof(active_program_t));
+
+    txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
+    txprog.ap4ih.fid = htons(fid);
+    txprog.ap4ih.flags = htons(flags);
+
+    txprog.codelen = 0;
 
     txprog.ipv4_dstaddr = ipv4dst;
     txprog.eth_dstaddr = hwaddr;
@@ -166,6 +222,25 @@ int main(int argc, char** argv) {
 
     pthread_create(&rxtx, NULL, run_rxtx, (void*)&config);
 
+    /* Memory allocation */
+
+    int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
+    num_accesses = 3;
+    access_idx[0] = 3;
+    access_idx[1] = 6;
+    access_idx[2] = 9;
+    demand[0] = 1;
+    demand[1] = 1;
+    demand[2] = 1;
+    proglen = 12;
+    iglim = 8;
+
+    send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim, argv[4], dst_eth_addr);
+
+    send_malloc_fetch(&queue, fid, argv[4], dst_eth_addr);
+
+    /* Memory synchronization */
+
     activep4_t cache[NUM_STAGES];
 
     init_memory_sync(&coredump);
@@ -177,7 +252,7 @@ int main(int argc, char** argv) {
     coredump.sync_data[stageId].mem_start = 0;
     coredump.sync_data[stageId].mem_end = 7;
 
-    memsync(&instr_set, &queue, cache, argv[4], dst_eth_addr);
+    //memsync(&instr_set, &queue, cache, argv[4], dst_eth_addr);
 
     // for(i = 0; i < 1; i++) send_memsync_pkt(&instr_set, &queue, cache, argv[4], dst_eth_addr, i, stageId, fid);
 
