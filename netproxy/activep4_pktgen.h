@@ -29,6 +29,10 @@
 #include "activep4.h"
 
 typedef struct {
+    activep4_malloc_block_t mem_range[NUM_STAGES];
+} __attribute__((packed)) activep4_malloc_res_t;
+
+typedef struct {
     int             iface_index;
     unsigned char   hwaddr[ETH_ALEN];
     uint32_t        ipv4addr;
@@ -42,7 +46,7 @@ typedef struct {
     char*                   ipv4_dstaddr;
     unsigned char*          eth_dstaddr;
     activep4_malloc_req_t   ap4malloc;
-    activep4_malloc_block_t ap4alloc[NUM_STAGES];
+    activep4_malloc_res_t   ap4alloc;
 } active_program_t;
 
 typedef struct {
@@ -136,7 +140,7 @@ static void get_iface(devinfo_t* info, char* dev, int fd) {
     printf("Device %s has ipv4 addr %s\n", dev, ip_addr);
 }
 
-void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data);
+void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc);
 
 static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srcaddr) {
 
@@ -176,6 +180,8 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
     struct iphdr*       iph;
     activep4_ih*        ap4ih;
     activep4_data_t*    ap4data;
+    
+    activep4_malloc_res_t* ap4alloc;
 
     uint16_t ap4_flags, ip_id = (uint16_t)rand();
 
@@ -220,6 +226,10 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
                     #ifdef DEBUG
                     printf("FLAGS %x\n", ap4_flags);
                     #endif
+                    if((ap4_flags & AP4FLAGMASK_FLAG_ALLOCATED) != 0) {
+                        ap4alloc = (activep4_malloc_res_t*) pptr;
+                        pptr += sizeof(activep4_malloc_res_t);
+                    } else ap4alloc = NULL;
                     if((ap4_flags & AP4FLAGMASK_OPT_ARGS) != 0) {
                         ap4data = (activep4_data_t*) pptr;
                         pptr += sizeof(activep4_data_t);
@@ -230,7 +240,7 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
                     }
                     iph = (struct iphdr*) pptr;
                     pptr += sizeof(struct iphdr);
-                    on_active_pkt_recv(eth, iph, ap4ih, ap4data);
+                    on_active_pkt_recv(eth, iph, ap4ih, ap4data, ap4alloc);
                 }
             }
             if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {}

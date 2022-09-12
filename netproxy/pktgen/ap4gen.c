@@ -5,10 +5,7 @@
 
 #define NUM_STAGES  20
 #define MAX_DATA    65536
-
-typedef struct {
-    activep4_malloc_block_t mem_range[NUM_STAGES];
-} __attribute__((packed)) activep4_malloc_res_t;
+#define MAX_FIDX    256
 
 typedef struct {
     uint16_t    data[MAX_DATA];
@@ -51,25 +48,46 @@ void *run_rxtx(void *vargp) {
 
 memory_t coredump;
 
-void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data) {
+void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc) {
     printf("FLAGS 0x%x\n", ntohs(ap4ih->flags));
-    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) == 0) return;
-    uint16_t index, stageId, value, fid;
+    
+    /*if( (ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) == 0
+        && (ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) == 0
+    ) return;*/
+
+    uint16_t fid;
+
     fid = ntohs(ap4ih->fid);
-    index = ntohl(ap4data->data[0]);
-    stageId = ntohl(ap4data->data[2]);
-    value = ntohl(ap4data->data[1]);
-    if(coredump.fid == fid 
-        && coredump.valid_stages[stageId] > 0 
-        && index >= coredump.sync_data[stageId].mem_start 
-        && index <= coredump.sync_data[stageId].mem_end
-    ) {
-        coredump.sync_data[stageId].data[index] = value;
-        coredump.sync_data[stageId].valid[index] = 1;
+
+    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
+        // Allocation response packet.
+        if(coredump.fid != fid) return;
+        printf("Allocation for FID %u\n", fid);
+        int i;
+        for(i = 0; i < NUM_STAGES; i++) {
+            coredump.sync_data[i].mem_start = ntohs(ap4alloc->mem_range[i].start);
+            coredump.sync_data[i].mem_end = ntohs(ap4alloc->mem_range[i].end);
+            if(coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start > 0)
+                printf("Stage %d [%u - %u]\n", i, coredump.sync_data[i].mem_start, coredump.sync_data[i].mem_end);
+        }
+    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) > 0) {
+        // Memsync packet.
+        uint16_t index, stageId, value;
+        index = ntohl(ap4data->data[0]);
+        stageId = ntohl(ap4data->data[2]);
+        value = ntohl(ap4data->data[1]);
+        if(coredump.fid == fid 
+            && coredump.valid_stages[stageId] > 0 
+            && index >= coredump.sync_data[stageId].mem_start 
+            && index <= coredump.sync_data[stageId].mem_end
+        ) {
+            coredump.sync_data[stageId].data[index] = value;
+            coredump.sync_data[stageId].valid[index] = 1;
+        }
+        #ifdef DEBUG
+        printf("[FID %d] sync packet (flags=%x) M%d[%d]=%d\n", fid, ntohs(ap4ih->flags), stageId, index, value);
+        #endif
     }
-    #ifdef DEBUG
-    printf("[FID %d] sync packet (flags=%x) M%d[%d]=%d\n", fid, ntohs(ap4ih->flags), stageId, index, value);
-    #endif
 }
 
 void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, char* ipv4dst, unsigned char* hwaddr, uint16_t index, int stageId, int fid) {
@@ -220,7 +238,11 @@ int main(int argc, char** argv) {
 
     pthread_t rxtx;
 
+    init_memory_sync(&coredump);
+
     pthread_create(&rxtx, NULL, run_rxtx, (void*)&config);
+
+    coredump.fid = fid;
 
     /* Memory allocation */
 
@@ -243,11 +265,8 @@ int main(int argc, char** argv) {
 
     activep4_t cache[NUM_STAGES];
 
-    init_memory_sync(&coredump);
-
     int stageId = 3, index = 0;
 
-    coredump.fid = fid;
     coredump.valid_stages[stageId] = 1;
     coredump.sync_data[stageId].mem_start = 0;
     coredump.sync_data[stageId].mem_end = 7;
