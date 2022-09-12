@@ -147,7 +147,7 @@ class ActiveP4Controller:
         memaccessEntries = {}
         if entries is not None:
             for entry in entries:
-                fid = entry.key.get(b'hdr.ih.fid')
+                fid = entry.key.get(b'hdr.meta.fid')[0]
                 opcode = entry.key.get(b'hdr.instr$%d.opcode' % stageId)
                 if opcode in self.opcodes_memaccess:
                     if fid not in memaccessEntries:
@@ -298,10 +298,11 @@ class ActiveP4Controller:
         tElapsed = time.time() - tStart
         if self.DEBUG:
             print("Coredump (elapsed)", tElapsed)
-        if callback is not None:
-            callback(fid, remaps)
+        self.resumeAllocation(fid, remaps)
 
     def getMemoryRange(self, allocationBlocks):
+        if len(allocationBlocks) == 0:
+            return (0, 0)
         blockStart = allocationBlocks[0]
         blockEnd = allocationBlocks[-1]
         memStart = self.block_size * blockStart
@@ -317,7 +318,8 @@ class ActiveP4Controller:
 
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
-        print("resuming allocation for FID %d ... " % fid)
+        print("Resuming allocation for FID %d ... " % fid)
+        print("Remaps ::", remaps)
         if self.remoteDrainInitiator is None:
             self.mutex.release()
             return
@@ -337,10 +339,11 @@ class ActiveP4Controller:
         # build data structure for remapping.
         remappedStages = {}
         for tid in remaps:
-            stageId = remaps[tid][0]
-            if stageId not in remappedStages:
-                remappedStages[stageId] = []
-            remappedStages[stageId].append((tid, remaps[tid][2], remaps[tid][1], remaps[tid][3]))
+            for remap in remaps[tid]:
+                stageId = remap[0]
+                if stageId not in remappedStages:
+                    remappedStages[stageId] = []
+                remappedStages[stageId].append((tid, remap[2], remap[1], remap[3]))
 
         # update memory access entries for remapped apps.
         for stageId in remappedStages:
@@ -351,7 +354,7 @@ class ActiveP4Controller:
                 tid = remap[0]
                 if tid in accessTEntries:
                     for entry in accessTEntries[tid]:
-                        entry.delete()
+                        entry.remove()
                 self.installMemoryAccessEntries(gress, stageIdGress, tid, remap[3])
 
         # build data structures for allocation tables and items to purge.
@@ -371,8 +374,8 @@ class ActiveP4Controller:
                 if tid not in allocRemapTable:
                     allocRemapTable[tid] = {}
                 if tstageIdGress not in allocRemapTable[tid]:
-                    allocRemapTable[tid][tstageIdGress] = np.zeros(2)
-                if tstageId < self.num_stages_ingress:
+                    allocRemapTable[tid][tstageIdGress] = [[],[]]
+                if tStageId < self.num_stages_ingress:
                     allocRemapTable[tid][tstageIdGress][0] = tAllocation
                 else:
                     allocRemapTable[tid][tstageIdGress][1] = tAllocation
@@ -385,14 +388,15 @@ class ActiveP4Controller:
             for tid in staleAllocs[stageIdGress]:
                 if tid in allocTEntries:
                     for entry in allocTEntries[tid]:
-                        entry.delete()
-                allocTableActionSpecDefault(fid=tid, flag_allocated=1)
+                        entry.remove()
+                if stageIdGress not in allocRemapTable[tid]:
+                    allocTableActionSpecDefault(fid=tid, flag_allocated=1)
         
         # install remapped allocation table entries.
         for tid in allocRemapTable:
             for stageId in allocRemapTable[tid]:
-                (memStartIg, memEndIg) = self.getMemoryRange(allocRemapTable[tid][0])
-                (memStartEg, memEndEg) = self.getMemoryRange(allocRemapTable[tid][1])
+                (memStartIg, memEndIg) = self.getMemoryRange(allocRemapTable[tid][stageId][0])
+                (memStartEg, memEndEg) = self.getMemoryRange(allocRemapTable[tid][stageId][1])
                 allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
                 allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % stageId)
                 allocTableActionSpec(fid=tid, flag_allocated=1, offset_ig=memStartIg, size_ig=memEndIg, offset_eg=memStartEg, size_eg=memEndEg)

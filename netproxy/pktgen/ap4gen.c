@@ -6,6 +6,7 @@
 #define NUM_STAGES  20
 #define MAX_DATA    65536
 #define MAX_FIDX    256
+#define RETRY_ITVL  1000
 
 typedef struct {
     uint16_t    data[MAX_DATA];
@@ -187,7 +188,7 @@ void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* ca
                     send_memsync_pkt(instr_set, queue, cache, ipv4dst, hwaddr, j, i, coredump.fid);
                 }
             }
-            usleep(1000000);
+            usleep(RETRY_ITVL);
         }
         if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
             perror("clock_gettime");
