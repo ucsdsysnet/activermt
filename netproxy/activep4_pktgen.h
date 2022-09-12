@@ -3,7 +3,7 @@
 
 #define IPADDRSIZE      16
 #define BUFSIZE         16384
-#define QUEUELEN        65536
+#define QUEUELEN        8192
 #define ETHTYPE_AP4     0x83B2
 #define ETHTYPE_IP      0x0800
 
@@ -34,12 +34,12 @@ typedef struct {
 } devinfo_t;
 
 typedef struct {
-    activep4_ih*        ap4ih;
-    activep4_data_t*    ap4data;
-    activep4_instr*     ap4code;
+    activep4_ih         ap4ih;
+    activep4_data_t     ap4data;
+    activep4_instr      ap4code[MAXPROGLEN];
     int                 codelen;
     char*               ipv4_dstaddr;
-    unsigned short*     eth_dstaddr;
+    unsigned char*      eth_dstaddr;
 } active_program_t;
 
 typedef struct {
@@ -92,6 +92,10 @@ static inline uint16_t compute_checksum(uint16_t* buf, int num_bytes) {
     chksum = (chksum >> 16) + (chksum & 0xFFFF);
     chksum = (chksum >> 16) + chksum;
     return (uint16_t)~chksum;
+}
+
+static inline void print_hwaddr(unsigned char* hwaddr) {
+    printf("hwaddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
 
 static void get_iface(devinfo_t* info, char* dev, int fd) {
@@ -257,18 +261,18 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
 
             ap4len = sizeof(activep4_ih);
 
-            memcpy(pptr, program->ap4ih, sizeof(activep4_ih));
+            memcpy(pptr, (char*)&program->ap4ih, sizeof(activep4_ih));
             
             pptr += sizeof(activep4_ih);
 
-            if(program->ap4data != NULL) {
-                memcpy(pptr, program->ap4data, sizeof(activep4_data_t));
+            if((ntohs(program->ap4ih.flags) & AP4FLAGMASK_OPT_ARGS) > 0) {
+                memcpy(pptr, (char*)&program->ap4data, sizeof(activep4_data_t));
                 pptr += sizeof(activep4_data_t);
                 ap4len += sizeof(activep4_data_t);
             }
 
-            if(program->ap4code != NULL) {
-                memcpy(pptr, program->ap4code, sizeof(activep4_instr) * program->codelen);
+            if(program->codelen > 0) {
+                memcpy(pptr, (char*)&program->ap4code, sizeof(activep4_instr) * program->codelen);
                 pptr += sizeof(activep4_instr) * program->codelen;
                 ap4len += sizeof(activep4_instr) * program->codelen;
             }
@@ -278,7 +282,7 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
             iph->ihl = 5;
             iph->version = 4;
             iph->tos = 0;
-            iph->tot_len = sizeof(struct iphdr);
+            iph->tot_len = htons(sizeof(struct iphdr));
             iph->id = htonl(ip_id);
             iph->frag_off = 0;
             iph->ttl = 255;

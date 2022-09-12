@@ -17,28 +17,27 @@ void *run_rxtx(void *vargp) {
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data) {}
 
-void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, char* ipv4dst, unsigned short* hwaddr, uint16_t index, int stageId, int fid) {
+void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, char* ipv4dst, unsigned char* hwaddr, uint16_t index, int stageId, int fid) {
 
-    uint16_t flags = 0x0000;
+    uint16_t flags = 0x8000;
 
     activep4_t* program;
-    activep4_ih ap4ih;
-    activep4_data_t data;
     active_program_t txprog;
 
     program = construct_memsync_program(fid, stageId, instr_set, cache);
 
-    ap4ih.SIG = htonl(ACTIVEP4SIG);
-    ap4ih.fid = htons(fid);
-    ap4ih.flags = htons(flags);
+    txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
+    txprog.ap4ih.fid = htons(fid);
+    txprog.ap4ih.flags = htons(flags);
 
-    data.data[0] = index;
-    data.data[2] = stageId;
+    txprog.ap4data.data[0] = htonl(index);
+    txprog.ap4data.data[1] = 0;
+    txprog.ap4data.data[2] = htonl(stageId);
+    txprog.ap4data.data[3] = 0;
 
-    txprog.ap4ih = &ap4ih;
-    txprog.ap4code = program->ap4_prog;
+    memcpy((char*)&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
     txprog.codelen = program->ap4_len;
-    txprog.ap4data = &data;
+
     txprog.ipv4_dstaddr = ipv4dst;
     txprog.eth_dstaddr = hwaddr;
 
@@ -69,6 +68,11 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    int i;
+    unsigned char dst_eth_addr[ETH_ALEN];
+
+    for(i = 0; i < ETH_ALEN; i++) dst_eth_addr[i] = (unsigned char) hwaddr[i];
+
     pnemonic_opcode_t instr_set;
 
     read_opcode_action_map(argv[5], &instr_set);
@@ -82,8 +86,9 @@ int main(int argc, char** argv) {
     activep4_t cache[NUM_STAGES];
 
     int stageId = 3, index = 0;
-    
-    send_memsync_pkt(&instr_set, &queue, cache, argv[4], hwaddr, index, stageId, fid);
+
+    for(i = 0; i < 10; i++)
+        send_memsync_pkt(&instr_set, &queue, cache, argv[4], dst_eth_addr, i, stageId, fid);
 
     pthread_join(rxtx, NULL);
 

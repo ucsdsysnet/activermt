@@ -8,7 +8,7 @@ local field_seq = ProtoField.uint16("activep4.seq", "SEQ", base.DEC)
 
 proto_activep4.fields = {field_signature, field_flags, field_fid, field_seq}
 
-local MAX_ARGS = 5
+local MAX_ARGS = 4
 local field_active_arg = {}
 for i = 1,MAX_ARGS do
     field_active_arg[i] = ProtoField.uint32(string.format("activep4.arg_%d", i), string.format("Argument[%d]", i), base.HEX)
@@ -35,7 +35,7 @@ function proto_activep4.dissector(buffer, pinfo, tree)
             local offset = (i - 1) * 4
             payload_tree:add(field_active_arg[i], string.format("0x%x", buffer_remainder(offset, 4):uint()))
         end
-        buffer_remainder = buffer_remainder:range(20, buffer_remainder:len() - 20):tvb()
+        buffer_remainder = buffer_remainder:range(16, buffer_remainder:len() - 16):tvb()
     end
 
     if (bit.band(flags, 0x0100)) == 0

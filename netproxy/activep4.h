@@ -297,6 +297,7 @@ static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemon
         i++;
     }
     add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
+    add_instruction(&cache[stageId], instr_set, "EOF"); i++;
     cache[stageId].ap4_len = i;
     cache[stageId].fid = fid;
     return &cache[stageId];
