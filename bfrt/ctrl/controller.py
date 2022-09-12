@@ -317,11 +317,12 @@ class ActiveP4Controller:
 
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
+        print("resuming allocation for FID %d ... " % fid)
         if self.remoteDrainInitiator is None:
             self.mutex.release()
             return
         self.allocator.applyQueuedAllocation()
-        self.updateAllocation(fid, allocator.getAllocationBlocks(fid), remaps)
+        self.updateAllocation(fid, self.allocator.getAllocationBlocks(fid), remaps)
         self.addQuotas(fid, recirculate=True)
         self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
         self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
@@ -397,7 +398,8 @@ class ActiveP4Controller:
                 allocTableActionSpec(fid=tid, flag_allocated=1, offset_ig=memStartIg, size_ig=memEndIg, offset_eg=memStartEg, size_eg=memEndEg)
                 
         # build data structure for allocation table entries.
-        allocationTableGroups = np.zeros((4, self.num_stage_ig))
+        print("allocation ::", allocation)
+        allocationTableGroups = np.zeros((4, self.num_stages_ingress))
         for stageId in allocation:
             gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
             stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
@@ -412,7 +414,7 @@ class ActiveP4Controller:
 
         # install allocation table entries.
         validity = np.sum(allocationTableGroups, axis=0)
-        for i in range(0, self.num_stage_ig):
+        for i in range(0, self.num_stages_ingress):
             allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % i)
             allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % i)
             allocTableActionSpecDefault = getattr(allocTable, 'add_with_default_allocation_s%d' % i)
@@ -426,6 +428,8 @@ class ActiveP4Controller:
                 allocTableActionSpecDefault(fid=fid, flag_allocated=1)
 
         bfrt.complete_operations()
+
+        print("Allocation complete for FID", fid)
 
     """def allocatorRandomized(self, constr):
 
@@ -489,6 +493,8 @@ class ActiveP4Controller:
             if afid == fid:
                 entry.remove()
 
+        self.p4.Ingress.quota_recirc.delete(fid=fid)
+
         bfrt.complete_operations()
 
     def allocate(self, fid, progLen, igLim, accessIdx, minDemand):
@@ -536,6 +542,7 @@ class ActiveP4Controller:
                 print("Allocation failed for FID", fid)
             return 
 
+        self.remoteDrainInitiator = fid
         if not changes:
             if self.DEBUG:
                 print("No changes detected. Applying allocation ... ")
@@ -543,7 +550,6 @@ class ActiveP4Controller:
         else:
             if self.DEBUG:
                 print("Initiating remote drain for FID", fid)
-            self.remoteDrainInitiator = fid
             th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
             th.start()
             for tid in remaps:
@@ -650,7 +656,6 @@ controller.installInstructionTableEntries()
 if testMode:
     for app in demoApps:
         controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
-        controller.addQuotas(app['fid'], recirculate=True)
     
 controller.initController()
 
