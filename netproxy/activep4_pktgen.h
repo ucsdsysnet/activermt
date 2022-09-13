@@ -318,34 +318,36 @@ static void active_rx_tx(active_queue_t* queue, char* ipv4_srcaddr, char* ipv4_d
             printf("<< FRAME: %d bytes from protocol 0x%hx\n", read_bytes, ntohs(eth->h_proto));
             print_hwaddr(eth->h_dest);
             #endif
-            if(ntohs(eth->h_proto) == ETHTYPE_AP4) {
-                pptr = recvbuf + sizeof(struct ethhdr);
-                ap4ih = NULL;
-                if(is_activep4(pptr)) {
-                    ap4ih = (activep4_ih*) pptr;
-                    ap4_flags = ntohs(ap4ih->flags);
-                    pptr += sizeof(activep4_ih);
-                    #ifdef DEBUG
-                    printf("FLAGS %x\n", ap4_flags);
-                    #endif
-                    if((ap4_flags & AP4FLAGMASK_FLAG_ALLOCATED) != 0) {
-                        ap4alloc = (activep4_malloc_res_t*) pptr;
-                        pptr += sizeof(activep4_malloc_res_t);
-                    } else ap4alloc = NULL;
-                    if((ap4_flags & AP4FLAGMASK_OPT_ARGS) != 0) {
-                        ap4data = (activep4_data_t*) pptr;
-                        pptr += sizeof(activep4_data_t);
-                    } else ap4data = NULL;
-                    if((ap4_flags & AP4FLAGMASK_FLAG_EOE) == 0) {
-                        ap4_offset = get_active_eof(pptr);
-                        pptr += ap4_offset;
+            if(!hwaddr_equals(eth->h_dest, eth_dstmac)) {
+                if(ntohs(eth->h_proto) == ETHTYPE_AP4) {
+                    pptr = recvbuf + sizeof(struct ethhdr);
+                    ap4ih = NULL;
+                    if(is_activep4(pptr)) {
+                        ap4ih = (activep4_ih*) pptr;
+                        ap4_flags = ntohs(ap4ih->flags);
+                        pptr += sizeof(activep4_ih);
+                        #ifdef DEBUG
+                        printf("FLAGS %x\n", ap4_flags);
+                        #endif
+                        if((ap4_flags & AP4FLAGMASK_FLAG_ALLOCATED) != 0) {
+                            ap4alloc = (activep4_malloc_res_t*) pptr;
+                            pptr += sizeof(activep4_malloc_res_t);
+                        } else ap4alloc = NULL;
+                        if((ap4_flags & AP4FLAGMASK_OPT_ARGS) != 0) {
+                            ap4data = (activep4_data_t*) pptr;
+                            pptr += sizeof(activep4_data_t);
+                        } else ap4data = NULL;
+                        if((ap4_flags & AP4FLAGMASK_FLAG_EOE) == 0) {
+                            ap4_offset = get_active_eof(pptr);
+                            pptr += ap4_offset;
+                        }
+                        iph = (struct iphdr*) pptr;
+                        pptr += sizeof(struct iphdr);
+                        on_active_pkt_recv(eth, iph, ap4ih, ap4data, ap4alloc);
                     }
-                    iph = (struct iphdr*) pptr;
-                    pptr += sizeof(struct iphdr);
-                    on_active_pkt_recv(eth, iph, ap4ih, ap4data, ap4alloc);
                 }
             }
-            if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {}
+            // if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {}
         }
 
         active_program_t* program;

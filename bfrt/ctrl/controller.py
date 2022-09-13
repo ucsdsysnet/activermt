@@ -2,18 +2,35 @@ import os
 import math
 import sys
 import time
+import json
 import inspect
 import threading
 import logging
 import random
 
-VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
-sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
+SDE_PATH = os.environ['SDE']
 
-basePath = "/usr/local/home/rajdeepd/activep4"
-#basePath = "/root/src/activep4-p416"
+VERSION = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
+
+config = None
+if os.path.exists(os.path.join(SDE_PATH, 'controller.json')):
+    with open(os.path.join(SDE_PATH, 'controller.json')) as f:
+        config = json.loads(f.read())
+        f.close()
+
+basePath = os.getcwd()
+refPath = basePath
+
+if config is not None:
+    basePath = config['BASE_PATH']
+    refPath = config['REF_PATH']
+
+print("Using base path:", basePath)
+print("Using ref path:", refPath)
+print("Using python version", VERSION)
 
 sys.path.insert(0, os.path.join(basePath, 'malloc'))
+sys.path.insert(0, os.path.join(SDE_PATH, 'install/lib/python%s/site-packages' % VERSION))
 
 import allocator as ap4alloc
 import numpy as np
@@ -122,7 +139,7 @@ class ActiveP4Controller:
                 if vport != '':
                     vport_dst_mapping[int(vport)] = ip_addr
             f.close()
-        with open(os.path.join(self.base_path, 'config', 'arp_table.csv')) as f:
+        with open(os.path.join(self.base_path, 'config', 'arp_table_%s.csv' % config)) as f:
             entries = f.read().strip().splitlines()
             for row in entries:
                 record = row.split(",")
@@ -557,6 +574,7 @@ class ActiveP4Controller:
             th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
             th.start()
             for tid in remaps:
+                print("Queueing FID %d for remapping ... " % tid)
                 self.remoteDrainQueue[tid] = remaps
                 self.p4.Ingress.remap_check.add_with_remapped(fid=tid)
 
@@ -648,13 +666,13 @@ demoApps = [{
 
 customInstructions = None
 if restrictedInstructionSet:
-    customInstructions = getReferenceOpcodes("/usr/local/home/rajdeepd/activep4/apps/test", referenceProgram)
+    customInstructions = getReferenceOpcodes(refPath, referenceProgram)
 
 controller = ActiveP4Controller(custom=customInstructions, basePath=basePath)
 
 controller.clear_all()
 controller.installControlEntries()
-controller.installForwardingTableEntries(config='default')
+controller.installForwardingTableEntries(config=config['IPCONFIG'])
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
 controller.installInstructionTableEntries()
