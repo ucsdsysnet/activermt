@@ -319,6 +319,11 @@ static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemon
     return &cache[stageId];
 }
 
-static inline void build_sync_buffer(int numStages, int* stageIdx, activep4_malloc_t* allocation, char* syncbuf) {}
+static inline void construct_dummy_program(activep4_t* program, pnemonic_opcode_t* instr_set) {
+    int i = 0;
+    add_instruction(program, instr_set, "RETURN"); i++;
+    add_instruction(program, instr_set, "EOF"); i++;
+    program->ap4_len = i;
+}
 
 #endif

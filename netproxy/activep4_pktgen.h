@@ -43,8 +43,6 @@ typedef struct {
     activep4_data_t         ap4data;
     activep4_instr          ap4code[MAXPROGLEN];
     int                     codelen;
-    char*                   ipv4_dstaddr;
-    unsigned char*          eth_dstaddr;
     activep4_malloc_req_t   ap4malloc;
     activep4_malloc_res_t   ap4alloc;
 } active_program_t;
@@ -67,6 +65,7 @@ static inline int is_queue_empty(active_queue_t* queue) {
 
 static inline int enqueue_program(active_queue_t* queue, active_program_t* program) {
     if((queue->head >=0 && queue->tail == QUEUELEN - 1) || (queue->head == queue->tail + 1)) {
+        printf("Queue overflow!\n");
         return -1;
     }
     if(queue->head == -1) queue->head = 0;
@@ -77,6 +76,7 @@ static inline int enqueue_program(active_queue_t* queue, active_program_t* progr
 
 static inline active_program_t* dequeue_program(active_queue_t* queue) {
     if(queue->head == -1) {
+        printf("Queue underflow!\n");
         return NULL;
     }
     active_program_t* program = &queue->program[queue->head];
@@ -140,25 +140,44 @@ static void get_iface(devinfo_t* info, char* dev, int fd) {
     printf("Device %s has ipv4 addr %s\n", dev, ip_addr);
 }
 
+/* Global data structures for rx/tx. */
+
+int sockfd;
+
+devinfo_t dev_info;
+
+struct sockaddr_in sockin;
+
+struct sockaddr_ll eth_dst_addr = {0};
+struct sockaddr_ll addr = {0};
+
+char ipv4_src[IPADDRSIZE];
+unsigned char eth_dst[ETH_ALEN];
+
+uint16_t ip_id;
+
+/* RX/TX functions. */
+
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc);
 
-static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srcaddr) {
+static void rx_tx_init(char* eth_iface, char* ipv4_srcaddr, char* ipv4_dstaddr, unsigned char* eth_dstmac) {
 
-    struct sockaddr_in sin;
+    strcpy(ipv4_src, ipv4_srcaddr);
+    memcpy(eth_dst, eth_dstmac, ETH_ALEN);
 
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(1234);
+    ip_id = (uint16_t)rand();
 
-    int sockfd;
+    sockin.sin_family = AF_INET;
+    sockin.sin_port = htons(1234);
+    sockin.sin_addr.s_addr = inet_addr(ipv4_dstaddr);
+
     if((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
         perror("socket");
         exit(1);
     }
 
-    devinfo_t dev_info;
     get_iface(&dev_info, eth_iface, sockfd);
 
-    struct sockaddr_ll addr = {0};
     addr.sll_family = AF_PACKET;
     addr.sll_ifindex = dev_info.iface_index;
     addr.sll_protocol = htons(ETH_P_ALL);
@@ -168,11 +187,94 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
         exit(1);
     }
 
-    struct sockaddr_ll eth_dst_addr = {0};
     eth_dst_addr.sll_family = AF_PACKET;
     eth_dst_addr.sll_ifindex = dev_info.iface_index;
     eth_dst_addr.sll_protocol = htons(ETHTYPE_AP4);
     eth_dst_addr.sll_halen = ETH_ALEN;
+}
+
+static void active_tx(active_program_t* program) {
+    
+    int ap4len, i;
+    char sendbuf[BUFSIZE];
+
+    struct ethhdr*      eth;
+    struct iphdr*       iph;
+    activep4_ih*        ap4ih;
+    activep4_data_t*    ap4data;
+
+    uint16_t ap4_flags;
+    char* pptr;
+
+    memset(sendbuf, 0, BUFSIZE);
+    pptr = sendbuf;
+
+    eth = (struct ethhdr*)pptr;
+
+    memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
+    memcpy(&eth->h_dest, eth_dst, ETH_ALEN);
+    eth->h_proto = htons(ETHTYPE_AP4);
+
+    memcpy(eth_dst_addr.sll_addr, eth_dst, ETH_ALEN);
+
+    pptr += sizeof(struct ethhdr);
+
+    ap4len = sizeof(activep4_ih);
+
+    memcpy(pptr, (char*)&program->ap4ih, sizeof(activep4_ih));
+    
+    pptr += sizeof(activep4_ih);
+
+    if((ntohs(program->ap4ih.flags) & AP4FLAGMASK_FLAG_REQALLOC) > 0) {
+        memcpy(pptr, (char*)&program->ap4malloc, sizeof(activep4_malloc_req_t));
+        pptr += sizeof(activep4_malloc_req_t);
+        ap4len += sizeof(activep4_malloc_req_t);
+    }
+
+    if((ntohs(program->ap4ih.flags) & AP4FLAGMASK_OPT_ARGS) > 0) {
+        memcpy(pptr, (char*)&program->ap4data, sizeof(activep4_data_t));
+        pptr += sizeof(activep4_data_t);
+        ap4len += sizeof(activep4_data_t);
+    }
+
+    if(program->codelen > 0) {
+        for(i = 0; i < program->codelen; i++) {
+            memcpy(pptr, (char*)&program->ap4code[i], sizeof(activep4_instr));
+            pptr += sizeof(activep4_instr);
+            ap4len += sizeof(activep4_instr);
+        }
+    }
+
+    iph = (struct iphdr*)pptr;
+    
+    iph->ihl = 5;
+    iph->version = 4;
+    iph->tos = 0;
+    iph->tot_len = htons(sizeof(struct iphdr));
+    iph->id = htonl(ip_id);
+    iph->frag_off = 0;
+    iph->ttl = 255;
+    iph->protocol = IPPROTO_ICMP;
+    iph->check = 0;
+    iph->saddr = inet_addr(ipv4_src);
+    iph->daddr = sockin.sin_addr.s_addr;
+    
+    ip_id++;
+
+    iph->check = compute_checksum((uint16_t*)iph, iph->tot_len);
+
+    memcpy(pptr, (char*)iph, ntohs(iph->tot_len));
+
+    if(sendto(
+        sockfd, 
+        sendbuf, 
+        sizeof(struct ethhdr) + ntohs(iph->tot_len) + ap4len, 
+        0, 
+        (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr)
+    ) < 0) perror("sendto");
+}
+
+static void active_rx_tx(active_queue_t* queue, char* ipv4_srcaddr, char* ipv4_dstaddr, unsigned char* eth_dstmac) {
 
     fd_set rd_set;
 
@@ -183,7 +285,7 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
     
     activep4_malloc_res_t* ap4alloc;
 
-    uint16_t ap4_flags, ip_id = (uint16_t)rand();
+    uint16_t ap4_flags;
 
     int ret, read_bytes, ap4_offset, maxfd = sockfd;
 
@@ -247,7 +349,7 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
         }
 
         active_program_t* program;
-        int ap4len;
+        int ap4len, i;
 
         if(!is_queue_empty(queue)) {
             
@@ -256,8 +358,6 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
                 printf("queue corrupted.\n");
                 exit(1);
             }
-            
-            sin.sin_addr.s_addr = inet_addr (program->ipv4_dstaddr);
 
             memset(sendbuf, 0, BUFSIZE);
             pptr = sendbuf;
@@ -265,10 +365,10 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
             eth = (struct ethhdr*)pptr;
 
             memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
-            memcpy(&eth->h_dest, program->eth_dstaddr, ETH_ALEN);
+            memcpy(&eth->h_dest, eth_dstmac, ETH_ALEN);
             eth->h_proto = htons(ETHTYPE_AP4);
 
-            memcpy(eth_dst_addr.sll_addr, program->eth_dstaddr, ETH_ALEN);
+            memcpy(eth_dst_addr.sll_addr, eth_dstmac, ETH_ALEN);
 
             pptr += sizeof(struct ethhdr);
 
@@ -291,9 +391,14 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
             }
 
             if(program->codelen > 0) {
-                memcpy(pptr, (char*)&program->ap4code, sizeof(activep4_instr) * program->codelen);
-                pptr += sizeof(activep4_instr) * program->codelen;
-                ap4len += sizeof(activep4_instr) * program->codelen;
+                for(i = 0; i < program->codelen; i++) {
+                    memcpy(pptr, (char*)&program->ap4code[i], sizeof(activep4_instr));
+                    pptr += sizeof(activep4_instr);
+                    ap4len += sizeof(activep4_instr);
+                }
+                //memcpy(pptr, (char*)&program->ap4code, sizeof(activep4_instr) * program->codelen);
+                //pptr += sizeof(activep4_instr) * program->codelen;
+                //ap4len += sizeof(activep4_instr) * program->codelen;
             }
 
             iph = (struct iphdr*)pptr;
@@ -308,7 +413,7 @@ static void active_rx_tx(char* eth_iface, active_queue_t* queue, char* ipv4_srca
             iph->protocol = IPPROTO_ICMP;
             iph->check = 0;
             iph->saddr = inet_addr(ipv4_srcaddr);
-            iph->daddr = sin.sin_addr.s_addr;
+            iph->daddr = sockin.sin_addr.s_addr;
             
             ip_id++;
 
