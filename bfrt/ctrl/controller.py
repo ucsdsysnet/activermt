@@ -101,14 +101,27 @@ class ActiveP4Controller:
         self.sid_to_port_mapping = {}
         self.dst_port_mapping = {}
         self.ports = []
+        # modified at runtime.
         self.queue = []
         self.active = []
-        self.installed = []
         self.coredumps = {}
         self.coredumpQueue = set()
         self.remoteDrainQueue = {}
         self.remoteDrainInitiator = None
         self.mutex = threading.Lock()
+
+    def save(self):
+        """ctrlstate = {
+            'active'    : self.active,
+            'coredump'  : self.coredumps,
+            'memsyncq'  : self.coredumpQueue
+        }
+        data = json.dumps(ctrlstate, indent=4)
+        with open(os.path.join(self.base_path, 'bfrt', 'ctrl', 'snapshot.json'), 'w') as f:
+            f.write(data)
+            f.close()
+        self.allocator.save()"""
+        pass
 
     # Taken from ICA examples
     def clear_all(self, verbose=DEBUG, batching=True):
@@ -316,6 +329,7 @@ class ActiveP4Controller:
         tElapsed = time.time() - tStart
         if self.DEBUG:
             print("Coredump (elapsed)", tElapsed)
+        self.save()
         self.resumeAllocation(fid, remaps)
 
     def getMemoryRange(self, allocationBlocks):
@@ -350,6 +364,7 @@ class ActiveP4Controller:
         self.active.append(fid)
         self.queue.remove(fid)
         self.remoteDrainInitiator = None
+        self.save()
         self.mutex.release()
 
     def updateAllocation(self, fid, allocation, remaps):
@@ -493,6 +508,8 @@ class ActiveP4Controller:
 
     def deallocate(self, fid):
 
+        print("Deallocating ", fid, " ... ")
+
         for stageId in range(0, self.num_stages_egress):
             entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
             if fid in entries:
@@ -505,8 +522,8 @@ class ActiveP4Controller:
                 for entry in entries[fid]:
                     entry.remove()
             allocs = self.fetchAllocationTableEntries(stageId)
-            if fid in entries:
-                for entry in entries[fid]:
+            if fid in allocs:
+                for entry in allocs[fid]:
                     entry.remove()
 
         allocreqs = self.p4.Ingress.allocation.dump(return_ents=True)
@@ -518,6 +535,10 @@ class ActiveP4Controller:
         self.p4.Ingress.quota_recirc.delete(fid=fid)
 
         bfrt.complete_operations()
+
+        self.allocator.deallocate(fid)
+
+        print("Deallocated ", fid)
 
     def allocate(self, fid, progLen, igLim, accessIdx, minDemand):
 
@@ -585,6 +606,17 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("Elapsed (overall) time", elapsedOverall)
 
+    def resetAllocation(self):
+        print("Initiating allocation reset ... ")
+        completed = []
+        for fid in self.active:
+            self.deallocate(fid)
+            completed.append(fid)
+        for fid in completed:
+            self.active.remove(fid)
+        if self.DEBUG:
+            print(self.allocator.allocationMatrix)
+
     def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
             fid = digest['fid']
@@ -593,6 +625,10 @@ class ActiveP4Controller:
             accessIdx = []
             minDemand = []
             if fid in self.active:
+                continue
+            if fid == 255:
+                th = threading.Thread(target=self.resetAllocation)
+                th.start()
                 continue
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]

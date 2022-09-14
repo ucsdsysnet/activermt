@@ -5,6 +5,7 @@ import sys
 import time
 import copy
 import math
+import json
 import random
 import logging
 
@@ -117,6 +118,20 @@ class Allocator:
             'revAllocationMap'  : {},
             'allocationMatrix'  : None
         }
+
+    def save(self):
+        """snapshot = {
+            'allocation'        : self.allocation,
+            'allocationMap'     : self.allocationMap,
+            'revAllocationMap'  : self.revAllocationMap,
+            'activeFuncs'       : self.activeFuncs,
+            'allocationMatrix'  : self.allocationMatrix
+        }
+        data = json.dumps(snapshot, indent=4)
+        with open('allocator.snapshot.json', 'w') as f:
+            f.write(data)
+            f.close()"""
+        pass
 
     # cost = sum of weighted overlaps.
     def getCost(self, memIdx, activeFunc):
@@ -350,9 +365,6 @@ class Allocator:
                     self.queue['revAllocationMap'][fid] = []
                 self.queue['revAllocationMap'][fid].append(i)
         self.queue['allocationMatrix'] = copy.deepcopy(allocationMatrix)
-        
-        # TODO move memory objects between these locations.
-        # TODO apply changes.
 
         return (updatedChanges, remaps)
 
@@ -375,3 +387,21 @@ class Allocator:
             if len(blocks) > 0:
                 allocation[i] = blocks
         return allocation
+
+    def deallocate(self, fid):
+        if fid not in self.activeFuncs:
+            print("[allocator] FID %d not active." % fid)
+            return
+        for stageId in self.revAllocationMap[fid]:
+            self.allocationMap[stageId].remove(fid)
+            stageEmpty = True
+            for i in range(0, self.max_occupancy):
+                if self.allocationMatrix[i, stageId] == fid:
+                    self.allocationMatrix[i, stageId] = 0
+                elif self.allocationMatrix[i, stageId] > 0:
+                    stageEmpty = False
+            if stageEmpty:
+                self.allocation.remove(stageId)
+        self.revAllocationMap.pop(fid)
+        self.activeFuncs.pop(fid)
+        print("[allocator] FID %d deallocated." % fid)

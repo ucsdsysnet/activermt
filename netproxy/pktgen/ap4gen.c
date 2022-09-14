@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
 
     /* ====================== TMP ALLOC ===================== */
 
-    /*struct timespec ts_start, ts_now;
+    struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
 
     int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
@@ -404,7 +404,7 @@ int main(int argc, char** argv) {
     prettify_duration(elapsed_ns, duration);
     printf("ELAPSED: %s\n", duration);
 
-    exit(0);*/
+    exit(0);
 
     /* ================= TMP ALLOC ================ */
 
@@ -428,7 +428,7 @@ int main(int argc, char** argv) {
 
     /* Memory allocation */
 
-    int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
+    //int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
 
     num_accesses = 3;
     access_idx[0] = 3;
