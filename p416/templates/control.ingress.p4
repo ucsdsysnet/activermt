@@ -65,6 +65,11 @@ control Ingress(
 
     // actions
 
+    action complete() {
+        hdr.meta.complete = 1;
+        bypass_egress();
+    }
+
     action mark_termination() {
         hdr.ih.flag_done = 1;
     }
@@ -226,5 +231,6 @@ control Ingress(
                 ipv4_host.apply();
             }*/
         }
+        if(hdr.meta.complete == 1) hdr.meta.setInvalid();
     }
 }

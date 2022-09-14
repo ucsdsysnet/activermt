@@ -1197,6 +1197,10 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         eg_dprsr_md.drop_ctl = 1;
     }
 
+    action complete() {
+        hdr.meta.complete = 1;
+    }
+
     action mark_termination() {
         hdr.ih.flag_done = 1;
     }
@@ -1218,11 +1222,7 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
 
     // GENERATED: ACTIONS
 
-    action complete() {
-    hdr.meta.complete = 1;
-}
-
-/*action uncomplete() {
+    /*action uncomplete() {
     hdr.meta.complete = 0;
 }*/
 
@@ -2036,6 +2036,7 @@ table instruction_0 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2044,8 +2045,7 @@ table instruction_0 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2111,6 +2111,7 @@ table instruction_1 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2119,8 +2120,7 @@ table instruction_1 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2186,6 +2186,7 @@ table instruction_2 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2194,8 +2195,7 @@ table instruction_2 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2261,6 +2261,7 @@ table instruction_3 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2269,8 +2270,7 @@ table instruction_3 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2336,6 +2336,7 @@ table instruction_4 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2344,8 +2345,7 @@ table instruction_4 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2411,6 +2411,7 @@ table instruction_5 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2419,8 +2420,7 @@ table instruction_5 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2486,6 +2486,7 @@ table instruction_6 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2494,8 +2495,7 @@ table instruction_6 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2561,6 +2561,7 @@ table instruction_7 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2569,8 +2570,7 @@ table instruction_7 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2636,6 +2636,7 @@ table instruction_8 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2644,8 +2645,7 @@ table instruction_8 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;
@@ -2711,6 +2711,7 @@ table instruction_9 {
     }
     actions = {
         drop;
+        complete;
         mark_termination;
         skip;
         rts;
@@ -2719,8 +2720,7 @@ table instruction_9 {
         fetch_queue;
         fetch_qdelay;
         fetch_pktcount;
-        complete;
-		fork;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		memfault;

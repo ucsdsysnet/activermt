@@ -13,6 +13,8 @@
 #define MAX_FIDX    256
 #define RETRY_ITVL  10000
 #define MAX_RETRIES 10000
+#define MAX_SYNC_R  100
+#define NUM_REPEATS 100
 
 static inline void prettify_duration(unsigned long ts, char* buf) {
     if(ts < 1E3) sprintf(buf, "%lu ns", ts);
@@ -32,22 +34,9 @@ typedef struct {
     memory_stage_t  sync_data[NUM_STAGES];
     uint8_t         valid_stages[NUM_STAGES];
     uint16_t        fid;
+    uint64_t        sync_duration;
     struct timespec sync_time;
 } memory_t;
-
-void init_memory_sync(memory_t* mem) {
-    int i, j;
-    for(i = 0; i < NUM_STAGES; i++) {
-        mem->valid_stages[i] = 0;
-        mem->sync_data[i].mem_start = 0;
-        mem->sync_data[i].mem_end = 0;
-        for(j = 0; j < MAX_DATA; j++) {
-            mem->sync_data[i].valid[j] = 0;
-            mem->sync_data[i].data[j] = 0;
-        }
-    }
-    mem->fid = 0;
-}
 
 typedef struct {
     char            eth_iface[100];
@@ -56,6 +45,12 @@ typedef struct {
     char            ipv4_dstaddr[100];
     unsigned char   eth_dstmac[ETH_ALEN];
 } rxtx_config_t;
+
+typedef struct {
+    uint64_t    duration_allocation_request;
+    uint64_t    duration_allocation_fetch;
+    uint64_t    duration_memory_sync;
+} experiment_t;
 
 void *run_rxtx(void *vargp) {
     rxtx_config_t* config = (rxtx_config_t*)vargp;
@@ -111,7 +106,7 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
 
 void send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_queue_t* queue) {
     
-    uint16_t flags = 0x0000;
+    uint16_t flags = AP4FLAGMASK_OPT_ARGS;
 
     active_program_t txprog;
 
@@ -130,7 +125,7 @@ void send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_q
 
 void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, uint16_t index, int stageId, int fid) {
 
-    uint16_t flags = 0x8000;
+    uint16_t flags = AP4FLAGMASK_OPT_ARGS;
 
     activep4_t* program;
     active_program_t txprog;
@@ -201,42 +196,93 @@ void send_malloc_fetch(active_queue_t* queue, int fid) {
 }
 
 void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache) {
-    int i, j, synced, sync_batches, num_pkts;
+    int i, j, synced, sync_batches, num_pkts, remaining;
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns = 0;
+    #ifdef DEBUG
     printf("Initiating memory sync for FID %d ... \n", coredump.fid);
+    #endif
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
         perror("clock_gettime");
         exit(1);
     }
     for(i = 0; i < NUM_STAGES; i++) {
         if(coredump.valid_stages[i] == 0) continue;
-        sync_batches = 0;
         synced = 0;
-        while(synced == 0) {
-            sync_batches++;
+        sync_batches = 0;
+        while(synced == 0 && sync_batches < MAX_SYNC_R) {
             synced = 1;
+            remaining = 0;
             for(j = coredump.sync_data[i].mem_start; j <= coredump.sync_data[i].mem_end; j++) {
                 if(coredump.sync_data[i].valid[j] == 0) {
                     synced = 0;
+                    remaining++;
                     send_memsync_pkt(instr_set, queue, cache, j, i, coredump.fid);
                 }
             }
-            usleep(RETRY_ITVL);
+            #ifdef DEBUG
+            printf("%d packets remaining ... \n", remaining);
+            if(synced == 1) {
+                num_pkts = coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start + 1;
+                printf("[FID %d] Memory sync (with %d packets) complete for stage %d in %d batches\n", coredump.fid, num_pkts, i, sync_batches);
+            }
+            #endif
+            sync_batches++;
+            //usleep(RETRY_ITVL);
         }
-        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
-            perror("clock_gettime");
-            exit(1);
-        }
-        num_pkts = coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start + 1;
-        printf("[FID %d] Memory sync (with %d packets) complete for stage %d in %d batches\n", coredump.fid, num_pkts, i, sync_batches);
+    }
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
     }
     elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
     coredump.sync_time.tv_sec = ts_now.tv_sec;
     coredump.sync_time.tv_nsec = ts_now.tv_nsec;
+    coredump.sync_duration = elapsed_ns;
+    #ifdef DEBUG
     char duration[100];
     prettify_duration(elapsed_ns, duration);
     printf("Memory sync for FID %d completed after %s\n", coredump.fid, duration);
+    #endif
+}
+
+void memsync_testmode(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache) {
+    int i, j, ret;
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
+    active_program_t recvprogram;
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(coredump.valid_stages[i] == 0) continue;
+        for(j = coredump.sync_data[i].mem_start; j <= coredump.sync_data[i].mem_end; j++) {
+            if(coredump.sync_data[i].valid[j] == 0) {
+                #ifdef DEBUG
+                printf("sending memsync packet [stage %d][index %d] ... ", i, j); 
+                #endif
+                fflush(stdout);
+                memset(&recvprogram, 0, sizeof(active_program_t));
+                send_memsync_pkt(instr_set, queue, cache, j, i, coredump.fid);
+                ret = active_rx(&recvprogram);
+                #ifdef DEBUG
+                if(ret == 0) printf("OK [flags 0x%x].\n", ntohs(recvprogram.ap4ih.flags));
+                else j--; // retry.
+                #else
+                if(ret != 0) j--;
+                #endif
+            }
+        }
+    }
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+    coredump.sync_time.tv_sec = ts_now.tv_sec;
+    coredump.sync_time.tv_nsec = ts_now.tv_nsec;
+    coredump.sync_duration = elapsed_ns;
 }
 
 void get_memory_allocation(int fid, active_queue_t* queue) {
@@ -248,12 +294,30 @@ void get_memory_allocation(int fid, active_queue_t* queue) {
     }
 }
 
+void write_experiment_results(char* filename, experiment_t* results, int num_datapoints) {
+    
+    FILE *fp = fopen(filename, "w");
+
+    int i;
+    for(i = 0; i < num_datapoints; i++) {
+        fprintf(fp, "%lu,%lu,%lu\n", results[i].duration_allocation_request, results[i].duration_allocation_fetch, results[i].duration_memory_sync);
+    }
+
+    fclose(fp);
+
+    printf("%d results written to %s\n", num_datapoints, filename);
+}
+
 int main(int argc, char** argv) {
 
     if(argc < 7) {
         printf("usage: %s <eth_iface> <src_ipv4_addr> <dst_eth_addr> <dst_ipv4_addr> <instr_set_path> <mode=0(alloc)|1(sync)> [fid=1]\n", argv[0]);
         exit(1);
     }
+
+    experiment_t experiment[NUM_REPEATS];
+
+    memset(&experiment, 0, NUM_REPEATS * sizeof(experiment_t));
 
     active_queue_t queue;
 
@@ -289,11 +353,66 @@ int main(int argc, char** argv) {
 
     rx_tx_init(argv[1], argv[2], argv[4], dst_eth_addr);
 
+    /* ====================== TMP ALLOC ===================== */
+
+    /*struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
+
+    int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+
+    num_accesses = 3;
+    access_idx[0] = 3;
+    access_idx[1] = 6;
+    access_idx[2] = 9;
+    demand[0] = 1;
+    demand[1] = 1;
+    demand[2] = 1;
+    proglen = 12;
+    iglim = 8;
+
+    active_program_t program;
+
+    activep4_t cache[NUM_STAGES];
+
+    send_memsync_pkt(&instr_set, &queue, cache, 0, 3, coredump.fid);
+    memset(&program, 0, sizeof(active_program_t));
+    active_rx(&program);
+
+    send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+
+    while(TRUE) {
+        send_malloc_fetch(&queue, fid);
+        memset(&program, 0, sizeof(active_program_t));
+        active_rx(&program);
+        if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) break;
+        usleep(10);
+    }
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+
+    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+    char duration[100];
+    prettify_duration(elapsed_ns, duration);
+    printf("ELAPSED: %s\n", duration);
+
+    exit(0);*/
+
+    /* ================= TMP ALLOC ================ */
+
     pthread_t rxtx;
 
-    init_memory_sync(&coredump);
+    memset(&coredump, 0, sizeof(memory_t));
 
-    pthread_create(&rxtx, NULL, run_rxtx, (void*)&config);
+    /*pthread_create(&rxtx, NULL, run_rxtx, (void*)&config);
 
     cpu_set_t cpuset;
     int s;
@@ -303,7 +422,7 @@ int main(int argc, char** argv) {
             CPU_SET(i, &cpuset);
     
     s = pthread_setaffinity_np(rxtx, sizeof(cpu_set_t), &cpuset);
-    if(s != 0) perror("pthread_setaffinity");
+    if(s != 0) perror("pthread_setaffinity");*/
 
     coredump.fid = fid;
 
@@ -321,7 +440,7 @@ int main(int argc, char** argv) {
     proglen = 12;
     iglim = 8;
 
-    isAllocated = 0;
+    /*isAllocated = 0;
 
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
@@ -350,7 +469,18 @@ int main(int argc, char** argv) {
 
     char duration[100];
     prettify_duration(elapsed_ns, duration);
-    printf("Allocation time: %s\n", duration);
+    printf("Allocation time: %s\n", duration);*/
+
+    // TODO: remove.
+
+    num_accesses = 1;
+    access_idx[0] = 3;
+    coredump.fid = fid;
+    for(i = 0; i < num_accesses; i++) {
+        coredump.valid_stages[access_idx[i]] = 1;
+        coredump.sync_data[access_idx[i]].mem_start = 0;
+        coredump.sync_data[access_idx[i]].mem_end = 0xFFFF;
+    }
     
     if(mode == MODE_SYNC) {
         /* Memory synchronization */
@@ -364,7 +494,7 @@ int main(int argc, char** argv) {
         construct_dummy_program(&dummy_program, &instr_set);
         dummy_program.fid = fid;
 
-        int send_interval_us = 1000000;
+        int send_interval_us = 100000;
 
         /*while(TRUE) {
             send_active_pkt(&dummy_program, &instr_set, &queue);
@@ -373,10 +503,26 @@ int main(int argc, char** argv) {
 
         // TODO: dummy pkt stream, remap listener, alloc update.
 
-        memsync(&instr_set, &queue, cache);
-
-        // for(i = 0; i < 1; i++) send_memsync_pkt(&instr_set, &queue, cache, argv[4], dst_eth_addr, i, stageId, fid);
+        int k;
+        for(k = 0; k < NUM_REPEATS; k++) {
+            memset(&coredump, 0, sizeof(memory_t));
+            num_accesses = 1;
+            access_idx[0] = 3;
+            coredump.fid = fid;
+            for(i = 0; i < num_accesses; i++) {
+                coredump.valid_stages[access_idx[i]] = 1;
+                coredump.sync_data[access_idx[i]].mem_start = 0;
+                coredump.sync_data[access_idx[i]].mem_end = 0xFFFF;
+            }
+            //memsync(&instr_set, &queue, cache);
+            memsync_testmode(&instr_set, &queue, cache);
+            experiment[k].duration_memory_sync = coredump.sync_duration;
+        }
     }
+
+    char* results_filename = "results.csv";
+
+    write_experiment_results(results_filename, experiment, NUM_REPEATS);
 
     pthread_join(rxtx, NULL);
 

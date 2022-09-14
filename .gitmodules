@@ -19,3 +19,6 @@
 [submodule "ref/LightGuardian"]
 	path = ref/LightGuardian
 	url = https://github.com/Light-Guardian/LightGuardian.git
+[submodule "ref/pktgen"]
+	path = ref/pktgen
+	url = git@github.com:dasrajdeep/Pktgen-DPDK.git

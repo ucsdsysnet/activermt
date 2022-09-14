@@ -35,6 +35,8 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 #include "egress/parsers.p4"
 #include "egress/control.p4"
 
+@PA_no_overlay("egress", "eg_dprsr_md.drop_ctl")
+
 Pipeline(
     IngressParser(),
     Ingress(),

@@ -31,6 +31,7 @@ print("Using python version", VERSION)
 
 sys.path.insert(0, os.path.join(basePath, 'malloc'))
 sys.path.insert(0, os.path.join(SDE_PATH, 'install/lib/python%s/site-packages' % VERSION))
+sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
 
 import allocator as ap4alloc
 import numpy as np

@@ -1,7 +1,3 @@
-action complete() {
-    hdr.meta.complete = 1;
-}
-
 /*action uncomplete() {
     hdr.meta.complete = 0;
 }*/

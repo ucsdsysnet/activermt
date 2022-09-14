@@ -27,6 +27,10 @@ control Egress(
         eg_dprsr_md.drop_ctl = 1;
     }
 
+    action complete() {
+        hdr.meta.complete = 1;
+    }
+
     action mark_termination() {
         hdr.ih.flag_done = 1;
     }

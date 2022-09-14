@@ -176,6 +176,11 @@ static void rx_tx_init(char* eth_iface, char* ipv4_srcaddr, char* ipv4_dstaddr, 
         exit(1);
     }
 
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+
     get_iface(&dev_info, eth_iface, sockfd);
 
     addr.sll_family = AF_PACKET;
@@ -272,6 +277,71 @@ static void active_tx(active_program_t* program) {
         0, 
         (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr)
     ) < 0) perror("sendto");
+}
+
+static int active_rx(active_program_t* program) {
+
+    char recvbuf[BUFSIZE];
+
+    struct ethhdr*          eth;
+    struct iphdr*           iph;
+    activep4_ih*            ap4ih;
+    activep4_data_t*        ap4data;
+    activep4_malloc_res_t*  ap4alloc;
+
+    int ret, read_bytes, ap4_offset;
+
+    uint16_t ap4_flags;
+
+    char* pptr;
+
+    memset(program, 0, sizeof(active_program_t));
+
+    read_bytes = read(sockfd, recvbuf, sizeof(recvbuf));
+
+    if(read_bytes < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        printf("rx timed out.\n");
+        return errno;
+    }
+
+    eth = (struct ethhdr*)recvbuf;
+
+    #ifdef DEBUG
+    printf("<< FRAME: %d bytes from protocol 0x%hx\n", read_bytes, ntohs(eth->h_proto));
+    print_hwaddr(eth->h_dest);
+    #endif
+    
+    if(!hwaddr_equals(eth->h_dest, eth_dst)) {
+        if(ntohs(eth->h_proto) == ETHTYPE_AP4) {
+            pptr = recvbuf + sizeof(struct ethhdr);
+            ap4ih = NULL;
+            if(is_activep4(pptr)) {
+                ap4ih = (activep4_ih*) pptr;
+                ap4_flags = ntohs(ap4ih->flags);
+                pptr += sizeof(activep4_ih);
+                #ifdef DEBUG
+                printf("FLAGS %x\n", ap4_flags);
+                #endif
+                if((ap4_flags & AP4FLAGMASK_FLAG_ALLOCATED) != 0) {
+                    ap4alloc = (activep4_malloc_res_t*) pptr;
+                    pptr += sizeof(activep4_malloc_res_t);
+                } else ap4alloc = NULL;
+                if((ap4_flags & AP4FLAGMASK_OPT_ARGS) != 0) {
+                    ap4data = (activep4_data_t*) pptr;
+                    pptr += sizeof(activep4_data_t);
+                } else ap4data = NULL;
+                if((ap4_flags & AP4FLAGMASK_FLAG_EOE) == 0) {
+                    ap4_offset = get_active_eof(pptr);
+                    pptr += ap4_offset;
+                }
+                iph = (struct iphdr*) pptr;
+                pptr += sizeof(struct iphdr);
+                memcpy(&program->ap4ih, (char*)ap4ih, sizeof(activep4_ih));
+            }
+        }
+    }
+
+    return 0;
 }
 
 static void active_rx_tx(active_queue_t* queue, char* ipv4_srcaddr, char* ipv4_dstaddr, unsigned char* eth_dstmac) {
