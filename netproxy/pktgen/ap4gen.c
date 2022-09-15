@@ -15,6 +15,7 @@
 #define MAX_RETRIES 10000
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
+#define FID_RST     255
 
 static inline void prettify_duration(unsigned long ts, char* buf) {
     if(ts < 1E3) sprintf(buf, "%lu ns", ts);
@@ -360,11 +361,6 @@ int main(int argc, char** argv) {
 
     int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
 
-    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
-        perror("clock_gettime");
-        exit(1);
-    }
-
     num_accesses = 3;
     access_idx[0] = 3;
     access_idx[1] = 6;
@@ -379,32 +375,77 @@ int main(int argc, char** argv) {
 
     activep4_t cache[NUM_STAGES];
 
-    send_memsync_pkt(&instr_set, &queue, cache, 0, 3, coredump.fid);
-    memset(&program, 0, sizeof(active_program_t));
-    active_rx(&program);
+    int preallocated = 0, k;
 
-    send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+    printf("Initiating malloc measurements ... \n");
 
-    while(TRUE) {
-        send_malloc_fetch(&queue, fid);
+    for(k = 0; k < NUM_REPEATS; k++) {
+
         memset(&program, 0, sizeof(active_program_t));
+        send_malloc_request(&queue, FID_RST, num_accesses, access_idx, demand, proglen, iglim);
         active_rx(&program);
-        if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) break;
-        usleep(10);
+
+        sleep(3);
+
+        printf("Resuming iter %d ... \n", k);
+
+        for(i = 0; i < 2; i++) {
+
+            fid = i + 1;
+
+            preallocated = 0;
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+
+            memset(&program, 0, sizeof(active_program_t));
+            send_malloc_fetch(&queue, fid);
+            active_rx(&program);
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+            if(fid == 2) experiment[k].duration_allocation_fetch = elapsed_ns;
+
+            if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
+                preallocated = 1;
+            } else {
+                memset(&program, 0, sizeof(active_program_t));
+                send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+                active_rx(&program);
+                while(TRUE) {
+                    memset(&program, 0, sizeof(active_program_t));
+                    send_malloc_fetch(&queue, fid);
+                    active_rx(&program);
+                    if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) break;
+                    usleep(10);
+                }
+            }
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+            if(fid == 2) experiment[k].duration_allocation_request = elapsed_ns;
+
+            if(preallocated == 1) printf("Already allocated FID %d.\n", fid);
+
+            char duration[100];
+            prettify_duration(elapsed_ns, duration);
+            printf("ELAPSED: %s\n", duration);
+
+            usleep(100000);
+        }
     }
 
-    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
-        perror("clock_gettime");
-        exit(1);
-    }
-
-    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
-
-    char duration[100];
-    prettify_duration(elapsed_ns, duration);
-    printf("ELAPSED: %s\n", duration);
-
-    exit(0);
+    //exit(0);
 
     /* ================= TMP ALLOC ================ */
 
@@ -524,7 +565,7 @@ int main(int argc, char** argv) {
 
     write_experiment_results(results_filename, experiment, NUM_REPEATS);
 
-    pthread_join(rxtx, NULL);
+    //pthread_join(rxtx, NULL);
 
     return 0;
 }

@@ -179,7 +179,7 @@ static void rx_tx_init(char* eth_iface, char* ipv4_srcaddr, char* ipv4_dstaddr, 
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+    //setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
     get_iface(&dev_info, eth_iface, sockfd);
 
