@@ -268,7 +268,7 @@ static void active_tx(active_program_t* program) {
 
     iph->check = compute_checksum((uint16_t*)iph, iph->tot_len);
 
-    memcpy(pptr, (char*)iph, ntohs(iph->tot_len));
+    //memcpy(pptr, (char*)iph, ntohs(iph->tot_len));
 
     if(sendto(
         sockfd, 

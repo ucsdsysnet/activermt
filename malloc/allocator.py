@@ -93,10 +93,19 @@ class ActiveFunction:
 # allocator
 
 class Allocator:
-    def __init__(self, debug=False):
+
+    METRIC_COST = 0
+    METRIC_UTILITY = 1
+    METRIC_UTILIZATION = 2
+    METRIC_SAT = 3
+
+    def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = 20
         self.max_occupancy = 8
         self.WT_OVERFLOW = 1000
+        self.metric = metric
+        self.optimize = optimize
+        self.minimize = minimize
         self.DEBUG = debug
         self.reset()
 
@@ -133,22 +142,128 @@ class Allocator:
             f.close()"""
         pass
 
-    # cost = sum of weighted overlaps.
-    def getCost(self, memIdx, activeFunc):
-        wtSum = 0
-        i = 0
-        for idx in memIdx:
-            minDemand = 0
+    def getMinDemand(self, fid, idx):
+        return self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[idx]]
+
+    def getOverallUtility(self):
+        utility = 0.0
+        utilityByFunc = {}
+        for i in range(0, self.num_stages):
+            for j in range(0, self.max_occupancy):
+                fid = self.allocationMatrix[j, i]
+                if fid == 0:
+                    continue
+                if fid not in utilityByFunc:
+                    utilityByFunc[fid] = {}
+                if i not in utilityByFunc[fid]:
+                    utilityByFunc[fid][i] = 0.0
+                utilityByFunc[fid][i] += 1
+        for fid in utilityByFunc:
+            utilAcrossStages = 0.0
+            for stageId in utilityByFunc[fid]:
+                utilAcrossStages += (utilityByFunc[fid][stageId] / self.max_occupancy) if self.getMinDemand(fid, stageId) == 1 else 1
+            utilAcrossStages /= len(utilityByFunc[fid])
+            utility += utilAcrossStages
+        return (utility * 1.0 / len(utilityByFunc))
+
+    # utilization = fraction of total memory blocks used.
+    def getUtilization(self):
+        utilization = 0.0
+        numBlocksTotal = self.max_occupancy * self.num_stages
+        for i in range(0, self.max_occupancy):
+            for j in range(0, self.num_stages):
+                utilization += 1 if self.allocationMatrix[i, j] > 0 else 0
+        return (utilization * 1.0 / numBlocksTotal)
+
+    # utilization increase = number of additional memory blocks utilized.
+    def getUtilizationIncrease(self, memIdx, activeFunc):
+        utilization = 0
+        numBlocksTotal = self.max_occupancy * self.num_stages
+        numAccesses = len(memIdx)
+        for i in range(0, numAccesses):
+            idx = memIdx[i]
+            occupied = 0
+            elastic = False
             for fid in self.allocationMap[idx]:
-                wtSum += self.activeFuncs[fid].wt
-                minDemand += self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[idx]]
-            minDemand += activeFunc.minDemand[i]
-            if len(self.allocationMap[idx]) != 0:
-                wtSum += activeFunc.wt
-            if minDemand > self.max_occupancy:
-                wtSum += self.WT_OVERFLOW
-            i += 1
-        return wtSum
+                occupied += self.getMinDemand(fid, idx)
+                if self.getMinDemand(fid, idx) == 1:
+                    elastic = True
+            remaining = self.max_occupancy - occupied - activeFunc.minDemand[i]
+            if remaining < 0:
+                return -1
+            utilization += 0 if elastic else (activeFunc.minDemand[i] if activeFunc.minDemand[i] > 1 else remaining)
+        return utilization
+
+    # cost = number of data moving required to accomodate new app.
+    # alternative: decrease in utility of other apps - difficult to estimate fairly since utility functions may vary across apps.
+    def getCostMoving(self, memIdx, activeFunc):
+        cost = 0
+        numAccesses = len(memIdx)
+        for i in range(0, numAccesses):
+            idx = memIdx[i]
+            occupied = 0
+            for fid in self.allocationMap[idx]:
+                if self.getMinDemand(fid, idx) == 1:
+                    cost += 1
+                occupied += self.getMinDemand(fid, idx)
+            occupied += activeFunc.minDemand[i]
+            if occupied > self.max_occupancy:
+                return -1
+        return cost
+
+    # utility = normalized sum of fraction of max demand satisfied at each stage.
+    # eg. utility=1 implies that the application got what it asked for.
+    # assumes (actual) utility function is strictly increasing (wrt. memory).
+    def getUtility(self, memIdx, activeFunc):
+        utility = 0.0
+        numAccesses = len(memIdx)
+        sumMaxDemand = 0
+        sumMaxBlocks = 0
+        for i in range(0, numAccesses):
+            idx = memIdx[i]
+            maxDemand = activeFunc.minDemand[i] if activeFunc.minDemand[i] > 1 else self.max_occupancy
+            sumMaxDemand += maxDemand
+            fixed = 0
+            numVar = 0
+            for fid in self.allocationMap[idx]:
+                if self.getMinDemand(fid, idx) > 1:
+                    fixed += self.getMinDemand(fid, idx)
+                else:
+                    numVar += 1
+            if activeFunc.minDemand[i] == 1:
+                maxBlocks = math.floor((self.max_occupancy - fixed) / (numVar + 1))
+            else:
+                maxBlocks = self.max_occupancy - fixed - activeFunc.minDemand[i]
+            if maxBlocks < 0:
+                return -1
+            sumMaxBlocks += sumMaxDemand
+            #utility += (maxBlocks / maxDemand)
+        return (sumMaxBlocks * 1.0 / sumMaxDemand)
+
+    # feasibility = if there are enough memory blocks to satisfy allocation.
+    def getFeasibility(self, memIdx, activeFunc):
+        numAccesses = len(memIdx)
+        for i in range(0, numAccesses):
+            idx = memIdx[i]
+            occupied = 0
+            for fid in self.allocationMap[idx]:
+                occupied += self.getMinDemand(fid, idx)
+            occupied += activeFunc.minDemand[i]
+            if occupied > self.max_occupancy:
+                return -1
+        return 1
+
+    def getCost(self, memIdx, activeFunc):
+        cost = 0
+        if self.metric == self.METRIC_COST:
+            cost = self.getCostMoving(memIdx, activeFunc)
+        elif self.metric == self.METRIC_UTILITY:
+            cost = self.getUtility(memIdx, activeFunc)
+        elif self.metric == self.METRIC_UTILIZATION:
+            cost = self.getUtilizationIncrease(memIdx, activeFunc)
+        else:
+            cost = self.getFeasibility(memIdx, activeFunc)
+        return cost
 
     def computeChanges(self, allocationMap):
         revAllocationMap = {}
@@ -186,18 +301,27 @@ class Allocator:
         self.resetQueue()
         self.queue['fid'] = activeFunc.getFID()
         self.activeFuncs[activeFunc.getFID()] = activeFunc
-        minCost = None
+        optCost = None
         optimal = None
         tsAllocStart = time.time()
         if online:
             enumeration = activeFunc.getEnumeration()
             for memIdx in enumeration:
                 cost = self.getCost(memIdx, activeFunc)
-                if optimal is None:
-                    minCost = cost
+                if cost < 0:
+                    continue
+                if not self.optimize:
+                    optCost = cost
                     optimal = memIdx
-                if cost < minCost:
-                    minCost = cost
+                    break
+                if optimal is None:
+                    optCost = cost
+                    optimal = memIdx
+                if self.minimize and cost < optCost:
+                    optCost = cost
+                    optimal = memIdx
+                elif not self.minimize and cost > optCost:
+                    optCost = cost
                     optimal = memIdx
         else:
             enumSizes = []
@@ -223,10 +347,10 @@ class Allocator:
                         for fid in allocationMap[idx]:
                             cost += weights[fid]
                 if optimal is None:
-                    minCost = cost
+                    optCost = cost
                     optimal = np.copy(current)
-                if cost < minCost:
-                    minCost = cost
+                if cost < optCost:
+                    optCost = cost
                     optimal = np.copy(current)
                 pos = radix - 1
                 while pos >= 0 and current[pos] + 1 >= enumSizes[pos]:
@@ -236,6 +360,9 @@ class Allocator:
                 current[pos] = current[pos] + 1
                 for i in range(pos + 1, radix):
                     current[i] = 0
+        utilization = None
+        allocation = None
+        allocationMap = None
         if optimal is not None:
             if online:
                 allocation = self.allocation.copy()
@@ -247,7 +374,7 @@ class Allocator:
                     allocationMap[idx].add(activeFunc.getFID())
                     self.activeFuncs[activeFunc.getFID()].allocation[idx] = i
                     i += 1
-                utilization = len(allocation) / self.num_stages
+                utilization = self.getUtilization()
             else:
                 allocation = set()
                 allocationMap = {}
@@ -260,13 +387,13 @@ class Allocator:
                         allocation.add(idx)
                         allocationMap[idx].add(fids[i])
                 optimal = variant
-                utilization = len(allocation) / self.num_stages
+                utilization = self.getUtilization()
         tsAllocElapsed = time.time() - tsAllocStart
-        if minCost > self.WT_OVERFLOW:
+        if optCost is None:
             # allocation failed.
             optimal = None
             self.activeFuncs.pop(activeFunc.getFID())
-        return (optimal, minCost, utilization, tsAllocElapsed, allocation, allocationMap)
+        return (optimal, optCost, utilization, tsAllocElapsed, allocation, allocationMap)
     
     def computeAllocationMatrix(self, allocationMap):
         allocationMatrix = np.zeros((self.max_occupancy, self.num_stages), dtype=np.uint32)
@@ -281,26 +408,36 @@ class Allocator:
             apps.sort(key=lambda x: x[0])
             # assuming ordered in increasing FID value.
             dominantFID = None
-            for app in apps:
-                wtSum += app[1]
-                # only elastic apps can dominate.
-                if app[2] == 1 and app[1] >= maxWt:
-                    maxWt = app[1]
-                    dominantFID = app[0]
             sumBlocks = 0
             remaining = self.max_occupancy
-            apps.sort(key=lambda x: x[1])
+            # if apps have same weight, a random one is chosen as dominant.
+            random.shuffle(apps)
+            # allocate number of blocks for inelastic apps first.
+            for app in apps:
+                fid = app[0]
+                # only elastic apps can dominate.
+                if app[2] == 1 and app[1] >= maxWt:
+                    wtSum += app[1]
+                    maxWt = app[1]
+                    dominantFID = app[0]
+                elif app[2] > 1:
+                    numBlocks[fid] = app[2]
+                    sumBlocks += numBlocks[fid]
+                    remaining -= numBlocks[fid]
+            # allocate number of blocks for elastic apps.
+            elasticBlocks = remaining
             for app in apps:
                 fid = app[0]
                 wt = app[1]
                 minDemand = app[2]
-                if remaining <= 0:
-                    print("Assigned blocks", numBlocks)
-                    sys.exit("Error: out of memory!")
-                # in increasing order of weights (to avoid starvation of apps).
-                numBlocks[fid] = int(min(max(math.floor(wt * self.max_occupancy / wtSum), minDemand), remaining))
                 if minDemand > 1:
-                    numBlocks[fid] = minDemand
+                    continue
+                if remaining <= 0:
+                    print("Apps:", apps)
+                    print("Assigned blocks", numBlocks)
+                    sys.exit("Error[0]: out of memory!")
+                # in increasing order of weights (to avoid starvation of apps).
+                numBlocks[fid] = int(min(max(math.floor(wt * elasticBlocks / wtSum), minDemand), remaining))
                 sumBlocks += numBlocks[fid]
                 remaining -= numBlocks[fid]
             if remaining < 0:
@@ -404,4 +541,5 @@ class Allocator:
                 self.allocation.remove(stageId)
         self.revAllocationMap.pop(fid)
         self.activeFuncs.pop(fid)
-        print("[allocator] FID %d deallocated." % fid)
+        if self.DEBUG:
+            print("[allocator] FID %d deallocated." % fid)
