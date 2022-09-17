@@ -233,11 +233,10 @@ class Allocator:
             if activeFunc.minDemand[i] == 1:
                 maxBlocks = math.floor((self.max_occupancy - fixed) / (numVar + 1))
             else:
-                maxBlocks = self.max_occupancy - fixed - activeFunc.minDemand[i]
-            if maxBlocks < 0:
+                maxBlocks = min(self.max_occupancy - fixed - numVar, activeFunc.minDemand[i])
+            if maxBlocks < activeFunc.minDemand[i]:
                 return -1
-            sumMaxBlocks += sumMaxDemand
-            #utility += (maxBlocks / maxDemand)
+            sumMaxBlocks += maxBlocks
         return (sumMaxBlocks * 1.0 / sumMaxDemand)
 
     # feasibility = if there are enough memory blocks to satisfy allocation.
@@ -251,7 +250,7 @@ class Allocator:
             occupied += activeFunc.minDemand[i]
             if occupied > self.max_occupancy:
                 return -1
-        return 1
+        return 0
 
     def getCost(self, memIdx, activeFunc):
         cost = 0
@@ -297,6 +296,19 @@ class Allocator:
                     changes[fid].append((A[i], B[i], resize))
         return changes
 
+    def computeNumChanges(self):
+        numChanges = 0
+        for j in range(0, self.num_stages):
+            oldset = set()
+            newset = set()
+            for i in range(0, self.max_occupancy):
+                if self.allocationMatrix[i, j] == 0:
+                    continue
+                oldset.add(self.allocationMatrix[i, j])
+                newset.add(self.queue['allocationMatrix'][i, j])
+            numChanges += len(newset) - len(oldset)
+        return numChanges
+
     def computeAllocation(self, activeFunc, online=True):
         self.resetQueue()
         self.queue['fid'] = activeFunc.getFID()
@@ -306,7 +318,8 @@ class Allocator:
         tsAllocStart = time.time()
         if online:
             enumeration = activeFunc.getEnumeration()
-            for memIdx in enumeration:
+            for i in range(0, len(enumeration)):
+                memIdx = enumeration[i]
                 cost = self.getCost(memIdx, activeFunc)
                 if cost < 0:
                     continue
@@ -411,7 +424,7 @@ class Allocator:
             sumBlocks = 0
             remaining = self.max_occupancy
             # if apps have same weight, a random one is chosen as dominant.
-            random.shuffle(apps)
+            # random.shuffle(apps)
             # allocate number of blocks for inelastic apps first.
             for app in apps:
                 fid = app[0]
@@ -455,6 +468,18 @@ class Allocator:
                 for j in range(0, numBlocks[fid]):
                     allocationMatrix[offset + j, i] = fid
                 offset += numBlocks[fid]
+            # verify that inelastic blocks are not reallocated.
+            for k in range(0, self.max_occupancy):
+                for j in range(0, i + 1):
+                    fid = self.allocationMatrix[k, j]
+                    if fid > 0:
+                        """if (self.getMinDemand(fid, j) > 1 and fid != allocationMatrix[k, j]):
+                            print("FID", fid, "Stage", j, "Current", i)
+                            print(self.allocationMatrix)
+                            print(allocationMatrix)
+                            print(numBlocks)
+                            print(apps)"""
+                        assert not (self.getMinDemand(fid, j) > 1 and fid != allocationMatrix[k, j])
         return allocationMatrix
 
     def enqueueAllocation(self, allocation, allocationMap):

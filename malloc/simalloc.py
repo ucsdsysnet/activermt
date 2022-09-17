@@ -9,7 +9,12 @@ BASE_PATH = os.environ['ACTIVEP4_SRC'] if 'ACTIVEP4_SRC' in os.environ else os.g
 def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocTime, enumTime, utilization, isOnline=True):
     logging.info("[%d] %s,%s,%d,%d,%f,%f,%f,%f", expId, appname, ('ONLINE' if isOnline else 'OFFLINE'), numApps, cost, elapsedTime, allocTime, enumTime, utilization)
 
+"""dbg_seq = {}
+dbg_changes = {}
+dbg_allocmatrix = {}
+dbg_allocmap = {}"""
 def simAllocation(expId, appCfg, allocator, sequence, departures=False, departureFID='random', departureProb=0.0, online=True, debug=False):
+    # global dbg_seq, dbg_changes, dbg_allocmatrix, dbg_allocmap
     iter = 0
     sumCost = 0
     sumTime = 0
@@ -49,12 +54,38 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         tsBegin = time.time()
         activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
         (allocation, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc, online=online)
+        """if i in dbg_seq and not np.all(np.equal(allocation, dbg_seq[i])):
+            print("Error!")
+            print(dbg_seq[i])
+            print(allocation)
+            sys.exit(1)
+        dbg_seq[i] = np.copy(allocation)"""
         if allocation is not None and cost < allocator.WT_OVERFLOW:
             (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
+            """if i in dbg_changes:
+                prev_fids = set(dbg_changes[i].keys())
+                new_fids = set(changes.keys())
+                if prev_fids != new_fids:
+                    print("SeqIdx", i)
+                    print(dbg_changes[i])
+                    print(changes)
+                    print(dbg_allocmatrix[i])
+                    print('===============================================')
+                    print(allocator.allocationMatrix)
+                    for s in range(0, 20):
+                        assert dbg_allocmap[i][s] == allocationMap[s]
+                assert set(dbg_changes[i].keys()) == set(changes.keys())
+            dbg_changes[i] = copy.deepcopy(changes)
+            dbg_allocmatrix[i] = np.copy(allocator.allocationMatrix)
+            dbg_allocmap[i] = copy.deepcopy(allocationMap)"""
+            numChanges = 0
+            for tid in changes:
+                numChanges += len(changes[tid])
+                #numChanges += allocator.computeNumChanges()
             allocator.applyQueuedAllocation()
-            sumCost += cost
+            sumCost += numChanges
             sumTime += allocTime
-            costs[iter] = cost
+            costs[iter] = numChanges
             allocationTime[iter] = allocTime
             enumerationSizes[iter] = activeFunc.getEnumerationSize()
             utilByIter[iter] = utilization
@@ -82,6 +113,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
     avgTime = sumTime / iter
     utility = allocator.getOverallUtility()
     utilization = allocator.getUtilization()
+    #print("Costs:", costs[0:iter])
     if debug:
         print("[OVERALL]")
         print("Apps allocated:", iter)
@@ -125,7 +157,7 @@ appCfg = {
 
 apps = [ 'cache', 'cheetahlb', 'cms' ]
 
-appSeqLen = 100
+appSeqLen = 10
 isOnline = True
 compare = False
 
@@ -205,9 +237,10 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
         i += 1
     return sequence
 
-def runAnalysis(appCfg, sequence, metric, optimize, minimize, numRepeats, departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False):
+def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False):
     results = []
     for k in range(0, numRepeats):
+        sequence = generateSequence(appCfg, appname=appname) if w != 'random' else generateSequence(appCfg, type='random')
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
         result = simAllocation(expId, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb)
@@ -223,17 +256,13 @@ def runAnalysis(appCfg, sequence, metric, optimize, minimize, numRepeats, depart
 # ANALYSIS: only inelastic app
 # ANALYSIS: fragmentation (arrival/departure)
 
-param_fit = [(False, False), (True, True), (True, False)]
+param_fit = [(True, True), (True, False)]
 param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
 
-# Generate workloads.
-workloads = {
-    'random'    : generateSequence(appCfg, type='random')
-}
-for appname in appCfg:
-    workloads[appname] = generateSequence(appCfg, appname=appname)
+workloads = appCfg.keys()
+workloads.append('random')
 
-# get first-fit (strawman) for each workload.
+# Strawman: get first-fit for each workload.
 for w in workloads:
     type = 'fixed' if w != 'random' else w
     appname = w
@@ -242,17 +271,22 @@ for w in workloads:
     metric = Allocator.METRIC_SAT
     paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
     print("running analysis with params:", paramStr)
-    sequence = workloads[w]
-    results = runAnalysis(appCfg, sequence, metric, optimize, minimize, numRepeats, debug=True)
+    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
     writeResults(results, "allocation_%s.csv" % paramStr)
 
-# 1. single app only (first-fit, best-fit, worst-fit) x (relocations, utility, utilization)
-# for appname in appCfg:
-#     for p1 in param_fit:
-#         for p2 in param_metric:
-#             runAnalysis(appCfg, p2, p1[0], p1[1], 'fixed', numRepeats, appname=appname)
-
-# 2. random set of apps
+# Combinations: (first-fit, best-fit, worst-fit) x (relocations, utility, utilization).
+for w in workloads:
+    type = 'fixed' if w != 'random' else w
+    appname = w
+    for p1 in param_metric:
+        metric = p1
+        for p2 in param_fit:
+            optimize = p2[0]
+            minimize = p2[1]
+            paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
+            print("running analysis with params:", paramStr)
+            results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
+            writeResults(results, "allocation_%s.csv" % paramStr)
 
 """if analysisType == "exclusive":
     numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
