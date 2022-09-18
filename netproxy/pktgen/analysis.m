@@ -46,3 +46,13 @@ duration_sync = data( : , 3);
 % grid on
 % 
 % saveas(gcf, 'alloc_time_nosync.png');
+
+figure
+boxplot(duration_alloc / 1E9);
+title('Allocation time (w/ remote sync)');
+ylabel('Time (sec)');
+set(gca, 'FontSize', 16);
+xticks([]);
+grid on
+
+saveas(gcf, 'alloc_time_remote_sync.png');

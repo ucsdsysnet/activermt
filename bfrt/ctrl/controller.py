@@ -312,8 +312,11 @@ class ActiveP4Controller:
         bfrt.batch_end()"""
 
     def coredump(self, remaps, fid, callback=None):
-        if fid in self.coredumpQueue:
-            return
+        # if fid in self.coredumpQueue:
+        #    return
+        for tid in remaps:
+            if tid in self.coredumpQueue:
+                return
         tStart = time.time()
         for tid in remaps:
             self.coredumpQueue.add(tid)

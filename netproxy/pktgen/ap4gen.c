@@ -63,11 +63,9 @@ void *run_rxtx(void *vargp) {
 // pthread_mutex_t lock;
 
 memory_t coredump;
-int isAllocated, isRemapped;
+int isAllocated, isRemapped, allocationInitiated;
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc) {
-    
-    // printf("FLAGS 0x%x\n", ntohs(ap4ih->flags));
 
     uint16_t fid;
 
@@ -75,15 +73,23 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
 
     if(coredump.fid != fid) return;
 
-    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
+    // printf("FLAGS 0x%x\n", ntohs(ap4ih->flags));
+
+    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_REQALLOC) > 0) {
+        allocationInitiated = 1;
+    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
         // Allocation response packet.
+        printf("(ALLOCATION) <FID %d> ", fid);
         int i;
         for(i = 0; i < NUM_STAGES; i++) {
             coredump.sync_data[i].mem_start = ntohs(ap4alloc->mem_range[i].start);
             coredump.sync_data[i].mem_end = ntohs(ap4alloc->mem_range[i].end);
-            if((coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start) > 0)
+            if((coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start) > 0) {
                 coredump.valid_stages[i] = 1;
+                printf("[S%d: %d-%d] ", i, coredump.sync_data[i].mem_start, coredump.sync_data[i].mem_end);
+            }
         }
+        printf("\n");
         isAllocated = 1;
     } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_REMAPPED) > 0) {
         // Remap packet.
@@ -243,9 +249,15 @@ void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* ca
     int i, j, synced, sync_batches, num_pkts, remaining;
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns = 0;
-    #ifdef DEBUG
+    //#ifdef DEBUG
     printf("Initiating memory sync for FID %d ... \n", coredump.fid);
-    #endif
+    //#endif
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(coredump.valid_stages[i] == 0) continue;
+        for(j = coredump.sync_data[i].mem_start; j <= coredump.sync_data[i].mem_end; j++) {
+            coredump.sync_data[i].valid[j] = 0;
+        }
+    }
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
         perror("clock_gettime");
         exit(1);
@@ -264,13 +276,13 @@ void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* ca
                     send_memsync_pkt(instr_set, queue, cache, j, i, coredump.fid);
                 }
             }
-            #ifdef DEBUG
+            //#ifdef DEBUG
             printf("%d packets remaining ... \n", remaining);
             if(synced == 1) {
                 num_pkts = coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start + 1;
                 printf("[FID %d] Memory sync (with %d packets) complete for stage %d in %d batches\n", coredump.fid, num_pkts, i, sync_batches);
             }
-            #endif
+            //#endif
             sync_batches++;
             //usleep(RETRY_ITVL);
         }
@@ -328,6 +340,15 @@ void memsync_testmode(pnemonic_opcode_t* instr_set, active_queue_t* queue, activ
     coredump.sync_time.tv_sec = ts_now.tv_sec;
     coredump.sync_time.tv_nsec = ts_now.tv_nsec;
     coredump.sync_duration = elapsed_ns;
+}
+
+void init_memory_allocation(int fid, active_queue_t* queue, int num_accesses, int* access_idx, int* demand, int proglen, int iglim) {
+    int retries = 0;
+    while(allocationInitiated == 0 && retries < MAX_RETRIES) {
+        send_malloc_request(queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+        usleep(RETRY_ITVL);
+        retries++;
+    }
 }
 
 void get_memory_allocation(int fid, active_queue_t* queue) {
@@ -398,100 +419,7 @@ int main(int argc, char** argv) {
 
     rx_tx_init(argv[1], argv[2], argv[4], dst_eth_addr);
 
-    /* ====================== TMP ALLOC ===================== */
-
-    /*struct timespec ts_start, ts_now;
-    uint64_t elapsed_ns;
-
-    int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
-
-    num_accesses = 3;
-    access_idx[0] = 3;
-    access_idx[1] = 6;
-    access_idx[2] = 9;
-    demand[0] = 1;
-    demand[1] = 1;
-    demand[2] = 1;
-    proglen = 12;
-    iglim = 8;
-
-    active_program_t program;
-
     activep4_t cache[NUM_STAGES];
-
-    int preallocated = 0, k;
-
-    printf("Initiating malloc measurements ... \n");
-
-    for(k = 0; k < NUM_REPEATS; k++) {
-
-        memset(&program, 0, sizeof(active_program_t));
-        send_malloc_request(&queue, FID_RST, num_accesses, access_idx, demand, proglen, iglim);
-        active_rx(&program);
-
-        sleep(3);
-
-        printf("Resuming iter %d ... \n", k);
-
-        for(i = 0; i < 2; i++) {
-
-            fid = i + 1;
-
-            preallocated = 0;
-
-            if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
-                perror("clock_gettime");
-                exit(1);
-            }
-
-            memset(&program, 0, sizeof(active_program_t));
-            send_malloc_fetch(&queue, fid);
-            active_rx(&program);
-
-            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
-                perror("clock_gettime");
-                exit(1);
-            }
-            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
-
-            if(fid == 2) experiment[k].duration_allocation_fetch = elapsed_ns;
-
-            if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
-                preallocated = 1;
-            } else {
-                memset(&program, 0, sizeof(active_program_t));
-                send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
-                active_rx(&program);
-                while(TRUE) {
-                    memset(&program, 0, sizeof(active_program_t));
-                    send_malloc_fetch(&queue, fid);
-                    active_rx(&program);
-                    if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) break;
-                    usleep(10);
-                }
-            }
-
-            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
-                perror("clock_gettime");
-                exit(1);
-            }
-            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
-
-            if(fid == 2) experiment[k].duration_allocation_request = elapsed_ns;
-
-            if(preallocated == 1) printf("Already allocated FID %d.\n", fid);
-
-            char duration[100];
-            prettify_duration(elapsed_ns, duration);
-            printf("ELAPSED: %s\n", duration);
-
-            usleep(100000);
-        }
-    }*/
-
-    //exit(0);
-
-    /* ================= TMP ALLOC ================ */
 
     pthread_t rxtx;
 
@@ -511,7 +439,13 @@ int main(int argc, char** argv) {
 
     coredump.fid = fid;
 
-    /* Memory allocation */
+    /* ====================== TMP ALLOC ===================== */
+
+    if(fid == 3) {
+    printf("Experiment controller.\n");
+
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
 
     int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
 
@@ -525,8 +459,121 @@ int main(int argc, char** argv) {
     proglen = 12;
     iglim = 8;
 
+    active_program_t program;
+
+    int preallocated = 0, k;
+
+    printf("Initiating malloc measurements ... \n");
+
+    for(k = 0; k < NUM_REPEATS; k++) {
+
+        printf("Experiment %d starting ...\n", k);
+
+        memset(&program, 0, sizeof(active_program_t));
+        send_malloc_request(&queue, FID_RST, num_accesses, access_idx, demand, proglen, iglim);
+        // active_rx(&program);
+
+        sleep(5);
+
+        printf("Resuming iter %d ... \n", k);
+
+        for(i = 0; i < 3; i++) {
+
+            fid = i + 1;
+            coredump.fid = fid;
+
+            preallocated = 0;
+            isAllocated = 0;
+            allocationInitiated = 0;
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+
+            /*memset(&program, 0, sizeof(active_program_t));
+            send_malloc_fetch(&queue, fid);
+            active_rx(&program);
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+            if(fid == 3) experiment[k].duration_allocation_fetch = elapsed_ns;
+
+            if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
+                preallocated = 1;
+            } else {
+                memset(&program, 0, sizeof(active_program_t));
+                send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+                active_rx(&program);
+                while(TRUE) {
+                    memset(&program, 0, sizeof(active_program_t));
+                    send_malloc_fetch(&queue, fid);
+                    active_rx(&program);
+                    if((ntohs(program.ap4ih.flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) break;
+                    usleep(10);
+                }
+            }*/
+
+            //send_malloc_request(&queue, fid, num_accesses, access_idx, demand, proglen, iglim);
+            printf("initiating alloc ... \n");
+            init_memory_allocation(fid, &queue, num_accesses, access_idx, demand, proglen, iglim);
+            printf("fetching alloc ... \n");
+            get_memory_allocation(fid, &queue);
+            printf("OK.\n");
+
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+                perror("clock_gettime");
+                exit(1);
+            }
+            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+            if(fid == 3) experiment[k].duration_allocation_request = elapsed_ns;
+
+            if(preallocated == 1) printf("Already allocated FID %d.\n", fid);
+
+            char duration[100];
+            prettify_duration(elapsed_ns, duration);
+            printf("ELAPSED: %s\n", duration);
+
+            usleep(100000);
+        }
+
+        printf("Experiment %d complete.\n", k);
+    }
+
+    char* results_filename = "results.csv";
+
+    write_experiment_results(results_filename, experiment, NUM_REPEATS);
+
+    }
+    
+
+    //exit(0);
+
+    /* ================= TMP ALLOC ================ */
+
+    if(fid != 3) {
+    printf("Remap Listener.\n");
+
+    /* Memory allocation */
+
+    /*int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
+
+    num_accesses = 3;
+    access_idx[0] = 3;
+    access_idx[1] = 6;
+    access_idx[2] = 9;
+    demand[0] = 1;
+    demand[1] = 1;
+    demand[2] = 1;
+    proglen = 12;
+    iglim = 8;
+
     isAllocated = 0;
-    isRemapped = 0;
 
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
@@ -555,20 +602,20 @@ int main(int argc, char** argv) {
 
     char duration[100];
     prettify_duration(elapsed_ns, duration);
-    printf("Allocation time: %s\n", duration);
+    printf("Allocation time: %s\n", duration);*/
 
     int send_interval_us = 100000;
     activep4_t dummy_program;
-    activep4_t cache[NUM_STAGES];
 
     construct_dummy_program(&dummy_program, &instr_set);
     dummy_program.fid = fid;
     
-    syncInit = 0;
+    isRemapped = 0;
 
     while(TRUE) {
         if(isRemapped == 1) {
-            printf("Initiating memory snapshot ... \n");
+            syncInit = 0;
+            //printf("Initiating memory snapshot ... \n");
             send_memsync_init(&queue, fid);
             //usleep(100000);
             memsync(&instr_set, &queue, cache);
@@ -620,9 +667,7 @@ int main(int argc, char** argv) {
         }
     }*/
 
-    char* results_filename = "results.csv";
-
-    //write_experiment_results(results_filename, experiment, NUM_REPEATS);
+    }
 
     pthread_join(rxtx, NULL);
 
