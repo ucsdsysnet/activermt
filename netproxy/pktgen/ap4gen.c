@@ -283,11 +283,11 @@ void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* ca
     coredump.sync_time.tv_sec = ts_now.tv_sec;
     coredump.sync_time.tv_nsec = ts_now.tv_nsec;
     coredump.sync_duration = elapsed_ns;
-    #ifdef DEBUG
+    //#ifdef DEBUG
     char duration[100];
     prettify_duration(elapsed_ns, duration);
     printf("Memory sync for FID %d completed after %s\n", coredump.fid, duration);
-    #endif
+    //#endif
     syncInit = 0;
 }
 
@@ -570,9 +570,9 @@ int main(int argc, char** argv) {
         if(isRemapped == 1) {
             printf("Initiating memory snapshot ... \n");
             send_memsync_init(&queue, fid);
-            usleep(100000);
+            //usleep(100000);
+            memsync(&instr_set, &queue, cache);
             send_memsync_ack(&queue, fid);
-            //memsync(&instr_set, &queue, cache);
             isRemapped = 0;
         } else {
             send_active_pkt(&dummy_program, &instr_set, &queue);
