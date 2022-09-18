@@ -191,6 +191,7 @@ control Ingress(
 
     action remapped() {
         hdr.meta.remap = 1;
+        hdr.ih.flag_remapped = 1;
     }
 
     table remap_check { // TODO add bloom filter or equivalent.
@@ -207,7 +208,6 @@ control Ingress(
     apply {
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
-        remap_check.apply();
         if(hdr.ih.isValid()) {
             //activep4_stats.count((bit<32>)hdr.ih.fid);
             routeback.apply();
@@ -231,6 +231,7 @@ control Ingress(
                 ipv4_host.apply();
             }*/
         }
+        remap_check.apply();
         if(hdr.meta.complete == 1) hdr.meta.setInvalid();
     }
 }

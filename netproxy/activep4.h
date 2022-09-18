@@ -320,10 +320,9 @@ static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemon
 }
 
 static inline void construct_dummy_program(activep4_t* program, pnemonic_opcode_t* instr_set) {
-    int i = 0;
-    add_instruction(program, instr_set, "RETURN"); i++;
-    add_instruction(program, instr_set, "EOF"); i++;
-    program->ap4_len = i;
+    add_instruction(program, instr_set, "RTS");
+    add_instruction(program, instr_set, "RETURN");
+    add_instruction(program, instr_set, "EOF"); 
 }
 
 #endif

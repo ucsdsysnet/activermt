@@ -107,6 +107,7 @@ class ActiveP4Controller:
         self.coredumps = {}
         self.coredumpQueue = set()
         self.remoteDrainQueue = {}
+        self.remoteDrainInit = set()
         self.remoteDrainInitiator = None
         self.mutex = threading.Lock()
 
@@ -324,7 +325,11 @@ class ActiveP4Controller:
                 data = self.getMemoryDump(stageId, memRange)
                 self.coredumps[tid][stageId] = data
             self.coredumpQueue.remove(tid)
-            self.p4.Ingress.remap_check.delete(fid=tid)
+            if tid in self.remoteDrainQueue:
+                self.remoteDrainQueue.pop(tid)
+            if tid in self.remoteDrainInit:
+                self.p4.Ingress.remap_check.delete(fid=tid)
+                self.remoteDrainInit.remove(tid)
             bfrt.complete_operations()
         tElapsed = time.time() - tStart
         if self.DEBUG:
@@ -597,8 +602,10 @@ class ActiveP4Controller:
             th.start()
             for tid in remaps:
                 print("Queueing FID %d for remapping ... " % tid)
+                self.remoteDrainInit.add(tid)
                 self.remoteDrainQueue[tid] = remaps
                 self.p4.Ingress.remap_check.add_with_remapped(fid=tid)
+                bfrt.complete_operations()
 
         tsOverallStop = time.time()
 
@@ -646,16 +653,19 @@ class ActiveP4Controller:
             isRemap = (int(digest['flag_remapped']) == 1)
             isAck = (int(digest['flag_ack']) == 1)
             isInitiated = (int(digest['flag_initiated']) == 1)
-            if not isRemap:
+            if not isRemap or (fid not in self.remoteDrainQueue and fid not in self.remoteDrainInit):
                 continue
-            if isInitiated:
+            if isInitiated and fid in self.remoteDrainInit:
                 if self.DEBUG:
                     print("Drain initiated by FID", fid)
+                self.remoteDrainInit.remove(fid)
                 self.p4.Ingress.remap_check.delete(fid=fid)
                 bfrt.complete_operations()
-            if isAck:
+            if isAck and fid in self.remoteDrainQueue:
                 if self.DEBUG:
                     print("Drain complete by FID", fid)
+                if fid in self.remoteDrainInit:
+                    self.remoteDrainInit.remove(fid)
                 if fid in self.remoteDrainQueue:
                     remaps = self.remoteDrainQueue[fid]
                     if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
