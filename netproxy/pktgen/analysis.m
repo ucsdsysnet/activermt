@@ -11,9 +11,10 @@ data( : , 2) = data_snapshot_dp( : , 1) / 1E6;
 data( : , 3) = data_snapshot_cp( : , 1) / 1E6;
 
 figure;
-boxplot(data);
+set(gcf,'position',[300, 300, 480, 360]);
+boxplot(data / 1E3);
 title('Allocation Time');
-ylabel('Time (ms)');
+ylabel('Time (sec)');
 % set(gca, 'YScale', 'log');
 set(gca, 'FontSize', 16);
 xticklabels({"w/o snapshots", 'w/ DP snapshot', 'w/ CP snapshot'});

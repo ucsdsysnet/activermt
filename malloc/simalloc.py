@@ -24,6 +24,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
     utilByIter = np.zeros(len(sequence))
     failed = set()
     allocated = []
+    allocated_appnames = []
     if debug:
         print("Attempting allocation for sequence:", sequence)
     i = 0
@@ -90,6 +91,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
             enumerationSizes[iter] = activeFunc.getEnumerationSize()
             utilByIter[iter] = utilization
             allocated.append(fid)
+            allocated_appnames.append(appname)
             iter += 1
         else:
             failed.add(appname)
@@ -106,7 +108,9 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         'costs'         : costs,
         'utilization'   : utilByIter,
         'datalen'       : iter,
-        'allocmatrix'   : allocator.allocationMatrix
+        'allocmatrix'   : allocator.allocationMatrix,
+        'allocated'     : allocated,
+        'appnames'      : allocated_appnames
     }
     if iter == 0:
         return (0, 0, 0, 0)
@@ -256,37 +260,61 @@ def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w=
 # ANALYSIS: only inelastic app
 # ANALYSIS: fragmentation (arrival/departure)
 
-param_fit = [(True, True), (True, False)]
-param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
+custom = True
 
-workloads = appCfg.keys()
-workloads.append('random')
+if custom:
+    print("[Custom Experiment]")
+    expId = 0
+    
+    sequence = generateSequence(appCfg, appname='cache')
+    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    print("Utilization (cache)", utilization)
+    print(stats['allocated'])
+    print(stats['appnames'])
+    print(stats['allocmatrix'])
 
-# Strawman: get first-fit for each workload.
-for w in workloads:
-    type = 'fixed' if w != 'random' else w
-    appname = w
-    optimize = False
-    minimize = False
-    metric = Allocator.METRIC_SAT
-    paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
-    print("running analysis with params:", paramStr)
-    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
-    writeResults(results, "allocation_%s.csv" % paramStr)
+    print("")
 
-# Combinations: (first-fit, best-fit, worst-fit) x (relocations, utility, utilization).
-for w in workloads:
-    type = 'fixed' if w != 'random' else w
-    appname = w
-    for p1 in param_metric:
-        metric = p1
-        for p2 in param_fit:
-            optimize = p2[0]
-            minimize = p2[1]
-            paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
-            print("running analysis with params:", paramStr)
-            results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
-            writeResults(results, "allocation_%s.csv" % paramStr)
+    sequence = generateSequence(appCfg, type='random')
+    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    print("Utilization (random)", utilization)
+    print(stats['allocated'])
+    print(stats['appnames'])
+    print(stats['allocmatrix'])
+else:
+    param_fit = [(True, True), (True, False)]
+    param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
+
+    workloads = appCfg.keys()
+    workloads.append('random')
+
+    # Strawman: get first-fit for each workload.
+    for w in workloads:
+        type = 'fixed' if w != 'random' else w
+        appname = w
+        optimize = False
+        minimize = False
+        metric = Allocator.METRIC_SAT
+        paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
+        print("running analysis with params:", paramStr)
+        results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
+        writeResults(results, "allocation_%s.csv" % paramStr)
+
+    # Combinations: (first-fit, best-fit, worst-fit) x (relocations, utility, utilization).
+    for w in workloads:
+        type = 'fixed' if w != 'random' else w
+        appname = w
+        for p1 in param_metric:
+            metric = p1
+            for p2 in param_fit:
+                optimize = p2[0]
+                minimize = p2[1]
+                paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
+                print("running analysis with params:", paramStr)
+                results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
+                writeResults(results, "allocation_%s.csv" % paramStr)
 
 """if analysisType == "exclusive":
     numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1

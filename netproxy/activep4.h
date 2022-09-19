@@ -325,4 +325,8 @@ static inline void construct_dummy_program(activep4_t* program, pnemonic_opcode_
     add_instruction(program, instr_set, "EOF"); 
 }
 
+static inline void construct_cache_read_program(activep4_t* program, pnemonic_opcode_t* instr_set) {}
+
+static inline void construct_cache_write_program(activep4_t* program, pnemonic_opcode_t* instr_set) {}
+
 #endif
