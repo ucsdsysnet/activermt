@@ -198,9 +198,9 @@ static void rx_tx_init(char* eth_iface, char* ipv4_srcaddr, char* ipv4_dstaddr, 
     eth_dst_addr.sll_halen = ETH_ALEN;
 }
 
-static void active_tx(active_program_t* program) {
+static int active_tx(active_program_t* program) {
     
-    int ap4len, i;
+    int ap4len, i, sent;
     char sendbuf[BUFSIZE];
 
     struct ethhdr*      eth;
@@ -270,13 +270,15 @@ static void active_tx(active_program_t* program) {
 
     //memcpy(pptr, (char*)iph, ntohs(iph->tot_len));
 
-    if(sendto(
+    if((sent = sendto(
         sockfd, 
         sendbuf, 
         sizeof(struct ethhdr) + ntohs(iph->tot_len) + ap4len, 
         0, 
         (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr)
-    ) < 0) perror("sendto");
+    )) < 0) perror("sendto");
+
+    return sent;
 }
 
 static int active_rx(active_program_t* program) {

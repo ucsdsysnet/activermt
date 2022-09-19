@@ -1,11 +1,30 @@
 clear;
 clc
 
-data = csvread('results.csv');
+data_nosnapshot = csvread('results_nosync.csv');
+data_snapshot_cp = csvread('results_sync.csv');
+data_snapshot_dp = csvread('results_sync_remote.csv');
 
-duration_alloc = data( : , 1);
-duration_check = data( : , 2);
-duration_sync = data( : , 3);
+data = zeros(size(data_nosnapshot, 1), 3);
+data( : , 1) = data_nosnapshot( : , 1) / 1E6;
+data( : , 2) = data_snapshot_dp( : , 1) / 1E6;
+data( : , 3) = data_snapshot_cp( : , 1) / 1E6;
+
+figure;
+boxplot(data);
+title('Allocation Time');
+ylabel('Time (ms)');
+% set(gca, 'YScale', 'log');
+set(gca, 'FontSize', 16);
+xticklabels({"w/o snapshots", 'w/ DP snapshot', 'w/ CP snapshot'});
+grid on;
+saveas(gcf, 'allocation_time.png');
+
+% data = csvread('results.csv');
+% 
+% duration_alloc = data( : , 1);
+% duration_check = data( : , 2);
+% duration_sync = data( : , 3);
 
 % figure
 % boxplot(duration_sync / 1E6);
@@ -47,12 +66,12 @@ duration_sync = data( : , 3);
 % 
 % saveas(gcf, 'alloc_time_nosync.png');
 
-figure
-boxplot(duration_alloc / 1E9);
-title('Allocation time (w/ remote sync)');
-ylabel('Time (sec)');
-set(gca, 'FontSize', 16);
-xticks([]);
-grid on
-
-saveas(gcf, 'alloc_time_remote_sync.png');
+% figure
+% boxplot(duration_alloc / 1E9);
+% title('Allocation time (w/ remote sync)');
+% ylabel('Time (sec)');
+% set(gca, 'FontSize', 16);
+% xticks([]);
+% grid on
+% 
+% saveas(gcf, 'alloc_time_remote_sync.png');

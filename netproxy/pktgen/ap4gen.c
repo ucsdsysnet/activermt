@@ -115,7 +115,7 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
     }
 }
 
-void send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_queue_t* queue) {
+int send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_queue_t* queue) {
     
     uint16_t flags = AP4FLAGMASK_OPT_ARGS;
 
@@ -130,8 +130,10 @@ void send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_q
     memcpy((char*)&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
     txprog.codelen = program->ap4_len;
 
-    if(ASYNC_TX == 1) enqueue_program(queue, &txprog);
-    else active_tx(&txprog);
+    if(ASYNC_TX == 1) {
+        enqueue_program(queue, &txprog);
+        return 0;
+    } else return active_tx(&txprog);
 }
 
 void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, uint16_t index, int stageId, int fid) {
@@ -360,6 +362,35 @@ void get_memory_allocation(int fid, active_queue_t* queue) {
     }
 }
 
+void active_tx_loop(activep4_t* program, pnemonic_opcode_t* instr_set, active_queue_t* queue) {
+    int result;
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns, bytes_sent = 0, packets_sent = 0, datarate_pps = 0, datarate_bps = 0;
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+    while(TRUE) {
+        
+        result = send_active_pkt(program, instr_set, queue);
+        if(result > 0) {
+            bytes_sent += result;
+            packets_sent++;
+        }
+
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+        if(elapsed_ns >= 1E9) {
+            memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
+            datarate_bps = bytes_sent;
+            datarate_pps = packets_sent;
+            bytes_sent = 0;
+            packets_sent = 0;
+            printf("[STATS] data rate: %lu pps %lu Bps\n", datarate_pps, datarate_bps);
+        }
+    }
+}
+
 void write_experiment_results(char* filename, experiment_t* results, int num_datapoints) {
     
     FILE *fp = fopen(filename, "w");
@@ -420,6 +451,17 @@ int main(int argc, char** argv) {
     rx_tx_init(argv[1], argv[2], argv[4], dst_eth_addr);
 
     activep4_t cache[NUM_STAGES];
+
+    /* ========================================== */
+
+    activep4_t active_program;
+
+    construct_dummy_program(&active_program, &instr_set);
+    active_program.fid = fid;
+
+    active_tx_loop(&active_program, &instr_set, &queue);
+    
+    exit(0);
 
     pthread_t rxtx;
 
