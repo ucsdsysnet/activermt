@@ -61,7 +61,7 @@ class ActiveP4Controller:
         else:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
-        self.erase = True
+        self.erase = False
         self.watchdog = True
         self.block_size = 8192
         self.num_stages_ingress = 10
@@ -709,7 +709,7 @@ def getReferenceOpcodes(basePath, sourceName):
     return opcodes
 
 TOTAL_STAGES = 20
-testMode = False
+testMode = True
 debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"
@@ -735,8 +735,13 @@ controller.setMirrorSessions()
 controller.installInstructionTableEntries()
 
 if testMode:
+    num_indices = 65536
+    for i in range(0, num_indices):
+        bfrt.active.pipe.Ingress.heap_s4.add(REGISTER_INDEX=i, f1=i)
+        #bfrt.active.pipe.Ingress.heap_s9.add(REGISTER_INDEX=i, f1=3)
     for app in demoApps:
-        controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
+        #controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
+        pass
     
 controller.initController()
 

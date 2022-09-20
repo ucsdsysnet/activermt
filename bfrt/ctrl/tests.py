@@ -27,7 +27,7 @@ for entry in entries:
     print("Opcode", entry.key.get(b'hdr.instr$%d.opcode' % stageId))
     break"""
 
-tsBegin = time.time()
+"""tsBegin = time.time()
 bfrt.active.pipe.Ingress.heap_s0.operation_register_sync()
 regvals = bfrt.active.pipe.Ingress.heap_s0.dump(return_ents=True)
 tsEnd = time.time()
@@ -38,6 +38,13 @@ print("Entries", len(regvals))
 print("Index", regvals[0].key[b'$REGISTER_INDEX'])
 
 key = b'Ingress.heap_s%d.f1' % 0
-print("Value", regvals[0].data[key])
+print("Value", regvals[0].data[key])"""
+
+entries = bfrt.active.pipe.Ingress.instruction_4.dump(return_ents=True)
+for entry in entries:
+    fid = entry.key.get(b'hdr.meta.fid')[0]
+    opcode = entry.key.get(b'hdr.instr$%d.opcode' % 4)
+    if fid == 1:
+        print(entry)
 
 bfrt.complete_operations()

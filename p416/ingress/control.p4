@@ -1235,13 +1235,14 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
 
     // actions
 
+    action mark_termination() {
+        hdr.ih.flag_done = 1;
+    }
+
     action complete() {
         hdr.meta.complete = 1;
         bypass_egress();
-    }
-
-    action mark_termination() {
-        hdr.ih.flag_done = 1;
+        mark_termination();
     }
 
     action skip() {}

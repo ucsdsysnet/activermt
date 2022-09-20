@@ -14,7 +14,7 @@
 #define MAX_DATA    65536
 #define MAX_FIDX    256
 #define RETRY_ITVL  10000
-#define SEND_ITVL   100
+#define SEND_ITVL   10000
 #define MAX_RETRIES 100000
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
@@ -115,6 +115,7 @@ typedef struct {
 } cms_obj_t;
 
 cms_obj_t cms_counts[CMS_MAXKEYS], cms_gt[CMS_MAXKEYS];
+uint64_t num_hits, num_misses;
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc) {
 
@@ -181,8 +182,12 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
             #endif
         } else if(data_3 == magic) {
             // CMS.
-            cms_counts[data_0].value = data_1;
+            //cms_counts[data_0].value = data_1;
             //printf("Key=%u, Count=%u\n", data_0, data_1);
+            // CACHE.
+            //printf("CACHEDATA: %u,%u,%u,%u\n", data_0, data_1, data_2, data_3);
+            if(data_0 == data_2) num_hits++;
+            else num_misses++;
         }
     }
 }
@@ -629,11 +634,12 @@ int main(int argc, char** argv) {
     activep4_t program_cms;
     memset(&program_cms, 0, sizeof(activep4_t));
 
-    read_active_program(&program_cms, active_bytecode_cms);
+    read_active_program(&program_cms, active_bytecode_cache);
+    //read_active_program(&program_cms, active_bytecode_cms);
     printf("AP4 length: %d instructions.\n", program_cms.ap4_len);
     //print_active_program_bytes((char*)&program_cms.ap4_prog, program_cms.ap4_len * 2);
 
-    program_cms.num_accesses = 4;
+    /*program_cms.num_accesses = 4;
     program_cms.access_idx[0] = 4;
     program_cms.access_idx[1] = 7;
     program_cms.access_idx[2] = 9;
@@ -643,6 +649,16 @@ int main(int argc, char** argv) {
     program_cms.demand[2] = 1;
     program_cms.demand[3] = 1;
     program_cms.proglen = 14;
+    program_cms.iglim = 0;*/
+
+    program_cms.num_accesses = 3;
+    program_cms.access_idx[0] = 4;
+    program_cms.access_idx[1] = 7;
+    program_cms.access_idx[2] = 9;
+    program_cms.demand[0] = 1;
+    program_cms.demand[1] = 1;
+    program_cms.demand[2] = 1;
+    program_cms.proglen = 12;
     program_cms.iglim = 0;
 
     /* ========================================== */
@@ -705,7 +721,7 @@ int main(int argc, char** argv) {
     int sampleIdx = 0;
     uint64_t expDuration = CMS_EXPDURSEC * 1E9;
     uint64_t plim = RAND_MAX * prob;
-    uint64_t epoch_duration_ns = 1E9;
+    uint64_t epoch_duration_ns = 1E9, total_hits_misses;
     uint32_t other, found, num_positives = 0, flag_remapped = 0;
 
     memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
@@ -715,6 +731,9 @@ int main(int argc, char** argv) {
     if( clock_gettime(CLOCK_MONOTONIC, &ts_init) < 0 ) {perror("clock_gettime");exit(1);}
 
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime");exit(1);}
+
+    num_hits = 0;
+    num_misses = 0;
 
     while(TRUE) {
         
@@ -734,7 +753,7 @@ int main(int argc, char** argv) {
             if(elapsed_ns >= epoch_duration_ns) {
                 memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
 
-                qsort(cms_gt, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
+                /*qsort(cms_gt, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
                 qsort(cms_counts, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
 
                 num_positives = 0;
@@ -752,28 +771,43 @@ int main(int argc, char** argv) {
                 //for(key = 0; key < CMS_MAXKEYS; key++) {printf("[C] %u=%u, [GT] %u=%u\n", cms_counts[key].key, cms_counts[key].value, cms_gt[key].key, cms_gt[key].value);}
 
                 sample_ts[sampleIdx] = ts_now.tv_sec;
-                /*if(flag_remapped == 1) {
-                    printf("Memory remap ... \n");
-                    flag_remapped = 0;
-                    accuracy[sampleIdx++] = -1;
-                } else*/
                 accuracy[sampleIdx++] = (double)num_positives / CMS_TOPK;
 
                 //printf("%u / %u top k keys correctly detected.\n", num_positives, CMS_TOPK);
 
                 memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
-                memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+                memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));*/
+
+                total_hits_misses = num_hits + num_misses;
+                sample_ts[sampleIdx] = ts_now.tv_sec;
+                if(total_hits_misses > 0)
+                    accuracy[sampleIdx++] = 
+                    //total_hits_misses;
+                    (double)num_hits / total_hits_misses;
+                //printf("epoch %lu hits %lu misses\n", num_hits, num_misses);
+                num_hits = 0;
+                num_misses = 0;
             }
 
-            for(key = 0; key < CMS_MAXKEYS; key++) {
-                //if(rand() > plim) continue;
+            //key = (key + 1) % CMS_MAXKEYS;
+            //key = (key + 1) % 10;
+            key = rand() % CMS_MAXKEYS;
+            //key = 32769;
+            memset(&variant_cms.ap4data, 0, sizeof(activep4_data_t));
+            variant_cms.ap4data.data[3] = htonl(CMS_MAGIC);
+            variant_cms.ap4data.data[2] = htonl(key);
+            variant_cms.ap4data.data[1] = htonl(0);
+            active_tx(&variant_cms);
+
+            /*for(key = 0; key < CMS_MAXKEYS; key++) {
+                if(rand() > plim) continue;
                 cms_gt[key].value++;
                 cms_gt[key].key = key;
                 cms_counts[key].key = key;
                 variant_cms.ap4data.data[0] = htonl(key);
                 variant_cms.ap4data.data[1] = 0;
                 active_tx(&variant_cms);
-            }
+            }*/
         }
 
         elapsed_ns = (ts_now.tv_sec - ts_init.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_init.tv_nsec);
@@ -783,7 +817,7 @@ int main(int argc, char** argv) {
     }
 
     char cms_samples_filename[100];
-    sprintf(cms_samples_filename, "cms_samples_fid_%d.csv", fid);
+    sprintf(cms_samples_filename, "cache_samples_fid_%d.csv", fid);
     FILE *fp = fopen(cms_samples_filename, "w");
     for(key = 0; key < sampleIdx; key++) {
         fprintf(fp, "%lu,%lf\n", sample_ts[key], accuracy[key]);
