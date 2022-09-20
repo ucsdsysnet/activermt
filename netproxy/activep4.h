@@ -1,6 +1,8 @@
 #ifndef ACTIVEP4_H
 #define ACTIVEP4_H
 
+//#define DEBUG
+
 #define TRUE            1
 #define MAXINSTRSET     256
 #define MAXARGS         10
@@ -109,8 +111,11 @@ typedef struct {
     uint8_t         args_mapped;
     int             ap4_len;
     uint16_t        fid;
-    uint16_t        addr_mask;
-    uint16_t        addr_offset;
+    int             num_accesses;
+    int             access_idx[NUM_STAGES];
+    int             demand[NUM_STAGES];
+    int             proglen;
+    int             iglim;
 } activep4_t;
 
 typedef struct {

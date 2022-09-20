@@ -266,20 +266,38 @@ if custom:
     print("[Custom Experiment]")
     expId = 0
     
-    sequence = generateSequence(appCfg, appname='cache')
+    # sequence = generateSequence(appCfg, appname='cache')
+    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (cache)", utilization)
+    # print(stats['allocated'])
+    # print(stats['appnames'])
+    # print(stats['allocmatrix'])
+
+    # print("")
+
+    # sequence = generateSequence(appCfg, type='random')
+    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (random)", utilization)
+    # print(stats['allocated'])
+    # print(stats['appnames'])
+    # print(stats['allocmatrix'])
+
+    sequence = generateSequence(appCfg, type='random')
+
     allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
     (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    print("Utilization (cache)", utilization)
+    print("Utilization (random, cost)", utilization)
     print(stats['allocated'])
     print(stats['appnames'])
     print(stats['allocmatrix'])
 
     print("")
 
-    sequence = generateSequence(appCfg, type='random')
-    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    allocator = Allocator(metric=Allocator.METRIC_SAT, optimize=False, minimize=False)
     (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    print("Utilization (random)", utilization)
+    print("Utilization (random, strawman)", utilization)
     print(stats['allocated'])
     print(stats['appnames'])
     print(stats['allocmatrix'])

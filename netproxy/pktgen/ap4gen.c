@@ -5,7 +5,7 @@
 
 #include "../activep4_pktgen.h"
 
-//#define DEBUG
+#define DEBUG
 
 #define MODE_ALLOC  0
 #define MODE_SYNC   1
@@ -58,6 +58,41 @@ typedef struct {
 void *run_rxtx(void *vargp) {
     rxtx_config_t* config = (rxtx_config_t*)vargp;
     active_rx_tx(config->queue, config->ipv4_srcaddr, config->ipv4_dstaddr, config->eth_dstmac);
+}
+
+static inline void mutate_active_program(activep4_t* ap4, active_program_t* program, memory_t* memcfg, int NOP_OPCODE) {
+    
+    int access_idx_allocated[NUM_STAGES], i, j, block_start, block_end, offset;
+
+    memset(&access_idx_allocated, 0, NUM_STAGES * sizeof(int));
+
+    j = 0;
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(memcfg->valid_stages[i] == 1) access_idx_allocated[j++] = i;
+    }
+
+    if(j != ap4->num_accesses) {
+        printf("Invalid number of stages allocated!\n");
+        return;
+    }
+
+    program->codelen = ap4->ap4_len + access_idx_allocated[ap4->num_accesses - 1] - ap4->access_idx[ap4->num_accesses - 1];
+    memset(&program->ap4code, 0, program->codelen * sizeof(activep4_instr));
+
+    for(i = 0; i < program->codelen; i++) program->ap4code[i].opcode = NOP_OPCODE;
+
+    block_end = ap4->ap4_len - 1;
+    while(j > 0) {
+        j--;
+        block_start = ap4->access_idx[j];
+        offset = access_idx_allocated[j] - ap4->access_idx[j];
+        for(i = block_end; i >= block_start; i--) 
+            program->ap4code[i + offset] = ap4->ap4_prog[i];
+        block_end = block_start - 1;
+    }
+
+    for(i = 0; i < ap4->access_idx[0]; i++)
+        program->ap4code[i] = ap4->ap4_prog[i];
 }
 
 // pthread_mutex_t lock;
@@ -451,6 +486,40 @@ int main(int argc, char** argv) {
     rx_tx_init(argv[1], argv[2], argv[4], dst_eth_addr);
 
     activep4_t cache[NUM_STAGES];
+
+    /////////////////////////////////////////////////
+
+    char* active_bytecode_cache = "../../apps/cache/active/cacheread.apo";
+    char* active_bytecode_cms = "../../apps/cms/active/cms_basic.apo";
+
+    activep4_t program_cache_read;
+    memset(&program_cache_read, 0, sizeof(activep4_t));
+
+    read_active_program(&program_cache_read, active_bytecode_cms);
+    printf("AP4 length: %d instructions.\n", program_cache_read.ap4_len);
+    print_active_program_bytes((char*)&program_cache_read.ap4_prog, program_cache_read.ap4_len * 2);
+
+    program_cache_read.num_accesses = 3;
+    program_cache_read.access_idx[0] = 3;
+    program_cache_read.access_idx[1] = 6;
+    program_cache_read.access_idx[2] = 9;
+    program_cache_read.demand[0] = 1;
+    program_cache_read.demand[1] = 1;
+    program_cache_read.demand[2] = 1;
+    program_cache_read.proglen = 12;
+    program_cache_read.iglim = 8;
+
+    coredump.valid_stages[4] = 1;
+    coredump.valid_stages[7] = 1;
+    coredump.valid_stages[11] = 1;
+
+    active_program_t variant_cache_read;
+    memset(&variant_cache_read, 0, sizeof(active_program_t));
+
+    mutate_active_program(&program_cache_read, &variant_cache_read, &coredump, pnemonic_to_opcode(&instr_set, "NOP"));
+    print_active_program_bytes((char*)&variant_cache_read.ap4code, variant_cache_read.codelen * 2);
+
+    exit(0);
 
     /* ========================================== */
 
