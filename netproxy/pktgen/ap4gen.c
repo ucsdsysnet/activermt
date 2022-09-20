@@ -19,6 +19,9 @@
 #define NUM_REPEATS 100
 #define FID_RST     255
 
+#define CMS_MAGIC   0x87654321
+#define CMS_MAXKEYS 8
+
 static inline void prettify_duration(unsigned long ts, char* buf) {
     if(ts < 1E3) sprintf(buf, "%lu ns", ts);
     else if(ts < 1E6) sprintf(buf, "%lf us", ts / 1E3);
@@ -99,6 +102,14 @@ static inline void mutate_active_program(activep4_t* ap4, active_program_t* prog
 
 memory_t coredump;
 int isAllocated, isRemapped, allocationInitiated, isSyncing;
+int syncInit;
+
+typedef struct {
+    uint32_t    key;
+    uint32_t    value;
+} cms_obj_t;
+
+cms_obj_t cms_counts[CMS_MAXKEYS], cms_gt[CMS_MAXKEYS];
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc) {
 
@@ -107,6 +118,8 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
     fid = ntohs(ap4ih->fid);
 
     if(coredump.fid != fid) return;
+
+    uint32_t magic = CMS_MAGIC;
 
     // printf("FLAGS 0x%x\n", ntohs(ap4ih->flags));
 
@@ -132,7 +145,15 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
         // printf("Remap packet 0x%x\n", ntohs(ap4ih->flags));
     } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) > 0) {
         // Memsync packet / active program packet.
-        if(isSyncing == 1) {
+        uint32_t data_0, data_1, data_2, data_3;
+        if((ntohs(ap4ih->flags) & AP4FLAGMASK_OPT_ARGS) > 0) {
+            data_0 = ntohl(ap4data->data[0]);
+            data_1 = ntohl(ap4data->data[1]);
+            data_2 = ntohl(ap4data->data[2]);
+            data_3 = ntohl(ap4data->data[3]);
+            //printf("DATA: %u,%u,%u,%u\n", data_0, data_1, data_2, data_3);
+        }
+        if(isSyncing == 1 || syncInit == 1) {
             uint16_t index, stageId, value;
             index = ntohl(ap4data->data[0]);
             stageId = ntohl(ap4data->data[2]);
@@ -148,12 +169,10 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
             #ifdef DEBUG
             printf("[FID %d] sync packet (flags=%x) M%d[%d]=%d\n", fid, ntohs(ap4ih->flags), stageId, index, value);
             #endif
-        } else {
+        } else if(data_3 == magic) {
             // CMS.
-            uint32_t data_0, data_1;
-            data_0 = ntohl(ap4data->data[0]);
-            data_1 = ntohl(ap4data->data[1]);
-            printf("Key=%u, Count=%u\n", data_0, data_1);
+            cms_counts[data_0].value = data_1;
+            //printf("Key=%u, Count=%u\n", data_0, data_1);
         }
     }
 }
@@ -189,6 +208,33 @@ void send_memsync_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activ
     memset((char*)&txprog, 0, sizeof(active_program_t));
 
     program = construct_memsync_program(fid, stageId, instr_set, cache);
+
+    txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
+    txprog.ap4ih.fid = htons(fid);
+    txprog.ap4ih.flags = htons(flags);
+
+    txprog.ap4data.data[0] = htonl(index);
+    txprog.ap4data.data[1] = 0;
+    txprog.ap4data.data[2] = htonl(stageId);
+    txprog.ap4data.data[3] = 0;
+
+    memcpy((char*)&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
+    txprog.codelen = program->ap4_len;
+
+    if(ASYNC_TX == 1) enqueue_program(queue, &txprog);
+    else active_tx(&txprog);
+}
+
+void send_memset_pkt(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache, uint16_t index, int stageId, int fid) {
+
+    uint16_t flags = AP4FLAGMASK_OPT_ARGS;
+
+    activep4_t* program;
+    active_program_t txprog;
+
+    memset((char*)&txprog, 0, sizeof(active_program_t));
+
+    program = construct_memset_program(fid, stageId, instr_set, cache);
 
     txprog.ap4ih.SIG = htonl(ACTIVEP4SIG);
     txprog.ap4ih.fid = htons(fid);
@@ -287,7 +333,6 @@ void send_memsync_ack(active_queue_t* queue, int fid) {
     else active_tx(&txprog);
 }
 
-int syncInit;
 void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache) {
     if(syncInit == 1) return;
     syncInit = 1;
@@ -344,6 +389,69 @@ void memsync(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* ca
     char duration[100];
     prettify_duration(elapsed_ns, duration);
     printf("Memory sync for FID %d completed after %s\n", coredump.fid, duration);
+    //#endif
+    syncInit = 0;
+}
+
+void memerase(pnemonic_opcode_t* instr_set, active_queue_t* queue, activep4_t* cache) {
+    if(syncInit == 1) return;
+    syncInit = 1;
+    int i, j, synced, sync_batches, num_pkts, remaining;
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns = 0;
+    //#ifdef DEBUG
+    printf("Initiating memory erase for FID %d ... \n", coredump.fid);
+    //#endif
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(coredump.valid_stages[i] == 0) continue;
+        for(j = coredump.sync_data[i].mem_start; j <= coredump.sync_data[i].mem_end; j++) {
+            coredump.sync_data[i].valid[j] = 0;
+        }
+    }
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(coredump.valid_stages[i] == 0) continue;
+        synced = 0;
+        sync_batches = 0;
+        while(synced == 0 && sync_batches < MAX_SYNC_R) {
+            synced = 1;
+            remaining = 0;
+            for(j = coredump.sync_data[i].mem_start; j <= coredump.sync_data[i].mem_end; j++) {
+                if(coredump.sync_data[i].valid[j] == 0) {
+                    synced = 0;
+                    remaining++;
+                    send_memset_pkt(instr_set, queue, cache, j, i, coredump.fid);
+                    break;
+                }
+            }
+            break;
+            //#ifdef DEBUG
+            printf("%d packets remaining ... \n", remaining);
+            if(synced == 1) {
+                num_pkts = coredump.sync_data[i].mem_end - coredump.sync_data[i].mem_start + 1;
+                printf("[FID %d] Memory erase (with %d packets) complete for stage %d in %d batches\n", coredump.fid, num_pkts, i, sync_batches);
+            }
+            //#endif
+            sync_batches++;
+            //usleep(RETRY_ITVL);
+        }
+        break;
+    }
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {
+        perror("clock_gettime");
+        exit(1);
+    }
+    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+    coredump.sync_time.tv_sec = ts_now.tv_sec;
+    coredump.sync_time.tv_nsec = ts_now.tv_nsec;
+    coredump.sync_duration = elapsed_ns;
+    //#ifdef DEBUG
+    char duration[100];
+    prettify_duration(elapsed_ns, duration);
+    printf("Memory erase for FID %d completed after %s\n", coredump.fid, duration);
     //#endif
     syncInit = 0;
 }
@@ -448,6 +556,10 @@ void write_experiment_results(char* filename, experiment_t* results, int num_dat
     printf("%d results written to %s\n", num_datapoints, filename);
 }
 
+int cmpfunc (const void * a, const void * b) {
+   return ( ((cms_obj_t*)a)->value - ((cms_obj_t*)b)->value );
+}
+
 int main(int argc, char** argv) {
 
     if(argc < 7) {
@@ -493,7 +605,10 @@ int main(int argc, char** argv) {
 
     rx_tx_init(argv[1], argv[2], argv[4], dst_eth_addr);
 
-    activep4_t cache[NUM_STAGES];
+    activep4_t cache[NUM_STAGES], erase_cache[NUM_STAGES];
+
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
 
     /////////////////////////////////////////////////
 
@@ -552,6 +667,7 @@ int main(int argc, char** argv) {
     isSyncing = 0;
     isAllocated = 0;
     allocationInitiated = 0;
+    isRemapped = 0;
 
     printf("initiating alloc ... \n");
     init_memory_allocation(fid, &queue, program_cms.num_accesses, program_cms.access_idx, program_cms.demand, program_cms.proglen, program_cms.iglim);
@@ -571,10 +687,65 @@ int main(int argc, char** argv) {
 
     uint32_t key = 1;
 
-    variant_cms.ap4data.data[0] = htonl(key);
+    variant_cms.ap4data.data[3] = htonl(CMS_MAGIC);
 
-    active_tx(&variant_cms);
+    double prob = 0.5;
+    uint64_t plim = RAND_MAX * prob;
+    uint64_t epoch_duration_ns = 1E9;
+    uint32_t other, topk = 4, found, num_positives = 0;
+
+    memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+    memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime");exit(1);}
+
+    while(TRUE) {
+        
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+        if(elapsed_ns >= epoch_duration_ns) {
+            memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
+
+            qsort(cms_gt, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
+            qsort(cms_counts, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
+
+            num_positives = 0;
+            for(key = 0; key < topk; key++) {
+                found = 0;
+                for(other = 0; other < topk; other++) {
+                    if(cms_counts[other].key == cms_gt[key].key) {
+                        found = 1;
+                        break;
+                    }
+                }
+                if(found == 1) num_positives++;
+            }
+
+            //for(key = 0; key < CMS_MAXKEYS; key++) {printf("[C] %u=%u, [GT] %u=%u\n", cms_counts[key].key, cms_counts[key].value, cms_gt[key].key, cms_gt[key].value);}
+
+            printf("%u / %u top k keys correctly detected.\n", num_positives, topk);
+
+            memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+            memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+        }
+
+        for(key = 0; key < CMS_MAXKEYS; key++) {
+            if(rand() > plim) continue;
+            cms_gt[key].value++;
+            cms_gt[key].key = key;
+            cms_counts[key].key = key;
+            variant_cms.ap4data.data[0] = htonl(key);
+            variant_cms.ap4data.data[1] = 0;
+            active_tx(&variant_cms);
+        }
+
+        usleep(100000);
+    }
+
     sleep(2);
+
+    //syncInit = 0;
+    //memerase(&instr_set, &queue, erase_cache);
 
     exit(0);
 
@@ -582,9 +753,6 @@ int main(int argc, char** argv) {
 
     //if(fid == 3) {
     //printf("Experiment controller.\n");
-
-    struct timespec ts_start, ts_now;
-    uint64_t elapsed_ns;
 
     int num_accesses, access_idx[NUM_STAGES], demand[NUM_STAGES], proglen, iglim;
 

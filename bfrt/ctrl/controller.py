@@ -61,6 +61,7 @@ class ActiveP4Controller:
         else:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
+        self.erase = True
         self.watchdog = True
         self.block_size = 8192
         self.num_stages_ingress = 10
@@ -295,6 +296,8 @@ class ActiveP4Controller:
             if regId >= memRange[0] and regId <= memRange[1]:
                 data.append((regId, regVal))
         data.sort(key=lambda x: x[0])
+        if self.erase:
+            register.clear()
         return data    
 
     """def resetTrafficCounters(self):

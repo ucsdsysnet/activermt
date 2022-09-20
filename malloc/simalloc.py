@@ -265,6 +265,10 @@ custom = True
 if custom:
     print("[Custom Experiment]")
     expId = 0
+
+    # activeFunc = ActiveFunction(1, np.transpose(np.array([4, 7, 9, 11], dtype=np.uint32)), 0, 14, [1, 1, 1, 1], enumerate=True)
+    # enums = activeFunc.getEnumeration()
+    # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
     
     # sequence = generateSequence(appCfg, appname='cache')
     # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
@@ -284,23 +288,23 @@ if custom:
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
 
-    sequence = generateSequence(appCfg, type='random')
+    # sequence = generateSequence(appCfg, type='random')
 
-    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    print("Utilization (random, cost)", utilization)
-    print(stats['allocated'])
-    print(stats['appnames'])
-    print(stats['allocmatrix'])
+    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (random, cost)", utilization)
+    # print(stats['allocated'])
+    # print(stats['appnames'])
+    # print(stats['allocmatrix'])
 
-    print("")
+    # print("")
 
-    allocator = Allocator(metric=Allocator.METRIC_SAT, optimize=False, minimize=False)
-    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    print("Utilization (random, strawman)", utilization)
-    print(stats['allocated'])
-    print(stats['appnames'])
-    print(stats['allocmatrix'])
+    # allocator = Allocator(metric=Allocator.METRIC_SAT, optimize=False, minimize=False)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (random, strawman)", utilization)
+    # print(stats['allocated'])
+    # print(stats['appnames'])
+    # print(stats['allocmatrix'])
 else:
     param_fit = [(True, True), (True, False)]
     param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]

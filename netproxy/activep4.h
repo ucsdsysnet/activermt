@@ -324,6 +324,34 @@ static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemon
     return &cache[stageId];
 }
 
+static inline activep4_t* construct_memset_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_t* cache) {
+    if(stageId > TGT_MAX_STAGES || stageId == 0) return NULL;
+    if(cache[stageId].fid > 0) return &cache[stageId];
+    int rts_inserted = 0, i = 0;
+    add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
+    while(i < TGT_MAX_STAGES - 1) {
+        if(i >= stageId) {
+            add_instruction(&cache[stageId], instr_set, "MEM_WRITE"); i++;
+            add_instruction(&cache[stageId], instr_set, "NOP"); i++;
+            break;
+        } else if(rts_inserted == 0) {
+            add_instruction(&cache[stageId], instr_set, "RTS"); i++;
+            rts_inserted = 1;
+        } else {
+            add_instruction(&cache[stageId], instr_set, "NOP"); i++;
+        }
+    }
+    if(rts_inserted == 0) {
+        add_instruction(&cache[stageId], instr_set, "RTS");
+        i++;
+    }
+    add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
+    add_instruction(&cache[stageId], instr_set, "EOF"); i++;
+    cache[stageId].ap4_len = i;
+    cache[stageId].fid = fid;
+    return &cache[stageId];
+}
+
 static inline void construct_dummy_program(activep4_t* program, pnemonic_opcode_t* instr_set) {
     add_instruction(program, instr_set, "RTS");
     add_instruction(program, instr_set, "RETURN");
