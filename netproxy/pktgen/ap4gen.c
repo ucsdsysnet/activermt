@@ -745,11 +745,12 @@ int main(int argc, char** argv) {
             flag_remapped = 1;
             //send_malloc_fetch(&queue, fid);
             printf("Getting updated allocation ... \n");
-            sample_ts[sampleIdx] = ts_now.tv_sec;
-            accuracy[sampleIdx++] = -2;
+            //sample_ts[sampleIdx] = ts_now.tv_sec;
+            //accuracy[sampleIdx++] = -2;
             get_memory_allocation(fid, &queue);
             isRemapped = 0;
-        } else {
+        } 
+        //else {
             if(elapsed_ns >= epoch_duration_ns) {
                 memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
 
@@ -780,10 +781,15 @@ int main(int argc, char** argv) {
 
                 total_hits_misses = num_hits + num_misses;
                 sample_ts[sampleIdx] = ts_now.tv_sec;
-                if(total_hits_misses > 0)
-                    accuracy[sampleIdx++] = 
-                    //total_hits_misses;
-                    (double)num_hits / total_hits_misses;
+                if(isRemapped == 1) {
+                    accuracy[sampleIdx++] = -2;
+                } else {
+                    if(total_hits_misses > 0)
+                        accuracy[sampleIdx++] = 
+                        //total_hits_misses;
+                        (double)num_hits / total_hits_misses;
+                    else accuracy[sampleIdx++] = -3;
+                }
                 //printf("epoch %lu hits %lu misses\n", num_hits, num_misses);
                 num_hits = 0;
                 num_misses = 0;
@@ -808,7 +814,7 @@ int main(int argc, char** argv) {
                 variant_cms.ap4data.data[1] = 0;
                 active_tx(&variant_cms);
             }*/
-        }
+        //}
 
         elapsed_ns = (ts_now.tv_sec - ts_init.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_init.tv_nsec);
         if(elapsed_ns >= expDuration) break;
