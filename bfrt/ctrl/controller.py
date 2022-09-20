@@ -553,6 +553,9 @@ class ActiveP4Controller:
         if fid in self.queue or fid in self.active:
             return
 
+        if igLim == 255:
+            igLim = -1
+
         tsOverallStart = time.time()
 
         self.queue.append(fid)
@@ -569,6 +572,7 @@ class ActiveP4Controller:
         minDemand = np.array(minDemand, dtype=np.uint32)
 
         if self.DEBUG:
+            print("Program length", progLen, "IGLIM", igLim)
             print("Constraints:")
             print(accessIdx)
             print(minDemand)

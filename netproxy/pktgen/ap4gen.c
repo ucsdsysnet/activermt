@@ -5,7 +5,7 @@
 
 #include "../activep4_pktgen.h"
 
-#define DEBUG
+//#define DEBUG
 
 #define MODE_ALLOC  0
 #define MODE_SYNC   1
@@ -14,7 +14,7 @@
 #define MAX_DATA    65536
 #define MAX_FIDX    256
 #define RETRY_ITVL  10000
-#define MAX_RETRIES 10000
+#define MAX_RETRIES 100
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
 #define FID_RST     255
@@ -98,7 +98,7 @@ static inline void mutate_active_program(activep4_t* ap4, active_program_t* prog
 // pthread_mutex_t lock;
 
 memory_t coredump;
-int isAllocated, isRemapped, allocationInitiated;
+int isAllocated, isRemapped, allocationInitiated, isSyncing;
 
 void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4ih, activep4_data_t* ap4data, activep4_malloc_res_t* ap4alloc) {
 
@@ -131,22 +131,30 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
         isRemapped = 1;
         // printf("Remap packet 0x%x\n", ntohs(ap4ih->flags));
     } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) > 0) {
-        // Memsync packet.
-        uint16_t index, stageId, value;
-        index = ntohl(ap4data->data[0]);
-        stageId = ntohl(ap4data->data[2]);
-        value = ntohl(ap4data->data[1]);
-        if(coredump.fid == fid 
-            && coredump.valid_stages[stageId] > 0 
-            && index >= coredump.sync_data[stageId].mem_start 
-            && index <= coredump.sync_data[stageId].mem_end
-        ) {
-            coredump.sync_data[stageId].data[index] = value;
-            coredump.sync_data[stageId].valid[index] = 1;
+        // Memsync packet / active program packet.
+        if(isSyncing == 1) {
+            uint16_t index, stageId, value;
+            index = ntohl(ap4data->data[0]);
+            stageId = ntohl(ap4data->data[2]);
+            value = ntohl(ap4data->data[1]);
+            if(coredump.fid == fid 
+                && coredump.valid_stages[stageId] > 0 
+                && index >= coredump.sync_data[stageId].mem_start 
+                && index <= coredump.sync_data[stageId].mem_end
+            ) {
+                coredump.sync_data[stageId].data[index] = value;
+                coredump.sync_data[stageId].valid[index] = 1;
+            }
+            #ifdef DEBUG
+            printf("[FID %d] sync packet (flags=%x) M%d[%d]=%d\n", fid, ntohs(ap4ih->flags), stageId, index, value);
+            #endif
+        } else {
+            // CMS.
+            uint32_t data_0, data_1;
+            data_0 = ntohl(ap4data->data[0]);
+            data_1 = ntohl(ap4data->data[1]);
+            printf("Key=%u, Count=%u\n", data_0, data_1);
         }
-        #ifdef DEBUG
-        printf("[FID %d] sync packet (flags=%x) M%d[%d]=%d\n", fid, ntohs(ap4ih->flags), stageId, index, value);
-        #endif
     }
 }
 
@@ -162,7 +170,7 @@ int send_active_pkt(activep4_t* program, pnemonic_opcode_t* instr_set, active_qu
     txprog.ap4ih.fid = htons(program->fid);
     txprog.ap4ih.flags = htons(flags);
 
-    memcpy((char*)&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
+    memcpy(&txprog.ap4code, (char*)&program->ap4_prog, sizeof(activep4_instr) * MAXPROGLEN);
     txprog.codelen = program->ap4_len;
 
     if(ASYNC_TX == 1) {
@@ -492,45 +500,34 @@ int main(int argc, char** argv) {
     char* active_bytecode_cache = "../../apps/cache/active/cacheread.apo";
     char* active_bytecode_cms = "../../apps/cms/active/cms_basic.apo";
 
-    activep4_t program_cache_read;
-    memset(&program_cache_read, 0, sizeof(activep4_t));
+    activep4_t program_cms;
+    memset(&program_cms, 0, sizeof(activep4_t));
 
-    read_active_program(&program_cache_read, active_bytecode_cms);
-    printf("AP4 length: %d instructions.\n", program_cache_read.ap4_len);
-    print_active_program_bytes((char*)&program_cache_read.ap4_prog, program_cache_read.ap4_len * 2);
+    read_active_program(&program_cms, active_bytecode_cms);
+    printf("AP4 length: %d instructions.\n", program_cms.ap4_len);
+    //print_active_program_bytes((char*)&program_cms.ap4_prog, program_cms.ap4_len * 2);
 
-    program_cache_read.num_accesses = 3;
-    program_cache_read.access_idx[0] = 3;
-    program_cache_read.access_idx[1] = 6;
-    program_cache_read.access_idx[2] = 9;
-    program_cache_read.demand[0] = 1;
-    program_cache_read.demand[1] = 1;
-    program_cache_read.demand[2] = 1;
-    program_cache_read.proglen = 12;
-    program_cache_read.iglim = 8;
-
-    coredump.valid_stages[4] = 1;
-    coredump.valid_stages[7] = 1;
-    coredump.valid_stages[11] = 1;
-
-    active_program_t variant_cache_read;
-    memset(&variant_cache_read, 0, sizeof(active_program_t));
-
-    mutate_active_program(&program_cache_read, &variant_cache_read, &coredump, pnemonic_to_opcode(&instr_set, "NOP"));
-    print_active_program_bytes((char*)&variant_cache_read.ap4code, variant_cache_read.codelen * 2);
-
-    exit(0);
+    program_cms.num_accesses = 4;
+    program_cms.access_idx[0] = 4;
+    program_cms.access_idx[1] = 7;
+    program_cms.access_idx[2] = 9;
+    program_cms.access_idx[3] = 11;
+    program_cms.demand[0] = 1;
+    program_cms.demand[1] = 1;
+    program_cms.demand[2] = 1;
+    program_cms.demand[3] = 1;
+    program_cms.proglen = 14;
+    program_cms.iglim = 0;
 
     /* ========================================== */
 
-    activep4_t active_program;
+    /*activep4_t active_program;
 
     construct_dummy_program(&active_program, &instr_set);
     active_program.fid = fid;
 
     active_tx_loop(&active_program, &instr_set, &queue);
-    
-    exit(0);
+    exit(0);*/
 
     pthread_t rxtx;
 
@@ -550,10 +547,41 @@ int main(int argc, char** argv) {
 
     coredump.fid = fid;
 
+    /////////////////////////////////////////////////////////////////
+
+    isSyncing = 0;
+    isAllocated = 0;
+    allocationInitiated = 0;
+
+    printf("initiating alloc ... \n");
+    init_memory_allocation(fid, &queue, program_cms.num_accesses, program_cms.access_idx, program_cms.demand, program_cms.proglen, program_cms.iglim);
+    printf("fetching alloc ... \n");
+    get_memory_allocation(fid, &queue);
+    printf("OK.\n");
+
+    active_program_t variant_cms;
+    memset(&variant_cms, 0, sizeof(active_program_t));
+
+    mutate_active_program(&program_cms, &variant_cms, &coredump, pnemonic_to_opcode(&instr_set, "NOP"));
+    print_active_program_bytes((char*)&variant_cms.ap4code, variant_cms.codelen * 2);
+
+    variant_cms.ap4ih.SIG = htonl(ACTIVEP4SIG);
+    variant_cms.ap4ih.fid = htons(fid);
+    variant_cms.ap4ih.flags = htons(AP4FLAGMASK_OPT_ARGS);
+
+    uint32_t key = 1;
+
+    variant_cms.ap4data.data[0] = htonl(key);
+
+    active_tx(&variant_cms);
+    sleep(2);
+
+    exit(0);
+
     /* ====================== TMP ALLOC ===================== */
 
-    if(fid == 3) {
-    printf("Experiment controller.\n");
+    //if(fid == 3) {
+    //printf("Experiment controller.\n");
 
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
@@ -660,15 +688,15 @@ int main(int argc, char** argv) {
 
     write_experiment_results(results_filename, experiment, NUM_REPEATS);
 
-    }
+    //}
     
 
     //exit(0);
 
     /* ================= TMP ALLOC ================ */
 
-    if(fid != 3) {
-    printf("Remap Listener.\n");
+    //if(fid != 3) {
+    //printf("Remap Listener.\n");
 
     /* Memory allocation */
 
@@ -778,7 +806,7 @@ int main(int argc, char** argv) {
         }
     }*/
 
-    }
+    //}
 
     pthread_join(rxtx, NULL);
 
