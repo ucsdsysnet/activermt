@@ -14,7 +14,7 @@
 #define MAX_DATA    65536
 #define MAX_FIDX    256
 #define RETRY_ITVL  10000
-#define SEND_ITVL   10000
+#define SEND_ITVL   100
 #define MAX_RETRIES 100000
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
@@ -24,7 +24,7 @@
 #define CMS_MAXKEYS     65536
 #define CMS_TOPK        8192
 #define CMS_MAXSAMPLES  10000
-#define CMS_EXPDURSEC   30
+#define CMS_EXPDURSEC   60
 
 static inline void prettify_duration(unsigned long ts, char* buf) {
     if(ts < 1E3) sprintf(buf, "%lu ns", ts);
