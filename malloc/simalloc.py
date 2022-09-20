@@ -241,10 +241,13 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
         i += 1
     return sequence
 
-def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False):
+def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None):
     results = []
     for k in range(0, numRepeats):
-        sequence = generateSequence(appCfg, appname=appname) if w != 'random' else generateSequence(appCfg, type='random')
+        if fixedSequence is None:
+            sequence = generateSequence(appCfg, appname=appname) if w != 'random' else generateSequence(appCfg, type='random')
+        else:
+            sequence = fixedSequence
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
         result = simAllocation(expId, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb)
@@ -265,6 +268,14 @@ custom = True
 if custom:
     print("[Custom Experiment]")
     expId = 0
+
+    sequence = generateSequence(appCfg, type='random')
+
+    results = runAnalysis(appCfg, Allocator.METRIC_SAT, False, False, numRepeats, w='random', debug=True, fixedSequence=sequence)
+    writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(False, False, Allocator.METRIC_SAT, type='random'))
+
+    results = runAnalysis(appCfg, Allocator.METRIC_COST, True, True, numRepeats, w='random', debug=True, fixedSequence=sequence)
+    writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(True, True, Allocator.METRIC_COST, type='random'))
 
     # activeFunc = ActiveFunction(1, np.transpose(np.array([4, 7, 9, 11], dtype=np.uint32)), 0, 14, [1, 1, 1, 1], enumerate=True)
     # enums = activeFunc.getEnumeration()

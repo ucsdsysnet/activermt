@@ -14,13 +14,15 @@
 #define MAX_DATA    65536
 #define MAX_FIDX    256
 #define RETRY_ITVL  10000
-#define MAX_RETRIES 100
+#define SEND_ITVL   100000
+#define MAX_RETRIES 100000
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
 #define FID_RST     255
 
-#define CMS_MAGIC   0x87654321
-#define CMS_MAXKEYS 8
+#define CMS_MAGIC       0x87654321
+#define CMS_MAXKEYS     8
+#define CMS_MAXSAMPLES  10000
 
 static inline void prettify_duration(unsigned long ts, char* buf) {
     if(ts < 1E3) sprintf(buf, "%lu ns", ts);
@@ -139,11 +141,14 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
         }
         printf("\n");
         isAllocated = 1;
-    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_REMAPPED) > 0) {
+        isRemapped = 0;
+    } 
+    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_REMAPPED) > 0) {
         // Remap packet.
         isRemapped = 1;
-        // printf("Remap packet 0x%x\n", ntohs(ap4ih->flags));
-    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) > 0) {
+        printf("Remap packet 0x%x\n", ntohs(ap4ih->flags));
+    } 
+    if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_EOE) > 0) {
         // Memsync packet / active program packet.
         uint32_t data_0, data_1, data_2, data_3;
         if((ntohs(ap4ih->flags) & AP4FLAGMASK_OPT_ARGS) > 0) {
@@ -506,6 +511,7 @@ void init_memory_allocation(int fid, active_queue_t* queue, int num_accesses, in
 
 void get_memory_allocation(int fid, active_queue_t* queue) {
     int retries = 0;
+    isAllocated = 0;
     while(isAllocated == 0 && retries < MAX_RETRIES) {
         send_malloc_fetch(queue, fid);
         usleep(RETRY_ITVL);
@@ -679,7 +685,7 @@ int main(int argc, char** argv) {
     memset(&variant_cms, 0, sizeof(active_program_t));
 
     mutate_active_program(&program_cms, &variant_cms, &coredump, pnemonic_to_opcode(&instr_set, "NOP"));
-    print_active_program_bytes((char*)&variant_cms.ap4code, variant_cms.codelen * 2);
+    // print_active_program_bytes((char*)&variant_cms.ap4code, variant_cms.codelen * 2);
 
     variant_cms.ap4ih.SIG = htonl(ACTIVEP4SIG);
     variant_cms.ap4ih.fid = htons(fid);
@@ -689,10 +695,12 @@ int main(int argc, char** argv) {
 
     variant_cms.ap4data.data[3] = htonl(CMS_MAGIC);
 
-    double prob = 0.5;
+    double prob = 0.5, accuracy[CMS_MAXSAMPLES];
+    uint64_t sample_ts[CMS_MAXSAMPLES];
+    int sampleIdx = 0, numSamples = 20;
     uint64_t plim = RAND_MAX * prob;
     uint64_t epoch_duration_ns = 1E9;
-    uint32_t other, topk = 4, found, num_positives = 0;
+    uint32_t other, topk = 4, found, num_positives = 0, flag_remapped = 0;
 
     memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
     memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
@@ -701,46 +709,70 @@ int main(int argc, char** argv) {
 
     while(TRUE) {
         
-        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
-        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
-        if(elapsed_ns >= epoch_duration_ns) {
-            memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
+        if(isRemapped == 1) {
+            flag_remapped = 1;
+            //send_malloc_fetch(&queue, fid);
+            printf("Getting updated allocation ... \n");
+            get_memory_allocation(fid, &queue);
+            isRemapped = 0;
+        } else {
+            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+            if(elapsed_ns >= epoch_duration_ns) {
+                memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
 
-            qsort(cms_gt, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
-            qsort(cms_counts, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
+                qsort(cms_gt, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
+                qsort(cms_counts, CMS_MAXKEYS, sizeof(cms_obj_t), cmpfunc);
 
-            num_positives = 0;
-            for(key = 0; key < topk; key++) {
-                found = 0;
-                for(other = 0; other < topk; other++) {
-                    if(cms_counts[other].key == cms_gt[key].key) {
-                        found = 1;
-                        break;
+                num_positives = 0;
+                for(key = 0; key < topk; key++) {
+                    found = 0;
+                    for(other = 0; other < topk; other++) {
+                        if(cms_counts[other].key == cms_gt[key].key) {
+                            found = 1;
+                            break;
+                        }
                     }
+                    if(found == 1) num_positives++;
                 }
-                if(found == 1) num_positives++;
+
+                //for(key = 0; key < CMS_MAXKEYS; key++) {printf("[C] %u=%u, [GT] %u=%u\n", cms_counts[key].key, cms_counts[key].value, cms_gt[key].key, cms_gt[key].value);}
+
+                sample_ts[sampleIdx] = ts_now.tv_sec;
+                if(flag_remapped == 1) {
+                    printf("Memory remap ... \n");
+                    flag_remapped = 0;
+                    accuracy[sampleIdx++] = -1;
+                } else
+                    accuracy[sampleIdx++] = (double)num_positives / topk;
+                if(sampleIdx > numSamples) break;
+
+                //printf("%u / %u top k keys correctly detected.\n", num_positives, topk);
+
+                memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+                memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
             }
 
-            //for(key = 0; key < CMS_MAXKEYS; key++) {printf("[C] %u=%u, [GT] %u=%u\n", cms_counts[key].key, cms_counts[key].value, cms_gt[key].key, cms_gt[key].value);}
-
-            printf("%u / %u top k keys correctly detected.\n", num_positives, topk);
-
-            memset(cms_counts, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
-            memset(cms_gt, 0, CMS_MAXKEYS * sizeof(cms_obj_t));
+            for(key = 0; key < CMS_MAXKEYS; key++) {
+                if(rand() > plim) continue;
+                cms_gt[key].value++;
+                cms_gt[key].key = key;
+                cms_counts[key].key = key;
+                variant_cms.ap4data.data[0] = htonl(key);
+                variant_cms.ap4data.data[1] = 0;
+                active_tx(&variant_cms);
+            }
         }
-
-        for(key = 0; key < CMS_MAXKEYS; key++) {
-            if(rand() > plim) continue;
-            cms_gt[key].value++;
-            cms_gt[key].key = key;
-            cms_counts[key].key = key;
-            variant_cms.ap4data.data[0] = htonl(key);
-            variant_cms.ap4data.data[1] = 0;
-            active_tx(&variant_cms);
-        }
-
-        usleep(100000);
+        usleep(SEND_ITVL);
     }
+
+    char cms_samples_filename[100];
+    sprintf(cms_samples_filename, "cms_samples_fid_%d.csv", fid);
+    FILE *fp = fopen(cms_samples_filename, "w");
+    for(key = 0; key < sampleIdx; key++) {
+        fprintf(fp, "%lu,%lf\n", sample_ts[key], accuracy[key]);
+    }
+    fclose(fp);
 
     sleep(2);
 

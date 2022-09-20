@@ -67,10 +67,10 @@ control Egress(
     }
 
     action ack(bit<10> sessid) {
-        mac_addr_t  tmp_mac;
+        /*mac_addr_t  tmp_mac;
         tmp_mac = hdr.ethernet.src_addr;
         hdr.ethernet.src_addr = hdr.ethernet.dst_addr;
-        hdr.ethernet.dst_addr = tmp_mac;
+        hdr.ethernet.dst_addr = tmp_mac;*/
         meta.mirror_sessid = sessid;
         eg_dprsr_md.mirror_type = 1;
         hdr.meta.remap = 0;

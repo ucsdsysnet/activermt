@@ -709,7 +709,7 @@ def getReferenceOpcodes(basePath, sourceName):
     return opcodes
 
 TOTAL_STAGES = 20
-testMode = True
+testMode = False
 debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"

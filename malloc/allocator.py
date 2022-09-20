@@ -32,7 +32,6 @@ class ActiveFunction:
         self.constrLB = np.copy(accessIdx)
         self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
         #self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
-        print(self.constrUB)
         if self.igLim >= 0:
             for i in range(0, self.numAccesses):
                 if self.constrLB[i] < self.igLim:
