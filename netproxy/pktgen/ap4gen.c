@@ -127,7 +127,7 @@ void on_active_pkt_recv(struct ethhdr* eth, struct iphdr* iph, activep4_ih* ap4i
 
     if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_REQALLOC) > 0) {
         allocationInitiated = 1;
-    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0) {
+    } else if((ntohs(ap4ih->flags) & AP4FLAGMASK_FLAG_ALLOCATED) > 0 && isAllocated == 0) {
         // Allocation response packet.
         printf("(ALLOCATION) <FID %d> ", fid);
         int i;
@@ -709,15 +709,18 @@ int main(int argc, char** argv) {
 
     while(TRUE) {
         
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
         if(isRemapped == 1) {
             flag_remapped = 1;
             //send_malloc_fetch(&queue, fid);
             printf("Getting updated allocation ... \n");
+            sample_ts[sampleIdx] = ts_now.tv_sec;
+            accuracy[sampleIdx++] = -2;
             get_memory_allocation(fid, &queue);
             isRemapped = 0;
         } else {
-            if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
-            elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
             if(elapsed_ns >= epoch_duration_ns) {
                 memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
 
