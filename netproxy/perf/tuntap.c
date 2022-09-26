@@ -3,6 +3,8 @@
 #define TUNOFFSET   0
 #define BUFSIZE     4096
 #define IPADDRSIZE  16
+#define ETH_P_AP4   0x83B2
+#define AP4_FID     1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +22,8 @@
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
 #include <linux/if_tun.h>
+
+#include "../activep4.h"
 
 typedef struct {
     int             iface_index;
@@ -89,6 +93,17 @@ static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
     return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
 }
 
+static inline int activep4_get_ipv4_offset(char* buf) {
+    struct ethhdr* eth = (struct ethhdr*) buf;
+    int offset = sizeof(struct ethhdr);
+    if(ntohs(eth->h_proto) == ETH_P_AP4) {
+        offset += sizeof(activep4_ih);
+        if(ntohs(((activep4_ih*)&eth[1])->flags) & AP4FLAGMASK_OPT_ARGS) offset += sizeof(activep4_data_t);
+        offset += get_active_eof(buf + offset);
+    }
+    return offset;
+}
+
 static inline void print_hwaddr(unsigned char* hwaddr) {
     printf("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
@@ -101,8 +116,14 @@ static inline void print_ipv4_addr(uint32_t ipv4addr) {
 
 static inline void print_pktinfo(char* buf) {
     struct ethhdr* eth = (struct ethhdr*) buf;
-    struct iphdr* iph = (struct iphdr*) (buf + sizeof(struct ethhdr));
-    printf("[%d] [", eth->h_proto);
+    int offset = 0;
+    if(ntohs(eth->h_proto) == ETH_P_AP4) {
+        offset += sizeof(activep4_ih);
+        if(ntohs(((activep4_ih*)&eth[1])->flags) & AP4FLAGMASK_OPT_ARGS) offset += sizeof(activep4_data_t);
+        offset += get_active_eof(buf + sizeof(struct ethhdr) + offset);
+    }
+    struct iphdr* iph = (struct iphdr*) (buf + sizeof(struct ethhdr) + offset);
+    printf("[0x%x] [", ntohs(eth->h_proto));
     print_ipv4_addr(iph->saddr);
     printf(" -> ");
     print_ipv4_addr(iph->daddr);
@@ -141,13 +162,14 @@ static int arp_resolve(uint32_t ipv4_dstaddr, char* dev, unsigned char* eth_dsta
 
 int main(int argc, char** argv) {
 
-    if(argc < 3) {
-        printf("Usage: %s <tun_iface> <eth_iface>\n", argv[0]);
+    if(argc < 4) {
+        printf("Usage: %s <tun_iface> <eth_iface> <path_to_instr_set>\n", argv[0]);
         exit(1);
     }
 
     char* tun_iface = argv[1];
     char* eth_iface = argv[2];
+    char* instr_set_path = argv[3];
 
     struct sockaddr_in tin;
 
@@ -194,7 +216,7 @@ int main(int argc, char** argv) {
     struct sockaddr_ll eth_dst_addr = {0};
     eth_dst_addr.sll_family = AF_PACKET;
     eth_dst_addr.sll_ifindex = dev_info.iface_index;
-    eth_dst_addr.sll_protocol = htons(ETH_P_IP);
+    eth_dst_addr.sll_protocol = htons(ETH_P_AP4);
     eth_dst_addr.sll_halen = ETH_ALEN;
 
     int maxfd = (sockfd > tunfd) ? sockfd : tunfd;
@@ -207,11 +229,39 @@ int main(int argc, char** argv) {
 
     memset(sendbuf, 0, BUFSIZE);
 
+    // Construct NOP active program.
+
+    pnemonic_opcode_t instr_set;
+    read_opcode_action_map(instr_set_path, &instr_set);
+
+    activep4_t ap4prog;
+    construct_nop_program(&ap4prog, &instr_set, 10);
+    
+    activep4_ih* ap4ih = (activep4_ih*) recvbuf;
+    ap4ih->SIG = htonl(ACTIVEP4SIG);
+    ap4ih->fid = htons(AP4_FID);
+    ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+
+    activep4_data_t* ap4args = (activep4_data_t*) (recvbuf + sizeof(activep4_ih));
+
+    activep4_instr* ap4instr = (activep4_instr*) (recvbuf + sizeof(activep4_ih) + sizeof(activep4_data_t));
+    memcpy(ap4instr, (char*)&ap4prog.ap4_prog, ap4prog.ap4_len * sizeof(activep4_instr));
+
+    // TODO: program execution on the switch will reduce length.
+    int active_program_offset = sizeof(activep4_ih) + sizeof(activep4_data_t) + ap4prog.ap4_len * sizeof(activep4_instr);
+    recvbuf += active_program_offset;
+
     struct ethhdr*  eth = (struct ethhdr*) sendbuf;
     struct iphdr*   iph;
 
     memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
-    eth->h_proto = htons(ETH_P_IP);
+    eth->h_proto = htons(ETH_P_AP4);
+
+    // TODO: local socket to forward packet stripped of active program.
+    int local = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+    struct sockaddr_in loc_in;
+    loc_in.sin_family = AF_INET;
+    loc_in.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
 
     while(TRUE) {
 
@@ -239,17 +289,28 @@ int main(int argc, char** argv) {
             }
             if(read_bytes > (sizeof(struct ethhdr) + sizeof(struct iphdr))) {
                 eth = (struct ethhdr*)(recvbuf + TUNOFFSET);
-                iph = (struct iphdr*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
                 if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {
                     #ifdef DEBUG
                     printf("[ETH] [%d Bytes] ", read_bytes);
                     #endif
-                    /*if( (wrote_bytes = write(tunfd, recvbuf, read_bytes)) < 0 ) {
-                        perror("write()");
-                        close(sockfd);
-                        exit(1);
-                    }*/
+                    ap4ih = (activep4_ih*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
+                    if(ntohs(eth->h_proto) == ETH_P_AP4 && ntohl(ap4ih->SIG) == ACTIVEP4SIG) {
+                        iph = (struct iphdr*)(recvbuf + TUNOFFSET + activep4_get_ipv4_offset(recvbuf + TUNOFFSET));
+                        if( (wrote_bytes = sendto(local, (char*)iph, ntohs(iph->tot_len), 0, (struct sockaddr*)&loc_in, sizeof(loc_in))) < 0 )
+                            perror("sendto");
+                        #ifdef DEBUG
+                        printf("[AP4] (forwarded %d bytes ... ) ", wrote_bytes);
+                        #endif
+                        /*if( (wrote_bytes = write(tunfd, (char*)iph, read_bytes)) < 0 ) {
+                            perror("write()");
+                            close(sockfd);
+                            exit(1);
+                        }*/
+                    } else {
+                        iph = (struct iphdr*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
+                    }
                 } else {
+                    iph = (struct iphdr*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
                     #ifdef DEBUG
                     printf("(Unknown) [ETH] [%d Bytes] ", read_bytes);
                     #endif
@@ -294,7 +355,7 @@ int main(int argc, char** argv) {
                     memcpy(&((struct ethhdr*)sendbuf)->h_dest, (char*)&eth->h_dest, ETH_ALEN);
                 }
             }
-            if( (wrote_bytes = sendto(sockfd, sendbuf, read_bytes + sizeof(struct ethhdr), 0, (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr))) < 0 ) {
+            if( (wrote_bytes = sendto(sockfd, sendbuf, read_bytes + sizeof(struct ethhdr) + active_program_offset, 0, (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr))) < 0 ) {
                 perror("sendto()");
                 close(sockfd);
                 exit(1);

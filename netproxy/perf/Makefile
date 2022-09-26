@@ -2,7 +2,7 @@ CC		= gcc
 CCFLAGS	= -g
 
 HEADERS_DIR = ..
-HEADERS = 
+HEADERS = activep4.h
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 
 all: tuntap

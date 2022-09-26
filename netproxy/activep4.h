@@ -15,7 +15,7 @@
 #define AP4_INSTR_LEN   2
 #define AP4_DATA_LEN    4
 #define MAX_MEMACCESS   8
-#define TGT_MAX_STAGES  32
+#define NUM_STAGES      20
 
 #define AP4FLAGMASK_OPT_ARGS        0x8000
 #define AP4FLAGMASK_OPT_DATA        0x4000
@@ -97,11 +97,11 @@ typedef struct {
 } activep4_argval;
 
 typedef struct {
-    int         stageIdx[TGT_MAX_STAGES];
+    int         stageIdx[NUM_STAGES];
     int         numStages;
-    uint16_t    memStart[TGT_MAX_STAGES];
-    uint16_t    memEnd[TGT_MAX_STAGES];
-    int         memSize[TGT_MAX_STAGES];
+    uint16_t    memStart[NUM_STAGES];
+    uint16_t    memEnd[NUM_STAGES];
+    int         memSize[NUM_STAGES];
 } activep4_malloc_t;
 
 typedef struct {
@@ -146,14 +146,14 @@ static inline int pnemonic_to_opcode(pnemonic_opcode_t* instr_set, char* pnemoni
     return -1;
 }
 
-static inline void read_opcode_action_map(char* filename, pnemonic_opcode_t* instr_set) {
+static inline int read_opcode_action_map(char* filename, pnemonic_opcode_t* instr_set) {
     int i = 0, tokidx;
     char buf[BUFLEN];
     const char* tok;
     FILE* fp = fopen(filename, "r");
     if(fp == NULL) {
         perror("fopen");
-        return;
+        return errno;
     }
     while(fgets(buf, BUFLEN, fp) != NULL) {
         tokidx = 0;
@@ -168,6 +168,7 @@ static inline void read_opcode_action_map(char* filename, pnemonic_opcode_t* ins
     }
     fclose(fp);
     instr_set->num_instr = i;
+    return 0;
 }
 
 static inline int read_active_program(activep4_t* ap4, char* prog_file) {
@@ -297,11 +298,11 @@ static inline void add_instruction(activep4_t* program, pnemonic_opcode_t* instr
 }
 
 static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_t* cache) {
-    if(stageId > TGT_MAX_STAGES || stageId == 0) return NULL;
+    if(stageId > NUM_STAGES || stageId == 0) return NULL;
     if(cache[stageId].fid > 0) return &cache[stageId];
     int rts_inserted = 0, i = 0;
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
-    while(i < TGT_MAX_STAGES - 1) {
+    while(i < NUM_STAGES - 1) {
         if(i >= stageId) {
             add_instruction(&cache[stageId], instr_set, "MEM_READ"); i++;
             add_instruction(&cache[stageId], instr_set, "DATA_1_LOAD_MBR"); i++;
@@ -325,11 +326,11 @@ static inline activep4_t* construct_memsync_program(int fid, int stageId, pnemon
 }
 
 static inline activep4_t* construct_memset_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_t* cache) {
-    if(stageId > TGT_MAX_STAGES || stageId == 0) return NULL;
+    if(stageId > NUM_STAGES || stageId == 0) return NULL;
     if(cache[stageId].fid > 0) return &cache[stageId];
     int rts_inserted = 0, i = 0;
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
-    while(i < TGT_MAX_STAGES - 1) {
+    while(i < NUM_STAGES - 1) {
         if(i >= stageId) {
             add_instruction(&cache[stageId], instr_set, "MEM_WRITE"); i++;
             add_instruction(&cache[stageId], instr_set, "NOP"); i++;
