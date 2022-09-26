@@ -18,7 +18,7 @@ clear_all()
 
 dst_port_mapping = {}
 
-config_path = 'config/mac_to_port.csv'
+config_path = 'config/mac_to_port_asic.csv'
 
 with open(config_path) as f:
     entries = f.read().splitlines()

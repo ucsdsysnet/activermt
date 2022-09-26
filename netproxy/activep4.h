@@ -105,12 +105,12 @@ typedef struct {
 } activep4_malloc_t;
 
 typedef struct {
+    uint16_t        fid;
+    int             ap4_len;
     activep4_instr  ap4_prog[MAXPROGLEN];
     activep4_arg    ap4_args[MAXARGS];
     int             num_args;
     uint8_t         args_mapped;
-    int             ap4_len;
-    uint16_t        fid;
     int             num_accesses;
     int             access_idx[NUM_STAGES];
     int             demand[NUM_STAGES];
@@ -128,6 +128,15 @@ typedef struct {
     opcode_action_map_t map[MAXINSTRSET];
     int                 num_instr;
 } pnemonic_opcode_t;
+
+static inline void print_active_program_bytes(char* buf, int buf_size) {
+    int i, instr_len = sizeof(activep4_instr);
+    for(i = 0; i < buf_size; i++) {
+        if(i % instr_len == 0) printf("\n");
+        printf("%x ", buf[i]);
+    }
+    printf("\n");
+}
 
 static inline int pnemonic_to_opcode(pnemonic_opcode_t* instr_set, char* pnemonic) {
     int i;
@@ -159,62 +168,6 @@ static inline void read_opcode_action_map(char* filename, pnemonic_opcode_t* ins
     }
     fclose(fp);
     instr_set->num_instr = i;
-}
-
-static inline void print_active_program_bytes(char* buf, int buf_size) {
-    int i, instr_len = sizeof(activep4_instr);
-    for(i = 0; i < buf_size; i++) {
-        if(i % instr_len == 0) printf("\n");
-        printf("%x ", buf[i]);
-    }
-    printf("\n");
-}
-
-static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
-    activep4_ih* ap4ih = (activep4_ih*)buf;
-    ap4ih->SIG = htonl(ACTIVEP4SIG);
-    ap4ih->fid = htons(fid);
-    ap4ih->flags = htons(flags);
-    return sizeof(activep4_ih);
-}
-
-static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
-    int offset = 0, i, j;
-    int ap4_buf_size = ap4->ap4_len * sizeof(activep4_instr);
-    char* bufptr = buf;
-    activep4_instr* prog = ap4->ap4_prog;
-    activep4_ih* ih;
-    activep4_instr* instr;
-    activep4_data_t* data;
-    int numinstr = ap4->ap4_len;
-    ih = (activep4_ih*)buf;
-    offset += insert_active_initial_header(buf, ap4->fid, 0);
-    bufptr += offset;
-    // insert arguments
-    if(ap4->args_mapped == 0) {
-        for(i = 0; i < ap4->num_args; i++) {
-            for(j = 0; j < numargs; j++) {
-                if(strcmp(args[j].argname, ap4->ap4_args[i].argname) == 0) {
-                    ap4->ap4_args[i].value_idx = j;
-                }
-            }
-        }
-        ap4->args_mapped = 1;
-    }
-    memset(bufptr, 0, sizeof(activep4_data_t));
-    data = (activep4_data_t*)bufptr;
-    for(i = 0; i < ap4->num_args; i++) {
-        data->data[ap4->ap4_args[i].didx] = htonl(args[ap4->ap4_args[i].value_idx].argval);
-    }
-    if(ap4->num_args > 0) {
-        bufptr += sizeof(activep4_data_t);
-        offset += sizeof(activep4_data_t);
-        ih->flags = htons(ntohs(ih->flags) | AP4FLAGMASK_OPT_ARGS);
-    }
-    // insert active program
-    memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
-    offset += ap4_buf_size;
-    return offset;
 }
 
 static inline int read_active_program(activep4_t* ap4, char* prog_file) {
@@ -269,6 +222,53 @@ static inline int read_active_args(activep4_t* ap4, char* arg_file) {
     printf("%d active program arguments read.\n", ap4->num_args);
     #endif
     return ap4->num_args;
+}
+
+static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
+    activep4_ih* ap4ih = (activep4_ih*)buf;
+    ap4ih->SIG = htonl(ACTIVEP4SIG);
+    ap4ih->fid = htons(fid);
+    ap4ih->flags = htons(flags);
+    return sizeof(activep4_ih);
+}
+
+static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
+    int offset = 0, i, j;
+    int ap4_buf_size = ap4->ap4_len * sizeof(activep4_instr);
+    char* bufptr = buf;
+    activep4_instr* prog = ap4->ap4_prog;
+    activep4_ih* ih;
+    activep4_instr* instr;
+    activep4_data_t* data;
+    int numinstr = ap4->ap4_len;
+    ih = (activep4_ih*)buf;
+    offset += insert_active_initial_header(buf, ap4->fid, 0);
+    bufptr += offset;
+    // insert arguments
+    if(ap4->args_mapped == 0) {
+        for(i = 0; i < ap4->num_args; i++) {
+            for(j = 0; j < numargs; j++) {
+                if(strcmp(args[j].argname, ap4->ap4_args[i].argname) == 0) {
+                    ap4->ap4_args[i].value_idx = j;
+                }
+            }
+        }
+        ap4->args_mapped = 1;
+    }
+    memset(bufptr, 0, sizeof(activep4_data_t));
+    data = (activep4_data_t*)bufptr;
+    for(i = 0; i < ap4->num_args; i++) {
+        data->data[ap4->ap4_args[i].didx] = htonl(args[ap4->ap4_args[i].value_idx].argval);
+    }
+    if(ap4->num_args > 0) {
+        bufptr += sizeof(activep4_data_t);
+        offset += sizeof(activep4_data_t);
+        ih->flags = htons(ntohs(ih->flags) | AP4FLAGMASK_OPT_ARGS);
+    }
+    // insert active program
+    memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
+    offset += ap4_buf_size;
+    return offset;
 }
 
 static inline int get_active_eof(char* buf) {
@@ -358,8 +358,12 @@ static inline void construct_dummy_program(activep4_t* program, pnemonic_opcode_
     add_instruction(program, instr_set, "EOF"); 
 }
 
-static inline void construct_cache_read_program(activep4_t* program, pnemonic_opcode_t* instr_set) {}
-
-static inline void construct_cache_write_program(activep4_t* program, pnemonic_opcode_t* instr_set) {}
+static inline void construct_nop_program(activep4_t* program, pnemonic_opcode_t* instr_set, int proglen) {
+    int i;
+    for(i = 0; i < proglen - 2; i++)
+        add_instruction(program, instr_set, "NOP");
+    add_instruction(program, instr_set, "RETURN");
+    add_instruction(program, instr_set, "EOF");
+}
 
 #endif

@@ -391,6 +391,7 @@ static void run_tunnel(char* tun_iface, char* eth_iface) {
                 ap4_offset = 0;
                 eth = (struct ethhdr*)pptr;
                 arp_idx = ntohl(iph->daddr) & ARPMASK;
+                // TODO optimize. 
                 memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
                 memcpy(&eth->h_dest, arp_cache[arp_idx].eth_addr, ETH_ALEN);
                 memcpy(eth_dst_addr.sll_addr, arp_cache[arp_idx].eth_addr, ETH_ALEN);
