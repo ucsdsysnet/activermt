@@ -1,35 +1,46 @@
+#define _GNU_SOURCE
 //#define DEBUG       1
-#define TRUE        1
-#define TUNOFFSET   0
-#define BUFSIZE     4096
-#define IPADDRSIZE  16
-#define ETH_P_AP4   0x83B2
-#define AP4_FID     1
+#define TRUE            1
+#define TUNOFFSET       0
+#define BUFSIZE         4096
+#define IPADDRSIZE      16
+#define ETH_P_AP4       0x83B2
+#define AP4_FID         1
+#define MTU             1500
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdint.h>
+#include <malloc.h>
 #include <errno.h>
+#include <signal.h>
+#include <time.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/queue.h>
 #include <linux/if.h>
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
 #include <linux/if_tun.h>
 
-#include "../activep4.h"
+#include "../../headers/activep4.h"
+#include "../../headers/stats.h"
 
 typedef struct {
     int             iface_index;
     unsigned char   hwaddr[ETH_ALEN];
     uint32_t        ipv4addr;
 } devinfo_t;
+
+stats_t stats;
 
 static void get_iface(devinfo_t* info, char* dev, int fd) {
     struct ifreq ifr;
@@ -160,12 +171,19 @@ static int arp_resolve(uint32_t ipv4_dstaddr, char* dev, unsigned char* eth_dsta
     return 0;
 }
 
+static void interrupt_handler(int sig) {
+    write_stats(&stats, "tuntap_stats.csv");
+    exit(1);
+}
+
 int main(int argc, char** argv) {
 
     if(argc < 4) {
         printf("Usage: %s <tun_iface> <eth_iface> <path_to_instr_set>\n", argv[0]);
         exit(1);
     }
+
+    signal(SIGINT, interrupt_handler);
 
     char* tun_iface = argv[1];
     char* eth_iface = argv[2];
@@ -222,7 +240,7 @@ int main(int argc, char** argv) {
     int maxfd = (sockfd > tunfd) ? sockfd : tunfd;
     fd_set rd_set;
 
-    int read_bytes, ret, wrote_bytes, eth_dst_resolved = 0;
+    int read_bytes, ret, wrote_bytes, eth_dst_resolved = 0, i;
     uint32_t ipv4_dstaddr;
     char sendbuf[BUFSIZE];
     char* recvbuf = sendbuf + sizeof(struct ethhdr);
@@ -262,6 +280,22 @@ int main(int argc, char** argv) {
     struct sockaddr_in loc_in;
     loc_in.sin_family = AF_INET;
     loc_in.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
+
+    memset(&stats, 0, sizeof(stats_t));
+
+    pthread_t timer_thread;
+    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
+        perror("pthread_create()");
+        exit(1);
+    }
+
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    for(i = 40; i < 60; i += 2)
+        CPU_SET(i, &cpuset);
+    if(pthread_setaffinity_np(timer_thread, sizeof(cpu_set_t), &cpuset) != 0) {
+        perror("pthread_setaffinity()");
+    }
 
     while(TRUE) {
 
@@ -360,8 +394,13 @@ int main(int argc, char** argv) {
                 close(sockfd);
                 exit(1);
             }
+            pthread_mutex_lock(&lock);
+            stats.count++;
+            pthread_mutex_unlock(&lock);
         }
     }
+
+    pthread_join(timer_thread, NULL);
 
     return 0;
 }

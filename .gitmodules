@@ -22,3 +22,6 @@
 [submodule "ref/pktgen"]
 	path = ref/pktgen
 	url = git@github.com:dasrajdeep/Pktgen-DPDK.git
+[submodule "ref/dpdk"]
+	path = ref/dpdk
+	url = git@github.com:DPDK/dpdk.git
