@@ -21,6 +21,8 @@ void* monitor_stats(void* argp) {
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
 
+    printf("Starting stats monitor ... \n");
+
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
 
     while(TRUE) {

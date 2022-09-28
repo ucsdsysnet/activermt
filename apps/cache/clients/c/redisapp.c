@@ -5,6 +5,7 @@
 
 #define REDIS_REQ       1
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,8 +89,8 @@ int main(int argc, char** argv) {
         }
         #else
         redisReply* reply = (redisReply*)redisCommand(c, "GET foo");
+        assert(reply->str!= NULL && strcmp(reply->str, "bar") == 0);
         freeReplyObject(reply);
-        //printf("Reply: %s\n", reply->str);
         #endif
         pthread_mutex_lock(&lock);
         stats.count++;

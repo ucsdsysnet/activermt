@@ -35,10 +35,37 @@
 #include "../../headers/stats.h"
 
 typedef struct {
+    char*           iface_name;
     int             iface_index;
     unsigned char   hwaddr[ETH_ALEN];
     uint32_t        ipv4addr;
 } devinfo_t;
+
+typedef struct {
+    int                 tunfd;
+    int                 sockfd;
+    devinfo_t           dev_info;
+    devinfo_t           tun_info;
+    struct sockaddr_ll  eth_dst_addr;
+    int                 maxfd;
+} rx_tx_config_t;
+
+typedef struct {
+    pnemonic_opcode_t   instr_set;
+    activep4_t          ap4prog;
+    int                 prog_offset;
+    char                sendbuf[BUFSIZE];
+    char*               recvbuf;
+    rx_tx_config_t*     devcfg;
+} tx_config_t;
+
+typedef struct {
+    int                 local;
+    struct sockaddr_in  loc_in;
+    char                sendbuf[BUFSIZE];
+    char                recvbuf[BUFSIZE];
+    rx_tx_config_t*     devcfg;
+} rx_config_t;
 
 stats_t stats;
 
@@ -176,136 +203,28 @@ static void interrupt_handler(int sig) {
     exit(1);
 }
 
-int main(int argc, char** argv) {
+void* rx_loop(void* argp) {
 
-    if(argc < 4) {
-        printf("Usage: %s <tun_iface> <eth_iface> <path_to_instr_set>\n", argv[0]);
-        exit(1);
-    }
+    rx_config_t* rx_cfg = (rx_config_t*) argp;
 
-    signal(SIGINT, interrupt_handler);
-
-    char* tun_iface = argv[1];
-    char* eth_iface = argv[2];
-    char* instr_set_path = argv[3];
-
-    struct sockaddr_in tin;
-
-    tin.sin_family = AF_INET;
-
-    int tunfd = allocate_tun(tun_iface, IFF_TUN | IFF_NO_PI);
-
-    if(tunfd < 0) {
-        perror("Unable to get TUN interface");
-        exit(1);
-    }
-
-    int sockfd;
-
-    if((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
-        perror("socket");
-        exit(1);
-    }
-
-    devinfo_t dev_info, tun_info;
-
-    get_iface(&dev_info, eth_iface, sockfd);
-
-    int sock_tun;
-
-    if((sock_tun = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
-        perror("socket");
-        exit(1);
-    }
-
-    get_iface(&tun_info, tun_iface, sock_tun);
-    close(sock_tun);
-
-    struct sockaddr_ll addr = {0};
-    addr.sll_family = AF_PACKET;
-    addr.sll_ifindex = dev_info.iface_index;
-    addr.sll_protocol = htons(ETH_P_ALL);
-
-    if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        perror("bind");
-        exit(1);
-    }
-
-    struct sockaddr_ll eth_dst_addr = {0};
-    eth_dst_addr.sll_family = AF_PACKET;
-    eth_dst_addr.sll_ifindex = dev_info.iface_index;
-    eth_dst_addr.sll_protocol = htons(ETH_P_AP4);
-    eth_dst_addr.sll_halen = ETH_ALEN;
-
-    int maxfd = (sockfd > tunfd) ? sockfd : tunfd;
     fd_set rd_set;
+    int maxfd = rx_cfg->devcfg->sockfd, ret;
+    int read_bytes, wrote_bytes;
 
-    int read_bytes, ret, wrote_bytes, eth_dst_resolved = 0, i;
-    uint32_t ipv4_dstaddr;
-    char sendbuf[BUFSIZE];
-    char* recvbuf = sendbuf + sizeof(struct ethhdr);
+    char* recvbuf = rx_cfg->recvbuf;
 
-    memset(sendbuf, 0, BUFSIZE);
-
-    // Construct NOP active program.
-
-    pnemonic_opcode_t instr_set;
-    read_opcode_action_map(instr_set_path, &instr_set);
-
-    activep4_t ap4prog;
-    construct_nop_program(&ap4prog, &instr_set, 10);
-    
-    activep4_ih* ap4ih = (activep4_ih*) recvbuf;
-    ap4ih->SIG = htonl(ACTIVEP4SIG);
-    ap4ih->fid = htons(AP4_FID);
-    ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
-
-    activep4_data_t* ap4args = (activep4_data_t*) (recvbuf + sizeof(activep4_ih));
-
-    activep4_instr* ap4instr = (activep4_instr*) (recvbuf + sizeof(activep4_ih) + sizeof(activep4_data_t));
-    memcpy(ap4instr, (char*)&ap4prog.ap4_prog, ap4prog.ap4_len * sizeof(activep4_instr));
-
-    // TODO: program execution on the switch will reduce length.
-    int active_program_offset = sizeof(activep4_ih) + sizeof(activep4_data_t) + ap4prog.ap4_len * sizeof(activep4_instr);
-    recvbuf += active_program_offset;
-
-    struct ethhdr*  eth = (struct ethhdr*) sendbuf;
+    struct ethhdr*  eth;
     struct iphdr*   iph;
+    activep4_ih*    ap4ih;
 
-    memcpy(&eth->h_source, &dev_info.hwaddr, ETH_ALEN);
-    eth->h_proto = htons(ETH_P_AP4);
-
-    // TODO: local socket to forward packet stripped of active program.
-    int local = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
-    struct sockaddr_in loc_in;
-    loc_in.sin_family = AF_INET;
-    loc_in.sin_addr.s_addr = (in_addr_t)tun_info.ipv4addr;
-
-    memset(&stats, 0, sizeof(stats_t));
-
-    pthread_t timer_thread;
-    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
-        perror("pthread_create()");
-        exit(1);
-    }
-
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    for(i = 40; i < 60; i += 2)
-        CPU_SET(i, &cpuset);
-    if(pthread_setaffinity_np(timer_thread, sizeof(cpu_set_t), &cpuset) != 0) {
-        perror("pthread_setaffinity()");
-    }
+    printf("Starting RX loop ... \n");
 
     while(TRUE) {
-
         FD_ZERO(&rd_set);
-        FD_SET(sockfd, &rd_set);
-        FD_SET(tunfd, &rd_set);
+        FD_SET(rx_cfg->devcfg->sockfd, &rd_set);
+
         ret = select(maxfd + 1, &rd_set, NULL, NULL, NULL);
-
         if(ret < 0 && errno == EINTR) continue;
-
         if(ret < 0) {
             perror("select");
             exit(1);
@@ -314,23 +233,22 @@ int main(int argc, char** argv) {
         read_bytes = 0;
         wrote_bytes = 0;
 
-        // ETH iface.
-        if(FD_ISSET(sockfd, &rd_set)) {
-            if( (read_bytes = read(sockfd, recvbuf, BUFSIZE)) < 0 ) {
+        if(FD_ISSET(rx_cfg->devcfg->sockfd, &rd_set)) {
+            if( (read_bytes = read(rx_cfg->devcfg->sockfd, recvbuf, BUFSIZE)) < 0 ) {
                 perror("read()");
-                close(sockfd);
+                close(rx_cfg->devcfg->sockfd);
                 exit(1);
             }
             if(read_bytes > (sizeof(struct ethhdr) + sizeof(struct iphdr))) {
                 eth = (struct ethhdr*)(recvbuf + TUNOFFSET);
-                if(hwaddr_equals(eth->h_dest, dev_info.hwaddr)) {
+                if(hwaddr_equals(eth->h_dest, rx_cfg->devcfg->dev_info.hwaddr)) {
                     #ifdef DEBUG
                     printf("[ETH] [%d Bytes] ", read_bytes);
                     #endif
                     ap4ih = (activep4_ih*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
                     if(ntohs(eth->h_proto) == ETH_P_AP4 && ntohl(ap4ih->SIG) == ACTIVEP4SIG) {
                         iph = (struct iphdr*)(recvbuf + TUNOFFSET + activep4_get_ipv4_offset(recvbuf + TUNOFFSET));
-                        if( (wrote_bytes = sendto(local, (char*)iph, ntohs(iph->tot_len), 0, (struct sockaddr*)&loc_in, sizeof(loc_in))) < 0 )
+                        if( (wrote_bytes = sendto(rx_cfg->local, (char*)iph, ntohs(iph->tot_len), 0, (struct sockaddr*)&rx_cfg->loc_in, sizeof(struct sockaddr_in))) < 0 )
                             perror("sendto");
                         #ifdef DEBUG
                         printf("[AP4] (forwarded %d bytes ... ) ", wrote_bytes);
@@ -354,15 +272,46 @@ int main(int argc, char** argv) {
                 #endif
             }
         }
+    }
+}
+
+void* tx_loop(void* argp) {
+
+    tx_config_t* tx_cfg = (tx_config_t*) argp;
+
+    fd_set rd_set;
+    int maxfd = tx_cfg->devcfg->tunfd, ret;
+    int read_bytes, wrote_bytes;
+    int eth_dst_resolved = 0;
+
+    char* recvbuf = tx_cfg->recvbuf;
+    char* sendbuf = tx_cfg->sendbuf;
+
+    uint32_t ipv4_dstaddr;
+
+    struct ethhdr*  eth = (struct ethhdr*) sendbuf;
+    struct iphdr*   iph;
+
+    printf("Starting TX loop ... \n");
+
+    while(TRUE) {
+        FD_ZERO(&rd_set);
+        FD_SET(tx_cfg->devcfg->tunfd, &rd_set);
+
+        ret = select(maxfd + 1, &rd_set, NULL, NULL, NULL);
+        if(ret < 0 && errno == EINTR) continue;
+        if(ret < 0) {
+            perror("select");
+            exit(1);
+        }
 
         read_bytes = 0;
         wrote_bytes = 0;
 
-        // TUN iface.
-        if(FD_ISSET(tunfd, &rd_set)) {
-            if( (read_bytes = read(tunfd, recvbuf, BUFSIZE)) < 0 ) {
+        if(FD_ISSET(tx_cfg->devcfg->tunfd, &rd_set)) {
+            if( (read_bytes = read(tx_cfg->devcfg->tunfd, recvbuf, BUFSIZE)) < 0 ) {
                 perror("read()");
-                close(tunfd);
+                close(tx_cfg->devcfg->tunfd);
                 exit(1);
             }
             #ifdef DEBUG
@@ -374,8 +323,8 @@ int main(int argc, char** argv) {
             iph = (struct iphdr*)(recvbuf + TUNOFFSET);
             if(eth_dst_resolved == 0) {
                 // Assuming (/24) mapping: x.x.x.y -> z.z.z.y
-                ipv4_dstaddr = (iph->daddr & 0xFF000000) | (dev_info.ipv4addr & 0x00FFFFFF);
-                if( (eth_dst_resolved = arp_resolve(ipv4_dstaddr, eth_iface, eth->h_dest)) == 0 ) {
+                ipv4_dstaddr = (iph->daddr & 0xFF000000) | (tx_cfg->devcfg->dev_info.ipv4addr & 0x00FFFFFF);
+                if( (eth_dst_resolved = arp_resolve(ipv4_dstaddr, tx_cfg->devcfg->dev_info.iface_name, eth->h_dest)) == 0 ) {
                     printf("((ARP)) resolution error: ");
                     print_ipv4_addr(ipv4_dstaddr);
                     printf("\n");
@@ -389,9 +338,9 @@ int main(int argc, char** argv) {
                     memcpy(&((struct ethhdr*)sendbuf)->h_dest, (char*)&eth->h_dest, ETH_ALEN);
                 }
             }
-            if( (wrote_bytes = sendto(sockfd, sendbuf, read_bytes + sizeof(struct ethhdr) + active_program_offset, 0, (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr))) < 0 ) {
+            if( (wrote_bytes = sendto(tx_cfg->devcfg->sockfd, sendbuf, read_bytes + sizeof(struct ethhdr) + tx_cfg->prog_offset, 0, (struct sockaddr*)&tx_cfg->devcfg->eth_dst_addr, sizeof(struct sockaddr_ll))) < 0 ) {
                 perror("sendto()");
-                close(sockfd);
+                close(tx_cfg->devcfg->sockfd);
                 exit(1);
             }
             pthread_mutex_lock(&lock);
@@ -399,8 +348,158 @@ int main(int argc, char** argv) {
             pthread_mutex_unlock(&lock);
         }
     }
+}
+
+int main(int argc, char** argv) {
+
+    if(argc < 4) {
+        printf("Usage: %s <tun_iface> <eth_iface> <path_to_instr_set>\n", argv[0]);
+        exit(1);
+    }
+
+    signal(SIGINT, interrupt_handler);
+
+    char* tun_iface = argv[1];
+    char* eth_iface = argv[2];
+    char* instr_set_path = argv[3];
+
+    rx_tx_config_t  cfg;
+    tx_config_t     tx_cfg;
+    rx_config_t     rx_cfg;
+
+    memset(&cfg, 0 , sizeof(rx_tx_config_t));
+    memset(&tx_cfg, 0, sizeof(tx_config_t));
+    memset(&rx_cfg, 0, sizeof(rx_config_t));
+
+    tx_cfg.devcfg = &cfg;
+    rx_cfg.devcfg = &cfg;
+
+    struct sockaddr_in tin;
+
+    tin.sin_family = AF_INET;
+
+    cfg.tunfd = allocate_tun(tun_iface, IFF_TUN | IFF_NO_PI);
+
+    if(cfg.tunfd < 0) {
+        perror("Unable to get TUN interface");
+        exit(1);
+    }
+
+    if((cfg.sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("socket");
+        exit(1);
+    }
+
+    cfg.dev_info.iface_name = eth_iface;
+    get_iface(&cfg.dev_info, eth_iface, cfg.sockfd);
+
+    int sock_tun;
+
+    if((sock_tun = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("socket");
+        exit(1);
+    }
+
+    cfg.tun_info.iface_name = tun_iface;
+    get_iface(&cfg.tun_info, tun_iface, sock_tun);
+    close(sock_tun);
+
+    struct sockaddr_ll addr = {0};
+    addr.sll_family = AF_PACKET;
+    addr.sll_ifindex = cfg.dev_info.iface_index;
+    addr.sll_protocol = htons(ETH_P_ALL);
+
+    if(bind(cfg.sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+        perror("bind");
+        exit(1);
+    }
+
+    memset(&cfg.eth_dst_addr, 0, sizeof(struct sockaddr_ll));
+    cfg.eth_dst_addr.sll_family = AF_PACKET;
+    cfg.eth_dst_addr.sll_ifindex = cfg.dev_info.iface_index;
+    cfg.eth_dst_addr.sll_protocol = htons(ETH_P_AP4);
+    cfg.eth_dst_addr.sll_halen = ETH_ALEN;
+
+    tx_cfg.recvbuf = tx_cfg.sendbuf + sizeof(struct ethhdr);
+
+    memset(tx_cfg.sendbuf, 0, BUFSIZE);
+    memset(rx_cfg.sendbuf, 0, BUFSIZE);
+    memset(rx_cfg.recvbuf, 0, BUFSIZE);
+
+    // Construct NOP active program.
+
+    read_opcode_action_map(instr_set_path, &tx_cfg.instr_set);
+    construct_nop_program(&tx_cfg.ap4prog, &tx_cfg.instr_set, 10);
+    
+    activep4_ih* ap4ih = (activep4_ih*) tx_cfg.recvbuf;
+    ap4ih->SIG = htonl(ACTIVEP4SIG);
+    ap4ih->fid = htons(AP4_FID);
+    ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+
+    activep4_data_t* ap4args = (activep4_data_t*) (tx_cfg.recvbuf + sizeof(activep4_ih));
+
+    activep4_instr* ap4instr = (activep4_instr*) (tx_cfg.recvbuf + sizeof(activep4_ih) + sizeof(activep4_data_t));
+    memcpy(ap4instr, (char*)&tx_cfg.ap4prog.ap4_prog, tx_cfg.ap4prog.ap4_len * sizeof(activep4_instr));
+
+    // TODO: program execution on the switch will reduce length.
+    int active_program_offset = sizeof(activep4_ih) + sizeof(activep4_data_t) + tx_cfg.ap4prog.ap4_len * sizeof(activep4_instr);
+    tx_cfg.recvbuf += active_program_offset;
+    tx_cfg.prog_offset = active_program_offset;
+
+    struct ethhdr*  eth = (struct ethhdr*) tx_cfg.sendbuf;
+    struct iphdr*   iph;
+
+    memcpy(&eth->h_source, &cfg.dev_info.hwaddr, ETH_ALEN);
+    eth->h_proto = htons(ETH_P_AP4);
+
+    // TODO: local socket to forward packet stripped of active program.
+    rx_cfg.local = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+    rx_cfg.loc_in.sin_family = AF_INET;
+    rx_cfg.loc_in.sin_addr.s_addr = (in_addr_t)cfg.tun_info.ipv4addr;
+
+    memset(&stats, 0, sizeof(stats_t));
+
+    cpu_set_t cpuset_timer, cpuset_rx, cpuset_tx;
+
+    pthread_t timer_thread;
+    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
+        perror("pthread_create()");
+        exit(1);
+    }
+
+    CPU_ZERO(&cpuset_timer);
+    CPU_SET(40, &cpuset_timer);
+    if(pthread_setaffinity_np(timer_thread, sizeof(cpu_set_t), &cpuset_timer) != 0) {
+        perror("pthread_setaffinity()");
+    }
+
+    pthread_t rx_thread;
+    if( pthread_create(&rx_thread, NULL, rx_loop, (void*)&rx_cfg) < 0 ) {
+        perror("pthread_create()");
+        exit(1);
+    }
+
+    CPU_ZERO(&cpuset_rx);
+    CPU_SET(42, &cpuset_rx);
+    if(pthread_setaffinity_np(rx_thread, sizeof(cpu_set_t), &cpuset_rx) != 0) {
+        perror("pthread_setaffinity()");
+    }
+
+    pthread_t tx_thread;
+    if( pthread_create(&tx_thread, NULL, tx_loop, (void*)&tx_cfg) < 0 ) {
+        perror("pthread_create()");
+        exit(1);
+    }
+
+    CPU_ZERO(&cpuset_tx);
+    CPU_SET(44, &cpuset_tx);
+    if(pthread_setaffinity_np(tx_thread, sizeof(cpu_set_t), &cpuset_tx) != 0) {
+        perror("pthread_setaffinity()");
+    }
 
     pthread_join(timer_thread, NULL);
+    pthread_join(rx_thread, NULL);
+    pthread_join(tx_thread, NULL);
 
     return 0;
 }
