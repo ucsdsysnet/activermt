@@ -33,6 +33,7 @@
 
 #include "../../headers/activep4.h"
 #include "../../headers/stats.h"
+#include "../../headers/payload_parser_resp.h"
 
 typedef struct {
     char*           iface_name;
@@ -42,12 +43,27 @@ typedef struct {
 } devinfo_t;
 
 typedef struct {
+    redis_command_t     rcmd;
+} redis_context_t;
+
+typedef struct {
+    struct ethhdr*      eth;
+    struct iphdr*       iph;
+    struct tcphdr*      tcph;
+    struct udphdr*      udph;
+    activep4_ih*        ap4ih;
+    activep4_data_t*    ap4args;
+    char*               payload;
+} net_headers_t;
+
+typedef struct {
     int                 tunfd;
     int                 sockfd;
     devinfo_t           dev_info;
     devinfo_t           tun_info;
     struct sockaddr_ll  eth_dst_addr;
     int                 maxfd;
+    void*               app_context;
 } rx_tx_config_t;
 
 typedef struct {
@@ -57,6 +73,7 @@ typedef struct {
     char                sendbuf[BUFSIZE];
     char*               recvbuf;
     rx_tx_config_t*     devcfg;
+    void                (*tx_filter)(net_headers_t*, activep4_data_t*, void*);   
 } tx_config_t;
 
 typedef struct {
@@ -65,6 +82,7 @@ typedef struct {
     char                sendbuf[BUFSIZE];
     char                recvbuf[BUFSIZE];
     rx_tx_config_t*     devcfg;
+    void                (*rx_filter)(net_headers_t*, void*);
 } rx_config_t;
 
 stats_t stats;
@@ -142,6 +160,47 @@ static inline int activep4_get_ipv4_offset(char* buf) {
     return offset;
 }
 
+static inline int extract_network_headers(char* buf, net_headers_t* hdrs) {
+    buf += TUNOFFSET;
+    int offset = 0;
+    struct ethhdr* eth = (struct ethhdr*) buf;
+    struct iphdr* iph = NULL;
+    struct tcphdr* tcph = NULL;
+    struct udphdr* udph = NULL;
+    activep4_ih* ap4ih = NULL;
+    activep4_data_t* ap4args = NULL;
+    offset += sizeof(struct ethhdr);
+    if(ntohs(eth->h_proto) == ETH_P_AP4) {
+        ap4ih = (activep4_ih*)(buf + offset);
+        offset += sizeof(activep4_ih);
+        if(ntohl(ap4ih->SIG) != ACTIVEP4SIG) return -1;
+        if(ntohs(ap4ih->flags) & AP4FLAGMASK_OPT_ARGS) {
+            ap4args = (activep4_data_t*)(buf + offset);
+            offset += sizeof(activep4_data_t);
+        }
+        offset += get_active_eof(buf + offset);
+    }
+    iph = (struct iphdr*)(buf + offset);
+    offset += sizeof(struct iphdr);
+    if(iph->protocol == IPPROTO_TCP) {
+        tcph = (struct tcphdr*)(buf + offset);
+        offset += tcph->doff * 4;
+    } else if(iph->protocol == IPPROTO_UDP) {
+        udph = (struct udphdr*)(buf + offset);
+        offset += sizeof(struct udphdr);
+    } else {
+        return -1;
+    }
+    hdrs->eth = eth;
+    hdrs->iph = iph;
+    hdrs->tcph = tcph;
+    hdrs->udph = udph;
+    hdrs->ap4ih = ap4ih;
+    hdrs->ap4args = ap4args;
+    hdrs->payload = buf + offset;
+    return offset;
+}
+
 static inline void print_hwaddr(unsigned char* hwaddr) {
     printf("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
@@ -203,19 +262,50 @@ static void interrupt_handler(int sig) {
     exit(1);
 }
 
+static inline int serialize_redis_data(char* buf, uint32_t response, int len) {
+    int buflen = 10;
+    response = ntohl(response);
+    sprintf(buf, "$4\r\n%c%c%c%c\r\n", (char)(response >> 24), (char)(response >> 16), (char)(response >> 8), (char)response );
+    buf[buflen] = '\0';
+    while(buflen++ < len) buf[buflen] = '\0';
+    return buflen;
+}
+
+static inline void tx_filter_redis(net_headers_t* hdrs, void* ctxt) {
+    // insert key into args based on payload.
+    redis_context_t* context = (redis_context_t*) ctxt;
+    activep4_data_t* args = hdrs->ap4args;
+    /*deserialize_redis_data(payload, len, &context->rcmd);
+    if(context->rcmd.cmd_get == 1) {
+        uint32_t redis_key = htonl(*((uint32_t*)context->rcmd.key));
+        memcpy(&args->data[1], (char*)&redis_key, sizeof(uint32_t));
+    }*/
+}
+
+static inline void rx_filter_redis(net_headers_t* hdrs, void* ctxt) {
+    // match response value to request key.
+    redis_context_t* context = (redis_context_t*) ctxt;
+    /*deserialize_redis_data(hdrs->payload, len, &context->rcmd);
+    if(context->rcmd.cmd_get == 1 && context->rcmd.val_len > 0) {
+        // TODO handle KV response.
+        memset(context, 0, sizeof(redis_context_t));
+    }*/
+}
+
 void* rx_loop(void* argp) {
 
     rx_config_t* rx_cfg = (rx_config_t*) argp;
 
     fd_set rd_set;
-    int maxfd = rx_cfg->devcfg->sockfd, ret;
+    int maxfd = rx_cfg->devcfg->sockfd, ret, offset;
     int read_bytes, wrote_bytes;
 
     char* recvbuf = rx_cfg->recvbuf;
 
-    struct ethhdr*  eth;
+    /*struct ethhdr*  eth;
     struct iphdr*   iph;
-    activep4_ih*    ap4ih;
+    activep4_ih*    ap4ih;*/
+    net_headers_t hdrs;
 
     printf("Starting RX loop ... \n");
 
@@ -240,15 +330,18 @@ void* rx_loop(void* argp) {
                 exit(1);
             }
             if(read_bytes > (sizeof(struct ethhdr) + sizeof(struct iphdr))) {
-                eth = (struct ethhdr*)(recvbuf + TUNOFFSET);
-                if(hwaddr_equals(eth->h_dest, rx_cfg->devcfg->dev_info.hwaddr)) {
+                memset(&hdrs, 0, sizeof(net_headers_t));
+                if(extract_network_headers(recvbuf, &hdrs) < 0) {
+                    printf("Invalid packet received.\n");
+                    continue;
+                }
+                if(hwaddr_equals(hdrs.eth->h_dest, rx_cfg->devcfg->dev_info.hwaddr)) {
                     #ifdef DEBUG
                     printf("[ETH] [%d Bytes] ", read_bytes);
                     #endif
-                    ap4ih = (activep4_ih*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
-                    if(ntohs(eth->h_proto) == ETH_P_AP4 && ntohl(ap4ih->SIG) == ACTIVEP4SIG) {
-                        iph = (struct iphdr*)(recvbuf + TUNOFFSET + activep4_get_ipv4_offset(recvbuf + TUNOFFSET));
-                        if( (wrote_bytes = sendto(rx_cfg->local, (char*)iph, ntohs(iph->tot_len), 0, (struct sockaddr*)&rx_cfg->loc_in, sizeof(struct sockaddr_in))) < 0 )
+                    if(hdrs.ap4ih != NULL) {
+                        rx_cfg->rx_filter(&hdrs, rx_cfg->devcfg->app_context);
+                        if( (wrote_bytes = sendto(rx_cfg->local, (char*)hdrs.iph, ntohs(hdrs.iph->tot_len), 0, (struct sockaddr*)&rx_cfg->loc_in, sizeof(struct sockaddr_in))) < 0 )
                             perror("sendto");
                         #ifdef DEBUG
                         printf("[AP4] (forwarded %d bytes ... ) ", wrote_bytes);
@@ -258,11 +351,8 @@ void* rx_loop(void* argp) {
                             close(sockfd);
                             exit(1);
                         }*/
-                    } else {
-                        iph = (struct iphdr*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
                     }
                 } else {
-                    iph = (struct iphdr*)(recvbuf + TUNOFFSET + sizeof(struct ethhdr));
                     #ifdef DEBUG
                     printf("(Unknown) [ETH] [%d Bytes] ", read_bytes);
                     #endif
@@ -290,7 +380,8 @@ void* tx_loop(void* argp) {
     uint32_t ipv4_dstaddr;
 
     struct ethhdr*  eth = (struct ethhdr*) sendbuf;
-    struct iphdr*   iph;
+
+    net_headers_t hdrs;
 
     printf("Starting TX loop ... \n");
 
@@ -320,10 +411,13 @@ void* tx_loop(void* argp) {
                 print_pktinfo(sendbuf);
             }
             #endif
-            iph = (struct iphdr*)(recvbuf + TUNOFFSET);
+            if(extract_network_headers(sendbuf, &hdrs) < 0 ) {
+                printf("Error: packet invalid!\n");
+                continue;
+            }
             if(eth_dst_resolved == 0) {
                 // Assuming (/24) mapping: x.x.x.y -> z.z.z.y
-                ipv4_dstaddr = (iph->daddr & 0xFF000000) | (tx_cfg->devcfg->dev_info.ipv4addr & 0x00FFFFFF);
+                ipv4_dstaddr = (hdrs.iph->daddr & 0xFF000000) | (tx_cfg->devcfg->dev_info.ipv4addr & 0x00FFFFFF);
                 if( (eth_dst_resolved = arp_resolve(ipv4_dstaddr, tx_cfg->devcfg->dev_info.iface_name, eth->h_dest)) == 0 ) {
                     printf("((ARP)) resolution error: ");
                     print_ipv4_addr(ipv4_dstaddr);
@@ -338,6 +432,7 @@ void* tx_loop(void* argp) {
                     memcpy(&((struct ethhdr*)sendbuf)->h_dest, (char*)&eth->h_dest, ETH_ALEN);
                 }
             }
+            tx_filter_redis(&hdrs, tx_cfg->devcfg->app_context);
             if( (wrote_bytes = sendto(tx_cfg->devcfg->sockfd, sendbuf, read_bytes + sizeof(struct ethhdr) + tx_cfg->prog_offset, 0, (struct sockaddr*)&tx_cfg->devcfg->eth_dst_addr, sizeof(struct sockaddr_ll))) < 0 ) {
                 perror("sendto()");
                 close(tx_cfg->devcfg->sockfd);

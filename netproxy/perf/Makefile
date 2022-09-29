@@ -2,7 +2,7 @@ CC		= gcc
 CCFLAGS	= -g
 
 HEADERS_DIR = ../../headers
-HEADERS = activep4.h stats.h
+HEADERS = activep4.h stats.h payload_parser_resp.h
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 
 all: tuntap
