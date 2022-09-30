@@ -27,16 +27,11 @@
 #include <linux/if_ether.h>
 
 #include "activep4.h"
+#include "stats.h"
 
 typedef struct {
     activep4_malloc_block_t mem_range[NUM_STAGES];
 } __attribute__((packed)) activep4_malloc_res_t;
-
-typedef struct {
-    int             iface_index;
-    unsigned char   hwaddr[ETH_ALEN];
-    uint32_t        ipv4addr;
-} devinfo_t;
 
 typedef struct {
     activep4_ih             ap4ih;
@@ -85,59 +80,6 @@ static inline active_program_t* dequeue_program(active_queue_t* queue) {
         queue->tail = -1;
     } else queue->head = (queue->head + 1) % QUEUELEN;
     return program;
-}
-
-static inline int hwaddr_equals(unsigned char* a, unsigned char* b) {
-    return ( a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] );
-}
-
-static inline uint16_t compute_checksum(uint16_t* buf, int num_bytes) {
-    uint32_t chksum = 0;
-    int i;
-    for(i = num_bytes; i > 1; i -= 2) chksum += *buf++;
-    if(i == 1) chksum += (*buf & 0xFF00);
-    chksum = (chksum >> 16) + (chksum & 0xFFFF);
-    chksum = (chksum >> 16) + chksum;
-    return (uint16_t)~chksum;
-}
-
-static inline void print_hwaddr(unsigned char* hwaddr) {
-    printf("hwaddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
-}
-
-static void get_iface(devinfo_t* info, char* dev, int fd) {
-    struct ifreq ifr;
-    size_t if_name_len = strlen(dev);
-    char ip_addr[IPADDRSIZE];
-    if(if_name_len < sizeof(ifr.ifr_name)) {
-        memcpy(ifr.ifr_name, dev, if_name_len);
-        ifr.ifr_name[if_name_len] = 0;
-    } else {
-        fprintf(stderr, "interface name is too long\n");
-        exit(1);
-    }
-    if (ioctl(fd, SIOCGIFINDEX, &ifr) < 0) {
-        perror("ioctl");
-        exit(1);
-    }
-    info->iface_index = ifr.ifr_ifindex;
-    if(ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
-        perror("ioctl");
-        exit(1);
-    }
-    memcpy(info->hwaddr, (unsigned char*)ifr.ifr_hwaddr.sa_data, ETH_ALEN);
-    ifr.ifr_addr.sa_family = AF_INET;
-    if(ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
-        perror("ioctl");
-        exit(1);
-    }
-    memcpy(&info->ipv4addr, &((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr, sizeof(uint32_t));
-    #ifdef DEBUG
-    printf("Device %s has iface index %d\n", dev, info->iface_index);
-    #endif
-    printf("Device %s has hwaddr %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", dev, info->hwaddr[0], info->hwaddr[1], info->hwaddr[2], info->hwaddr[3], info->hwaddr[4], info->hwaddr[5]);
-    inet_ntop(AF_INET, &info->ipv4addr, ip_addr, IPADDRSIZE);
-    printf("Device %s has ipv4 addr %s\n", dev, ip_addr);
 }
 
 /* Global data structures for rx/tx. */
@@ -277,6 +219,10 @@ static int active_tx(active_program_t* program) {
         0, 
         (struct sockaddr*)&eth_dst_addr, sizeof(eth_dst_addr)
     )) < 0) perror("sendto");
+
+    pthread_mutex_lock(&lock);
+    stats.count++;
+    pthread_mutex_unlock(&lock);
 
     return sent;
 }

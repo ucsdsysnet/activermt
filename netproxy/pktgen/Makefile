@@ -1,7 +1,7 @@
 CC		= gcc
 CCFLAGS	= -g
 
-HEADERS_DIR = ..
+HEADERS_DIR = ../../headers
 HEADERS = activep4.h activep4_pktgen.h
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 

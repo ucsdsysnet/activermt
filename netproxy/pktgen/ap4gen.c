@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <time.h>
 
-#include "../activep4_pktgen.h"
+#include "../../headers/activep4_pktgen.h"
 
 //#define DEBUG
 
@@ -583,6 +583,18 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    pthread_t timer_thread;
+    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
+        perror("pthread_create()");
+        exit(1);
+    }
+    cpu_set_t cpuset_timer;
+    CPU_ZERO(&cpuset_timer);
+    CPU_SET(40, &cpuset_timer);
+    if(pthread_setaffinity_np(timer_thread, sizeof(cpu_set_t), &cpuset_timer) != 0) {
+        perror("pthread_setaffinity()");
+    }
+
     experiment_t experiment[NUM_REPEATS];
 
     memset(&experiment, 0, NUM_REPEATS * sizeof(experiment_t));
@@ -677,7 +689,7 @@ int main(int argc, char** argv) {
 
     pthread_create(&rxtx, NULL, run_rxtx, (void*)&config);
 
-    cpu_set_t cpuset;
+    /*cpu_set_t cpuset;
     int s;
 
     CPU_ZERO(&cpuset);
@@ -685,9 +697,12 @@ int main(int argc, char** argv) {
             CPU_SET(i, &cpuset);
     
     s = pthread_setaffinity_np(rxtx, sizeof(cpu_set_t), &cpuset);
-    if(s != 0) perror("pthread_setaffinity");
+    if(s != 0) perror("pthread_setaffinity");*/
 
     coredump.fid = fid;
+    for(i = 0; i < program_cms.num_accesses; i++) {
+        coredump.valid_stages[program_cms.access_idx[i]] = 1;
+    }
 
     /////////////////////////////////////////////////////////////////
 
@@ -696,11 +711,11 @@ int main(int argc, char** argv) {
     allocationInitiated = 0;
     isRemapped = 0;
 
-    printf("initiating alloc ... \n");
+    /*printf("initiating alloc ... \n");
     init_memory_allocation(fid, &queue, program_cms.num_accesses, program_cms.access_idx, program_cms.demand, program_cms.proglen, program_cms.iglim);
     printf("fetching alloc ... \n");
     get_memory_allocation(fid, &queue);
-    printf("OK.\n");
+    printf("OK.\n");*/
 
     active_program_t variant_cms;
     memset(&variant_cms, 0, sizeof(active_program_t));
@@ -819,7 +834,7 @@ int main(int argc, char** argv) {
         elapsed_ns = (ts_now.tv_sec - ts_init.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_init.tv_nsec);
         if(elapsed_ns >= expDuration) break;
 
-        usleep(SEND_ITVL);
+        //usleep(SEND_ITVL);
     }
 
     char cms_samples_filename[100];
@@ -1065,6 +1080,7 @@ int main(int argc, char** argv) {
     //}
 
     pthread_join(rxtx, NULL);
+    pthread_join(timer_thread, NULL);
 
     return 0;
 }
