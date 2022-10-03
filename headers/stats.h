@@ -6,13 +6,15 @@
 
 typedef struct {
     uint32_t    count;
+    uint32_t    count_alt;
     uint32_t    numSamples;
     uint32_t    reqRate[MAX_SAMPLES];
+    uint32_t    reqRateAlt[MAX_SAMPLES];
     uint64_t    ts_sec[MAX_SAMPLES];
     uint64_t    ts_nsec[MAX_SAMPLES];
 } stats_t;
 
-pthread_mutex_t lock;
+pthread_mutex_t lock, lock_alt;
 
 void* monitor_stats(void* argp) {
 
@@ -32,12 +34,16 @@ void* monitor_stats(void* argp) {
             memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
             stats->ts_sec[stats->numSamples] = ts_now.tv_sec;
             stats->ts_nsec[stats->numSamples] = ts_now.tv_nsec;
+            stats->reqRateAlt[stats->numSamples] = stats->count_alt;
             stats->reqRate[stats->numSamples++] = stats->count;
-            if(stats->count > 0)
-                printf("[STATS] %u pkts/sec.\n", stats->count);
+            if(stats->count > 0 || stats->count_alt > 0)
+                printf("[STATS] %u / %u pkts/sec.\n", stats->count, stats->count_alt);
             pthread_mutex_lock(&lock);
             stats->count = 0;
             pthread_mutex_unlock(&lock);
+            pthread_mutex_lock(&lock_alt);
+            stats->count_alt = 0;
+            pthread_mutex_unlock(&lock_alt);
         }
     }
 }

@@ -4,13 +4,14 @@
 
 #define MEMPOOL_SIZE    1024
 #define NUM_TX_THREADS  4
+#define NUM_RX_THREADS  2
 
 stats_t stats;
 
 void rx_handler(net_headers_t* hdrs) {
-    /*pthread_mutex_lock(&lock);
-    stats.count++;
-    pthread_mutex_unlock(&lock);*/
+    pthread_mutex_lock(&lock_alt);
+    stats.count_alt++;
+    pthread_mutex_unlock(&lock_alt);
 }
 
 void* tx_burst_sender(void* argp) {
@@ -95,15 +96,16 @@ int main(int argc, char** argv) {
         perror("pthread_create()");
         exit(1);
     }
-
-    pthread_t rx_thread;
-    if( pthread_create(&rx_thread, NULL, rx_loop, (void*)&cfg) < 0 ) {
-        perror("pthread_create()");
-        exit(1);
-    }
-
     set_cpu_affinity(40, 40, &timer_thread);
-    set_cpu_affinity(42, 42, &rx_thread);
+
+    pthread_t rx_thread[NUM_RX_THREADS];
+    for(int i = 0; i < NUM_RX_THREADS; i++) {
+        if( pthread_create(&rx_thread[i], NULL, rx_loop, (void*)&cfg) < 0 ) {
+            perror("pthread_create()");
+            exit(1);
+        }
+        set_cpu_affinity(50 + 2*i, 50 + 2*i, &rx_thread[i]);
+    }
 
     pthread_t tx_thread[NUM_TX_THREADS];
     for(int i = 0; i < NUM_TX_THREADS; i++) {
@@ -111,11 +113,13 @@ int main(int argc, char** argv) {
             perror("pthread_create()");
             exit(1);
         }
-        set_cpu_affinity(44 + 2*i, 44 + 2*i, &tx_thread[i]);
+        set_cpu_affinity(60 + 2*i, 60 + 2*i, &tx_thread[i]);
     }
 
     pthread_join(timer_thread, NULL);
-    pthread_join(rx_thread, NULL);
+
+    for(int i = 0; i < NUM_RX_THREADS; i++)
+        pthread_join(rx_thread[i], NULL);
 
     for(int i = 0; i < NUM_TX_THREADS; i++)
         pthread_join(tx_thread[i], NULL);

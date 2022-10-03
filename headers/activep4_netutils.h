@@ -4,6 +4,7 @@
 #define MSEND           1
 #define TRUE            1
 #define ETH_P_AP4       0x83B2
+#define MMSG_VLEN       512
 #define BUFSIZE         4096
 #define QUEUELEN        1024
 #define IPADDRSIZE      16
@@ -71,7 +72,7 @@ typedef struct {
     void                (*rx_handler)(net_headers_t*);
 } port_config_t;
 
-pthread_mutex_t qlock;
+pthread_mutex_t qlock, rxlock;
 
 static inline void init_queue(tx_queue_t* queue) {
     queue->qhead = -1;
@@ -263,11 +264,19 @@ void* rx_loop(void* argp) {
     port_config_t* cfg = (port_config_t*)argp;
 
     fd_set rd_set;
-    int maxfd = cfg->sockfd, ret, read_bytes;
+    int maxfd = cfg->sockfd, ret, read_bytes, read_msgs;
 
     net_headers_t hdrs;
 
     char recvbuf[BUFSIZE];
+
+    struct mmsghdr msgs[MMSG_VLEN];
+    struct iovec iovecs[MMSG_VLEN];
+    char bufs[MMSG_VLEN][BUFSIZE+1];
+
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 0;
 
     printf("Starting RX loop ... \n");
 
@@ -284,8 +293,16 @@ void* rx_loop(void* argp) {
 
         read_bytes = 0;
 
+        for(int i = 0; i < MMSG_VLEN; i++) {
+            iovecs[i].iov_base         = bufs[i];
+            iovecs[i].iov_len          = BUFSIZE;
+            msgs[i].msg_hdr.msg_iov    = &iovecs[i];
+            msgs[i].msg_hdr.msg_iovlen = 1;
+        }
+
         if(FD_ISSET(cfg->sockfd, &rd_set)) {
             if( (read_bytes = read(cfg->sockfd, recvbuf, BUFSIZE)) < 0 ) {
+            //if( (read_msgs = recvmmsg(cfg->sockfd, msgs, MMSG_VLEN, 0, &timeout)) < 0 ) {
                 perror("read()");
                 close(cfg->sockfd);
                 exit(1);
