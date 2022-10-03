@@ -103,6 +103,7 @@ class ActiveP4Controller:
         self.dst_port_mapping = {}
         self.ports = []
         # modified at runtime.
+        self.allocVersion = {}
         self.queue = []
         self.active = []
         self.coredumps = {}
@@ -369,8 +370,11 @@ class ActiveP4Controller:
         self.allocator.applyQueuedAllocation()
         self.updateAllocation(fid, self.allocator.getAllocationBlocks(fid), remaps)
         self.addQuotas(fid, recirculate=True)
+        if fid not in self.allocVersion:
+            self.allocVersion[fid] = 0
+        self.allocVersion[fid] += 1
         self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
-        self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2)
+        self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2, allocation_id=self.allocVersion[fid])
         bfrt.complete_operations()
         self.active.append(fid)
         self.queue.remove(fid)
@@ -737,10 +741,11 @@ controller.installInstructionTableEntries()
 if testMode:
     num_indices = 65536
     for i in range(0, num_indices):
-        bfrt.active.pipe.Ingress.heap_s4.add(REGISTER_INDEX=i, f1=i)
+        #bfrt.active.pipe.Ingress.heap_s4.add(REGISTER_INDEX=i, f1=i)
         #bfrt.active.pipe.Ingress.heap_s9.add(REGISTER_INDEX=i, f1=3)
+        pass
     for app in demoApps:
-        #controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
+        controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
         pass
     
 controller.initController()

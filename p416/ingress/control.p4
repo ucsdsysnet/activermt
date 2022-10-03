@@ -3113,8 +3113,9 @@ table allocation_9 {
         hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
-    action allocated() {
+    action allocated(bit<16> allocation_id) {
         hdr.ih.flag_allocated = 1;
+        hdr.ih.seq = allocation_id;
     }
 
     action pending() {
@@ -3174,10 +3175,11 @@ table allocation_9 {
             if(hdr.ih.flag_remapped == 1) {
                 ig_dprsr_md.digest_type = 2;
             }
-            allocation.apply();
+            if(allocation.apply().miss) {
+                //check_prior_exec();
+            }
             quota_recirc.apply();
             update_pkt_count_ap4();
-            check_prior_exec();
         } else bypass_egress();
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
