@@ -1,22 +1,18 @@
 #define _GNU_SOURCE
 #include "../../headers/activep4_netutils.h"
-#include "../../headers/stats.h"
 
-#define MEMPOOL_SIZE    1024
-#define NUM_TX_THREADS  4
+//#define RATE_LIMITED    1
+#define MAX_PPS         1000000
+#define MEMPOOL_SIZE    2048
+#define NUM_TX_THREADS  2
 #define NUM_RX_THREADS  2
 
-stats_t stats;
-
-void rx_handler(net_headers_t* hdrs) {
-    pthread_mutex_lock(&lock_alt);
-    stats.count_alt++;
-    pthread_mutex_unlock(&lock_alt);
-}
+void rx_handler(net_headers_t* hdrs) {}
 
 void* tx_burst_sender(void* argp) {
 
-    port_config_t* cfg = (port_config_t*)argp;
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
 
     tx_pkt_t mempool[MEMPOOL_SIZE];
     memset(mempool, 0, MEMPOOL_SIZE * sizeof(tx_pkt_t));
@@ -52,12 +48,24 @@ void* tx_burst_sender(void* argp) {
         mempool[i].pktlen = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
     }
 
+    #ifdef RATE_LIMITED
+    struct timespec ts_start, ts_now;
+    uint64_t send_itvl_ns = 0, elapsed_ns = 0, num_batches, batch_itvl_ns;
+    #endif
+
     while(TRUE) {
-        // send burst of pkts.
+        #ifdef RATE_LIMITED
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
+        #endif
         tx_burst(cfg, mempool, MEMPOOL_SIZE);
-        pthread_mutex_lock(&lock);
-        stats.count += MEMPOOL_SIZE;
-        pthread_mutex_unlock(&lock);
+        #ifdef RATE_LIMITED
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+        num_batches = th_cfg->tx_pps / MEMPOOL_SIZE;
+        batch_itvl_ns = 1E9 / num_batches;
+        send_itvl_ns = (batch_itvl_ns > elapsed_ns) ? batch_itvl_ns - elapsed_ns : 0;
+        busy_wait(send_itvl_ns);
+        #endif
     }
 }
 
@@ -74,12 +82,13 @@ static inline void set_cpu_affinity(int core_id_start, int core_id_end, pthread_
 int main(int argc, char** argv) {
 
     if(argc < 3) {
-        printf("Usage: %s <iface> <ipv4_dstaddr>\n", argv[0]);
+        printf("Usage: %s <iface> <ipv4_dstaddr> [tx_rate_pps]\n", argv[0]);
         exit(1);
     }
 
     char* iface = argv[1];
     char* ipv4_dstaddr = argv[2];
+    int tx_pps = (argc > 3) ? atoi(argv[3]) : MAX_PPS;
 
     port_config_t cfg;
     memset(&cfg, 0, sizeof(port_config_t));
@@ -87,7 +96,31 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    cfg.rx_handler = rx_handler;
+    tx_pps = (tx_pps < MEMPOOL_SIZE * NUM_TX_THREADS) ? MEMPOOL_SIZE * NUM_TX_THREADS : tx_pps;
+    tx_pps = (tx_pps > MAX_PPS) ? MAX_PPS : tx_pps;
+
+    thread_config_t tx_cfg[NUM_TX_THREADS], rx_cfg[NUM_RX_THREADS];
+
+    for(int i = 0; i < NUM_TX_THREADS; i++) {
+        memset(&tx_cfg[i], 0, sizeof(thread_config_t));
+        tx_cfg[i].thread_id = i;
+        tx_cfg[i].cfg = &cfg;
+        tx_cfg[i].tx_pps = tx_pps / NUM_TX_THREADS;
+    }
+
+    int num_blocks = cfg.pmmap.num_blocks / NUM_RX_THREADS;
+    int num_frames = cfg.pmmap.frames_per_buffer * num_blocks;
+    int remaining_blocks = cfg.pmmap.num_blocks * cfg.pmmap.frames_per_buffer;
+    for(int i = 0; i < NUM_RX_THREADS; i++) {
+        memset(&rx_cfg[i], 0, sizeof(thread_config_t));
+        rx_cfg[i].thread_id = i;
+        rx_cfg[i].cfg = &cfg;
+        rx_cfg[i].rx_handler = rx_handler;
+        rx_cfg[i].num_frames = num_frames;
+        rx_cfg[i].frame_offset = i * num_frames;
+        remaining_blocks -= num_frames;
+    }
+    rx_cfg[NUM_RX_THREADS - 1].num_frames += remaining_blocks;
 
     memset(&stats, 0, sizeof(stats_t));
 
@@ -100,7 +133,7 @@ int main(int argc, char** argv) {
 
     pthread_t rx_thread[NUM_RX_THREADS];
     for(int i = 0; i < NUM_RX_THREADS; i++) {
-        if( pthread_create(&rx_thread[i], NULL, rx_loop, (void*)&cfg) < 0 ) {
+        if( pthread_create(&rx_thread[i], NULL, rx_mmap_loop, (void*)&rx_cfg[i]) < 0 ) {
             perror("pthread_create()");
             exit(1);
         }
@@ -109,7 +142,7 @@ int main(int argc, char** argv) {
 
     pthread_t tx_thread[NUM_TX_THREADS];
     for(int i = 0; i < NUM_TX_THREADS; i++) {
-        if( pthread_create(&tx_thread[i], NULL, tx_burst_sender, (void*)&cfg) < 0 ) {
+        if( pthread_create(&tx_thread[i], NULL, tx_burst_sender, (void*)&tx_cfg[i]) < 0 ) {
             perror("pthread_create()");
             exit(1);
         }

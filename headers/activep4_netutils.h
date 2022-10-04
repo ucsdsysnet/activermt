@@ -5,9 +5,10 @@
 #define TRUE            1
 #define ETH_P_AP4       0x83B2
 #define MMSG_VLEN       512
-#define BUFSIZE         4096
+#define BUFSIZE         2048
 #define QUEUELEN        1024
 #define IPADDRSIZE      16
+#define SNAPLEN_ETH     1500
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
+#include <poll.h>
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -27,11 +29,13 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/queue.h>
+#include <sys/mman.h>
 #include <linux/if.h>
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
 
 #include "activep4.h"
+#include "stats.h"
 
 typedef struct {
     char*           iface_name;
@@ -63,16 +67,35 @@ typedef struct {
 } tx_queue_t;
 
 typedef struct {
+    int                 fd;
+    size_t              rx_ring_size;
+    char*               rx_ring;
+    struct tpacket_req  req;
+    size_t              frames_per_buffer;
+    int                 num_blocks;
+} packet_mmap_t;
+
+typedef struct {
     int                 sockfd;
     devinfo_t           dev_info;
     in_addr_t           ipv4_dstaddr;
     unsigned char       eth_dstaddr[ETH_ALEN];
     struct sockaddr_ll  eth_dst_addr;
-    tx_queue_t          tx_queue;
-    void                (*rx_handler)(net_headers_t*);
+    packet_mmap_t       pmmap;
 } port_config_t;
 
+typedef struct {
+    port_config_t*      cfg;
+    int                 thread_id;
+    int                 frame_offset;
+    int                 num_frames;
+    uint32_t            tx_pps;
+    tx_queue_t          tx_queue;
+    void                (*rx_handler)(net_headers_t*);
+} thread_config_t;
+
 pthread_mutex_t qlock, rxlock;
+stats_t stats;
 
 static inline void init_queue(tx_queue_t* queue) {
     queue->qhead = -1;
@@ -259,9 +282,72 @@ static inline int extract_network_headers(char* buf, net_headers_t* hdrs) {
     return offset;
 }
 
+static inline void busy_wait(uint64_t duration_ns) {
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns = 0;
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
+    while(elapsed_ns < duration_ns) {
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+    }
+}
+
+void* rx_mmap_loop(void* argp) {
+
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
+    packet_mmap_t* mmapcfg = &cfg->pmmap;
+
+    size_t frame_idx = 0;
+    char* frame_ptr = NULL;
+
+    net_headers_t hdrs;
+
+    while(TRUE) {
+        //frame_idx = (frame_idx + 1) % mmapcfg->req.tp_frame_nr;
+        frame_idx = (frame_idx + 1) % th_cfg->num_frames + th_cfg->frame_offset;
+
+        int buffer_idx = frame_idx / mmapcfg->frames_per_buffer;
+        char* buffer_ptr = mmapcfg->rx_ring + buffer_idx * mmapcfg->req.tp_block_size;
+
+        int frame_idx_diff = frame_idx % mmapcfg->frames_per_buffer;
+        frame_ptr = buffer_ptr + frame_idx_diff * mmapcfg->req.tp_frame_size;
+
+        struct pollfd fds[1] = {0};
+        fds[0].fd = mmapcfg->fd;
+        fds[0].events = POLLIN;
+
+        struct tpacket_hdr* tphdr = (struct tpacket_hdr*)frame_ptr;
+        while(!(tphdr->tp_status & TP_STATUS_USER)) {
+            if (poll(fds, 1, -1) < 0) {
+                perror("poll()");
+                exit(1);
+            }
+        }
+
+        struct sockaddr_ll* addr = (struct sockaddr_ll*)(frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll));
+        char* l2content = frame_ptr + tphdr->tp_mac;
+        //char* l3content = frame_ptr + tphdr->tp_net;
+
+        struct ethhdr* eth = (struct ethhdr*)l2content;
+
+        if(hwaddr_equals(eth->h_dest, cfg->dev_info.hwaddr)) {
+            pthread_mutex_lock(&lock_alt);
+            stats.count_alt++;
+            pthread_mutex_unlock(&lock_alt);
+            if(extract_network_headers(l2content, &hdrs) >= 0) {
+                th_cfg->rx_handler(&hdrs);
+            }
+        }
+
+        tphdr->tp_status = TP_STATUS_KERNEL;
+    }
+}
+
 void* rx_loop(void* argp) {
 
-    port_config_t* cfg = (port_config_t*)argp;
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
 
     fd_set rd_set;
     int maxfd = cfg->sockfd, ret, read_bytes, read_msgs;
@@ -280,6 +366,13 @@ void* rx_loop(void* argp) {
 
     printf("Starting RX loop ... \n");
 
+    for(int i = 0; i < MMSG_VLEN; i++) {
+        iovecs[i].iov_base         = bufs[i];
+        iovecs[i].iov_len          = BUFSIZE;
+        msgs[i].msg_hdr.msg_iov    = &iovecs[i];
+        msgs[i].msg_hdr.msg_iovlen = 1;
+    }
+
     while(TRUE) {
         FD_ZERO(&rd_set);
         FD_SET(cfg->sockfd, &rd_set);
@@ -292,13 +385,6 @@ void* rx_loop(void* argp) {
         }
 
         read_bytes = 0;
-
-        for(int i = 0; i < MMSG_VLEN; i++) {
-            iovecs[i].iov_base         = bufs[i];
-            iovecs[i].iov_len          = BUFSIZE;
-            msgs[i].msg_hdr.msg_iov    = &iovecs[i];
-            msgs[i].msg_hdr.msg_iovlen = 1;
-        }
 
         if(FD_ISSET(cfg->sockfd, &rd_set)) {
             if( (read_bytes = read(cfg->sockfd, recvbuf, BUFSIZE)) < 0 ) {
@@ -319,7 +405,10 @@ void* rx_loop(void* argp) {
                     #ifdef DEBUG
                     printf("[ETH] [%d Bytes] ", read_bytes);
                     #endif
-                    cfg->rx_handler(&hdrs);
+                    pthread_mutex_lock(&lock_alt);
+                    stats.count_alt++;
+                    pthread_mutex_unlock(&lock_alt);
+                    th_cfg->rx_handler(&hdrs);
                 } else {
                     #ifdef DEBUG
                     printf("(Unknown) [ETH] [%d Bytes] ", read_bytes);
@@ -335,7 +424,8 @@ void* rx_loop(void* argp) {
 
 void* tx_loop(void* argp) {
 
-    port_config_t* cfg = (port_config_t*)argp;
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
 
     int wrote_bytes;
     tx_pkt_t* pkt;
@@ -344,7 +434,7 @@ void* tx_loop(void* argp) {
 
     while(TRUE) {
 
-        if(dequeue_pkt(&cfg->tx_queue, &pkt) < 0)
+        if(dequeue_pkt(&th_cfg->tx_queue, &pkt) < 0)
             continue;
 
         wrote_bytes = 0;
@@ -366,6 +456,9 @@ void tx_burst(port_config_t* cfg, tx_pkt_t* pkts, int num_pkts) {
             exit(1);
         }
     }
+    pthread_mutex_lock(&lock);
+    stats.count += num_pkts;
+    pthread_mutex_unlock(&lock);
 }
 
 int port_init(port_config_t* cfg, char* iface, in_addr_t ipv4_dstaddr) {
@@ -389,6 +482,47 @@ int port_init(port_config_t* cfg, char* iface, in_addr_t ipv4_dstaddr) {
         printf("Error: IP address could not be resolved!\n");
         return -1;
     }
+
+    packet_mmap_t* mmapcfg = &cfg->pmmap;
+
+    mmapcfg->fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if(mmapcfg->fd < 0) {
+        perror("socket()");
+        exit(1);
+    }
+
+    //mmapcfg->fd = cfg->sockfd;
+
+    int version = TPACKET_V1;
+    if((setsockopt(mmapcfg->fd, SOL_PACKET, PACKET_VERSION, &version, sizeof(version))) < 0) {
+        perror("setsockopt()");
+        exit(1);
+    }
+
+    memset(&mmapcfg->req, 0, sizeof(struct tpacket_req));
+    mmapcfg->req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
+
+    mmapcfg->req.tp_block_size = sysconf(_SC_PAGESIZE);
+    while (mmapcfg->req.tp_block_size < mmapcfg->req.tp_frame_size) {
+        mmapcfg->req.tp_block_size <<= 1;
+    }
+
+    mmapcfg->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (128 * mmapcfg->req.tp_block_size);
+
+    mmapcfg->frames_per_buffer = mmapcfg->req.tp_block_size / mmapcfg->req.tp_frame_size;
+    mmapcfg->req.tp_frame_nr = mmapcfg->req.tp_block_nr * mmapcfg->frames_per_buffer;
+
+    if (setsockopt(mmapcfg->fd, SOL_PACKET, PACKET_RX_RING, &mmapcfg->req, sizeof(mmapcfg->req)) < 0) {
+        perror("setsockopt()");
+        exit(1);
+    }
+
+    mmapcfg->rx_ring_size = mmapcfg->req.tp_block_nr * mmapcfg->req.tp_block_size;
+    mmapcfg->rx_ring = mmap(0, mmapcfg->rx_ring_size, PROT_READ|PROT_WRITE, MAP_SHARED, mmapcfg->fd, 0);
+
+    mmapcfg->num_blocks = mmapcfg->req.tp_block_nr;
+
+    printf("Set up ring buffer with %lu frames.\n", mmapcfg->frames_per_buffer * mmapcfg->req.tp_block_nr);
     
     return 0;
 }

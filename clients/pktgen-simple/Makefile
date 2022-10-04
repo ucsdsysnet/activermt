@@ -2,7 +2,7 @@ CC		= gcc
 CCFLAGS	= -g
 
 HEADERS_DIR = ../../headers
-HEADERS = activep4.h activep4_netutils.h
+HEADERS = activep4.h activep4_netutils.h stats.h
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 
 all: pktgen

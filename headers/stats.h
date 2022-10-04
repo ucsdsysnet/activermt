@@ -5,11 +5,11 @@
 #define MAX_SAMPLES     10000
 
 typedef struct {
-    uint32_t    count;
-    uint32_t    count_alt;
+    uint64_t    count;
+    uint64_t    count_alt;
     uint32_t    numSamples;
-    uint32_t    reqRate[MAX_SAMPLES];
-    uint32_t    reqRateAlt[MAX_SAMPLES];
+    uint64_t    reqRate[MAX_SAMPLES];
+    uint64_t    reqRateAlt[MAX_SAMPLES];
     uint64_t    ts_sec[MAX_SAMPLES];
     uint64_t    ts_nsec[MAX_SAMPLES];
 } stats_t;
@@ -37,7 +37,7 @@ void* monitor_stats(void* argp) {
             stats->reqRateAlt[stats->numSamples] = stats->count_alt;
             stats->reqRate[stats->numSamples++] = stats->count;
             if(stats->count > 0 || stats->count_alt > 0)
-                printf("[STATS] %u / %u pkts/sec.\n", stats->count, stats->count_alt);
+                printf("[STATS] %lu / %lu pkts/sec.\n", stats->count, stats->count_alt);
             pthread_mutex_lock(&lock);
             stats->count = 0;
             pthread_mutex_unlock(&lock);
@@ -53,7 +53,7 @@ void write_stats(stats_t* stats, char* filename) {
     FILE *fp = fopen(filename, "w");
     if(fp == NULL) return;
     for(i = 0; i < stats->numSamples; i++) {
-        fprintf(fp, "%lu,%lu,%u\n", stats->ts_sec[i], stats->ts_nsec[i], stats->reqRate[i]);
+        fprintf(fp, "%lu,%lu,%lu,%lu\n", stats->ts_sec[i], stats->ts_nsec[i], stats->reqRate[i], stats->reqRateAlt[i]);
     }
     fclose(fp);
     printf("[STATS] %u samples written to %s.\n", stats->numSamples, filename);
