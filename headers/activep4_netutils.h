@@ -9,6 +9,7 @@
 #define QUEUELEN        1024
 #define IPADDRSIZE      16
 #define SNAPLEN_ETH     1500
+#define PACKET_SIZE     256
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,12 +68,15 @@ typedef struct {
 } tx_queue_t;
 
 typedef struct {
-    int                 fd;
+    struct iovec*       rx_rd;
+    struct iovec*       tx_rd;
+    struct tpacket_req3 rx_req;
+    struct tpacket_req3 tx_req;
     size_t              rx_ring_size;
+    size_t              tx_ring_size;
     char*               rx_ring;
-    struct tpacket_req  req;
-    size_t              frames_per_buffer;
-    int                 num_blocks;
+    char*               tx_ring;
+    //struct tpacket_req  rx_req;
 } packet_mmap_t;
 
 typedef struct {
@@ -81,7 +85,7 @@ typedef struct {
     in_addr_t           ipv4_dstaddr;
     unsigned char       eth_dstaddr[ETH_ALEN];
     struct sockaddr_ll  eth_dst_addr;
-    packet_mmap_t       pmmap;
+    packet_mmap_t       ring;
 } port_config_t;
 
 typedef struct {
@@ -96,6 +100,7 @@ typedef struct {
 
 pthread_mutex_t qlock, rxlock;
 stats_t stats;
+int is_running;
 
 static inline void init_queue(tx_queue_t* queue) {
     queue->qhead = -1;
@@ -292,57 +297,7 @@ static inline void busy_wait(uint64_t duration_ns) {
     }
 }
 
-void* rx_mmap_loop(void* argp) {
-
-    thread_config_t* th_cfg = (thread_config_t*)argp;
-    port_config_t* cfg = th_cfg->cfg;
-    packet_mmap_t* mmapcfg = &cfg->pmmap;
-
-    size_t frame_idx = 0;
-    char* frame_ptr = NULL;
-
-    net_headers_t hdrs;
-
-    while(TRUE) {
-        //frame_idx = (frame_idx + 1) % mmapcfg->req.tp_frame_nr;
-        frame_idx = (frame_idx + 1) % th_cfg->num_frames + th_cfg->frame_offset;
-
-        int buffer_idx = frame_idx / mmapcfg->frames_per_buffer;
-        char* buffer_ptr = mmapcfg->rx_ring + buffer_idx * mmapcfg->req.tp_block_size;
-
-        int frame_idx_diff = frame_idx % mmapcfg->frames_per_buffer;
-        frame_ptr = buffer_ptr + frame_idx_diff * mmapcfg->req.tp_frame_size;
-
-        struct pollfd fds[1] = {0};
-        fds[0].fd = mmapcfg->fd;
-        fds[0].events = POLLIN;
-
-        struct tpacket_hdr* tphdr = (struct tpacket_hdr*)frame_ptr;
-        while(!(tphdr->tp_status & TP_STATUS_USER)) {
-            if (poll(fds, 1, -1) < 0) {
-                perror("poll()");
-                exit(1);
-            }
-        }
-
-        struct sockaddr_ll* addr = (struct sockaddr_ll*)(frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll));
-        char* l2content = frame_ptr + tphdr->tp_mac;
-        //char* l3content = frame_ptr + tphdr->tp_net;
-
-        struct ethhdr* eth = (struct ethhdr*)l2content;
-
-        if(hwaddr_equals(eth->h_dest, cfg->dev_info.hwaddr)) {
-            pthread_mutex_lock(&lock_alt);
-            stats.count_alt++;
-            pthread_mutex_unlock(&lock_alt);
-            if(extract_network_headers(l2content, &hdrs) >= 0) {
-                th_cfg->rx_handler(&hdrs);
-            }
-        }
-
-        tphdr->tp_status = TP_STATUS_KERNEL;
-    }
-}
+/* Default RX/TX. */
 
 void* rx_loop(void* argp) {
 
@@ -482,49 +437,256 @@ int port_init(port_config_t* cfg, char* iface, in_addr_t ipv4_dstaddr) {
         printf("Error: IP address could not be resolved!\n");
         return -1;
     }
+    memcpy(&cfg->eth_dst_addr.sll_addr, cfg->eth_dstaddr, ETH_ALEN);
+    
+    return 0;
+}
 
-    packet_mmap_t* mmapcfg = &cfg->pmmap;
+/* Memory-Mapped RX/TX. */
 
-    mmapcfg->fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    if(mmapcfg->fd < 0) {
+void* rx_mmap_loop(void* argp) {
+
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
+    packet_mmap_t* ring = &cfg->ring;
+
+    size_t frame_idx = 0;
+    char* frame_ptr = NULL;
+    int frames_per_block = ring->rx_req.tp_block_size / ring->rx_req.tp_frame_size;
+
+    net_headers_t hdrs;
+
+    printf("[INFO] Starting RX thread ... \n");
+
+    while(is_running) {
+        frame_idx = (frame_idx + 1) % ring->rx_req.tp_frame_nr;
+        //frame_idx = (frame_idx + 1) % th_cfg->num_frames + th_cfg->frame_offset;
+
+        int buffer_idx = frame_idx / frames_per_block;
+        char* buffer_ptr = ring->rx_ring + buffer_idx * ring->rx_req.tp_block_size;
+
+        int frame_idx_diff = frame_idx % frames_per_block;
+        frame_ptr = buffer_ptr + frame_idx_diff * ring->rx_req.tp_frame_size;
+
+        struct pollfd fds[1] = {0};
+        fds[0].fd = cfg->sockfd;
+        fds[0].events = POLLIN;
+
+        struct tpacket3_hdr* tphdr = (struct tpacket3_hdr*)frame_ptr;
+        while(!(tphdr->tp_status & TP_STATUS_USER)) {
+            if (poll(fds, 1, -1) < 0) {
+                perror("poll()");
+                exit(1);
+            }
+        }
+
+        struct sockaddr_ll* addr = (struct sockaddr_ll*)(frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll));
+        char* l2content = frame_ptr + tphdr->tp_mac;
+        //char* l3content = frame_ptr + tphdr->tp_net;
+
+        struct ethhdr* eth = (struct ethhdr*)l2content;
+
+        if(hwaddr_equals(eth->h_dest, cfg->dev_info.hwaddr)) {
+            pthread_mutex_lock(&lock_alt);
+            stats.count_alt++;
+            pthread_mutex_unlock(&lock_alt);
+            if(extract_network_headers(l2content, &hdrs) >= 0) {
+                th_cfg->rx_handler(&hdrs);
+            }
+        }
+
+        tphdr->tp_status = TP_STATUS_KERNEL;
+    }
+
+    printf("[INFO] RX thread terminated.\n");
+}
+
+void* tx_mmap_loop(void* argp) {
+
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
+    packet_mmap_t* ring = &cfg->ring;
+
+    int bytes_sent, pkts_sent = 0;
+
+    printf("[INFO] Starting TX thread ... \n");
+
+    while(is_running) {
+        if( (bytes_sent = sendto(cfg->sockfd, NULL, 0, MSG_DONTWAIT, (struct sockaddr*)&cfg->eth_dst_addr, sizeof(struct sockaddr_ll))) < 0) {
+            perror("sendto()");
+            exit(1);
+        } else if(bytes_sent > 0) {
+            pkts_sent = bytes_sent / PACKET_SIZE;
+            pthread_mutex_lock(&lock);
+            stats.count += pkts_sent;
+            pthread_mutex_unlock(&lock);
+        }
+    }
+
+    printf("[INFO] TX thread terminated.\n");
+}
+
+void tx_mmap_enqueue(port_config_t* cfg, tx_pkt_t* pkts, int num_pkts) {
+
+    packet_mmap_t* ring = &cfg->ring;
+
+    struct tpacket3_hdr* tphdr;
+
+    char* frame_ptr = NULL;
+    char* block_ptr = NULL;
+    int frames_per_block = ring->tx_req.tp_block_size / ring->tx_req.tp_frame_size;
+    
+    int enqueued = 0;
+
+    for(int i = 0; i < ring->tx_req.tp_frame_nr && enqueued < num_pkts; i++) {
+        block_ptr = ring->tx_ring + (i / frames_per_block) * ring->tx_req.tp_block_size;
+        frame_ptr = block_ptr + (i % frames_per_block) * ring->tx_req.tp_frame_size;
+        tphdr = (struct tpacket3_hdr*)frame_ptr;
+        if(tphdr->tp_status & TP_STATUS_AVAILABLE) {
+            // TODO modify send buffer with data.
+            tphdr->tp_status = TP_STATUS_SEND_REQUEST;
+            enqueued++;
+        }
+    }
+}
+
+void tx_setup_buffers(port_config_t* cfg) {
+
+    packet_mmap_t* ring = &cfg->ring;
+
+    struct tpacket3_hdr* tphdr;
+
+    char* frame_ptr = NULL;
+    char* block_ptr = NULL;
+    char* buf;
+    int frames_per_block = ring->tx_req.tp_block_size / ring->tx_req.tp_frame_size;
+
+    struct ethhdr* eth;
+    struct iphdr* iph;
+    struct udphdr* udph;
+
+    for(int i = 0; i < ring->tx_req.tp_frame_nr; i++) {
+        
+        block_ptr = ring->tx_ring + (i / frames_per_block) * ring->tx_req.tp_block_size;
+        frame_ptr = block_ptr + (i % frames_per_block) * ring->tx_req.tp_frame_size;
+
+        tphdr = (struct tpacket3_hdr*)frame_ptr;
+        if(!(tphdr->tp_status & TP_STATUS_AVAILABLE)) continue;
+
+        buf = frame_ptr + tphdr->tp_mac;
+
+        eth = (struct ethhdr*)buf;
+        memcpy(&eth->h_source, &cfg->dev_info.hwaddr, ETH_ALEN);
+        memcpy(&eth->h_dest, &cfg->eth_dstaddr, ETH_ALEN);
+        eth->h_proto = htons(ETH_P_IP);
+
+        iph = (struct iphdr*)(buf + sizeof(struct ethhdr));
+        iph->ihl = 5;
+        iph->version = 4;
+        iph->tos = 0;
+        iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr));
+        iph->id = htonl(0);
+        iph->frag_off = 0;
+        iph->ttl = 255;
+        iph->protocol = IPPROTO_UDP;
+        iph->check = 0;
+        iph->saddr = cfg->dev_info.ipv4addr;
+        iph->daddr = cfg->ipv4_dstaddr;
+
+        udph = (struct udphdr*)(buf + sizeof(struct ethhdr) + sizeof(struct iphdr));
+        udph->source = htons(1234);
+        udph->dest = htons(5678);
+
+        tphdr->tp_len = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
+    }
+}
+
+void port_init_mmap(port_config_t* cfg) {
+
+    if((cfg->sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
         perror("socket()");
         exit(1);
     }
 
-    //mmapcfg->fd = cfg->sockfd;
+    get_iface(&cfg->dev_info, cfg->dev_info.iface_name, cfg->sockfd);
 
-    int version = TPACKET_V1;
-    if((setsockopt(mmapcfg->fd, SOL_PACKET, PACKET_VERSION, &version, sizeof(version))) < 0) {
-        perror("setsockopt()");
+    packet_mmap_t* ring = &cfg->ring;
+
+    int version = TPACKET_V3;
+    if((setsockopt(cfg->sockfd, SOL_PACKET, PACKET_VERSION, &version, sizeof(version))) < 0) {
+        perror("setsockopt(PACKET_VERSION)");
         exit(1);
     }
 
-    memset(&mmapcfg->req, 0, sizeof(struct tpacket_req));
-    mmapcfg->req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
+    struct sockaddr_ll ll;
+    ll.sll_family = PF_PACKET;
+    ll.sll_protocol = htons(ETH_P_ALL);
+    ll.sll_ifindex = cfg->dev_info.iface_index;
+    ll.sll_hatype = 0;
+    ll.sll_pkttype = 0;
+    ll.sll_halen = 0;
 
-    mmapcfg->req.tp_block_size = sysconf(_SC_PAGESIZE);
-    while (mmapcfg->req.tp_block_size < mmapcfg->req.tp_frame_size) {
-        mmapcfg->req.tp_block_size <<= 1;
-    }
-
-    mmapcfg->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (128 * mmapcfg->req.tp_block_size);
-
-    mmapcfg->frames_per_buffer = mmapcfg->req.tp_block_size / mmapcfg->req.tp_frame_size;
-    mmapcfg->req.tp_frame_nr = mmapcfg->req.tp_block_nr * mmapcfg->frames_per_buffer;
-
-    if (setsockopt(mmapcfg->fd, SOL_PACKET, PACKET_RX_RING, &mmapcfg->req, sizeof(mmapcfg->req)) < 0) {
-        perror("setsockopt()");
+    if(bind(cfg->sockfd, (struct sockaddr*)&ll, sizeof(struct sockaddr_ll)) < 0) {
+        perror("bind()");
         exit(1);
     }
 
-    mmapcfg->rx_ring_size = mmapcfg->req.tp_block_nr * mmapcfg->req.tp_block_size;
-    mmapcfg->rx_ring = mmap(0, mmapcfg->rx_ring_size, PROT_READ|PROT_WRITE, MAP_SHARED, mmapcfg->fd, 0);
+    memset(&ring->rx_req, 0, sizeof(struct tpacket_req3));
+    ring->rx_req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
+    ring->rx_req.tp_block_size = sysconf(_SC_PAGESIZE);
+    while (ring->rx_req.tp_block_size < ring->rx_req.tp_frame_size)
+        ring->rx_req.tp_block_size <<= 1;
+    ring->rx_req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (256 * ring->rx_req.tp_block_size);
+    ring->rx_req.tp_frame_nr = (ring->rx_req.tp_block_size * ring->rx_req.tp_block_nr) / ring->rx_req.tp_frame_size;
+    // ring->rx_req.tp_retire_blk_tov = 60;
+    // ring->rx_req.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
 
-    mmapcfg->num_blocks = mmapcfg->req.tp_block_nr;
+    if (setsockopt(cfg->sockfd, SOL_PACKET, PACKET_RX_RING, &ring->rx_req, sizeof(ring->rx_req)) < 0) {
+        perror("setsockopt(PACKET_RX_RING)");
+        exit(1);
+    }
 
-    printf("Set up ring buffer with %lu frames.\n", mmapcfg->frames_per_buffer * mmapcfg->req.tp_block_nr);
-    
-    return 0;
+    memset(&ring->tx_req, 0, sizeof(struct tpacket_req3));
+    ring->tx_req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
+    ring->tx_req.tp_block_size = sysconf(_SC_PAGESIZE);
+    while (ring->tx_req.tp_block_size < ring->tx_req.tp_frame_size)
+        ring->tx_req.tp_block_size <<= 1;
+    ring->tx_req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (256 * ring->tx_req.tp_block_size);
+    ring->tx_req.tp_frame_nr = (ring->tx_req.tp_block_size * ring->tx_req.tp_block_nr) / ring->tx_req.tp_frame_size;
+
+    if (setsockopt(cfg->sockfd, SOL_PACKET, PACKET_TX_RING, &ring->tx_req, sizeof(ring->tx_req)) < 0) {
+        printf("tx ring\n");
+        perror("setsockopt(PACKET_TX_RING)");
+        exit(1);
+    }
+
+    ring->rx_ring_size = ring->rx_req.tp_block_size * ring->rx_req.tp_block_nr;
+    ring->tx_ring_size = ring->tx_req.tp_block_size * ring->tx_req.tp_block_nr;
+    if((ring->rx_ring = mmap(0, ring->rx_ring_size + ring->tx_ring_size, PROT_READ|PROT_WRITE, MAP_SHARED, cfg->sockfd, 0)) == MAP_FAILED) {
+        perror("mmap()");
+        exit(1);
+    }
+    ring->tx_ring = ring->rx_ring + ring->rx_ring_size;
+
+    if((ring->rx_rd = malloc(ring->rx_req.tp_block_nr * sizeof(struct iovec))) == NULL) {
+        perror("malloc()");
+        exit(1);
+    }
+    for(int i = 0; i < ring->rx_req.tp_block_nr; i++) {
+        ring->rx_rd[i].iov_base = ring->rx_ring + (i * ring->rx_req.tp_block_size);
+        ring->rx_rd[i].iov_len = ring->rx_req.tp_block_size;
+    }
+
+    if((ring->tx_rd = malloc(ring->tx_req.tp_block_nr * sizeof(struct iovec))) == NULL) {
+        perror("malloc()");
+        exit(1);
+    }
+    for(int i = 0; i < ring->tx_req.tp_block_nr; i++) {
+        ring->tx_rd[i].iov_base = ring->rx_ring + (i * ring->tx_req.tp_block_size);
+        ring->tx_rd[i].iov_len = ring->tx_req.tp_block_size;
+    }
+
+    printf("[INFO] Memory mapped I/O buffers set for %u RX/TX frames.", ring->tx_req.tp_frame_nr);
 }
 
 #endif

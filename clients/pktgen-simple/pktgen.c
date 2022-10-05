@@ -2,6 +2,7 @@
 #include "../../headers/activep4_netutils.h"
 
 //#define RATE_LIMITED    1
+#define IO_MMAP         1
 #define MAX_PPS         1000000
 #define MEMPOOL_SIZE    2048
 #define NUM_TX_THREADS  2
@@ -90,40 +91,12 @@ int main(int argc, char** argv) {
     char* ipv4_dstaddr = argv[2];
     int tx_pps = (argc > 3) ? atoi(argv[3]) : MAX_PPS;
 
-    port_config_t cfg;
-    memset(&cfg, 0, sizeof(port_config_t));
-    if(port_init(&cfg, iface, inet_addr(ipv4_dstaddr)) < 0) {
-        exit(1);
-    }
-
     tx_pps = (tx_pps < MEMPOOL_SIZE * NUM_TX_THREADS) ? MEMPOOL_SIZE * NUM_TX_THREADS : tx_pps;
     tx_pps = (tx_pps > MAX_PPS) ? MAX_PPS : tx_pps;
 
-    thread_config_t tx_cfg[NUM_TX_THREADS], rx_cfg[NUM_RX_THREADS];
-
-    for(int i = 0; i < NUM_TX_THREADS; i++) {
-        memset(&tx_cfg[i], 0, sizeof(thread_config_t));
-        tx_cfg[i].thread_id = i;
-        tx_cfg[i].cfg = &cfg;
-        tx_cfg[i].tx_pps = tx_pps / NUM_TX_THREADS;
-    }
-
-    int num_blocks = cfg.pmmap.num_blocks / NUM_RX_THREADS;
-    int num_frames = cfg.pmmap.frames_per_buffer * num_blocks;
-    int remaining_blocks = cfg.pmmap.num_blocks * cfg.pmmap.frames_per_buffer;
-    for(int i = 0; i < NUM_RX_THREADS; i++) {
-        memset(&rx_cfg[i], 0, sizeof(thread_config_t));
-        rx_cfg[i].thread_id = i;
-        rx_cfg[i].cfg = &cfg;
-        rx_cfg[i].rx_handler = rx_handler;
-        rx_cfg[i].num_frames = num_frames;
-        rx_cfg[i].frame_offset = i * num_frames;
-        remaining_blocks -= num_frames;
-    }
-    rx_cfg[NUM_RX_THREADS - 1].num_frames += remaining_blocks;
+    is_running = 1;
 
     memset(&stats, 0, sizeof(stats_t));
-
     pthread_t timer_thread;
     if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
         perror("pthread_create()");
@@ -131,31 +104,102 @@ int main(int argc, char** argv) {
     }
     set_cpu_affinity(40, 40, &timer_thread);
 
-    pthread_t rx_thread[NUM_RX_THREADS];
-    for(int i = 0; i < NUM_RX_THREADS; i++) {
-        if( pthread_create(&rx_thread[i], NULL, rx_mmap_loop, (void*)&rx_cfg[i]) < 0 ) {
-            perror("pthread_create()");
-            exit(1);
-        }
-        set_cpu_affinity(50 + 2*i, 50 + 2*i, &rx_thread[i]);
+    port_config_t cfg;
+    memset(&cfg, 0, sizeof(port_config_t));
+
+    cfg.dev_info.iface_name = iface;
+    cfg.ipv4_dstaddr = inet_addr(ipv4_dstaddr);
+    
+    if(arp_resolve(cfg.ipv4_dstaddr, iface, cfg.eth_dstaddr) == 0) {
+        printf("Error: IP address could not be resolved!\n");
+        exit(1);
     }
 
-    pthread_t tx_thread[NUM_TX_THREADS];
-    for(int i = 0; i < NUM_TX_THREADS; i++) {
-        if( pthread_create(&tx_thread[i], NULL, tx_burst_sender, (void*)&tx_cfg[i]) < 0 ) {
+    memset(&cfg.eth_dst_addr, 0, sizeof(struct sockaddr_ll));
+    cfg.eth_dst_addr.sll_family = AF_PACKET;
+    cfg.eth_dst_addr.sll_ifindex = cfg.dev_info.iface_index;
+    cfg.eth_dst_addr.sll_protocol = htons(ETH_P_AP4);
+    cfg.eth_dst_addr.sll_halen = ETH_ALEN;
+    memcpy(&cfg.eth_dst_addr.sll_addr, cfg.eth_dstaddr, ETH_ALEN);
+
+    #ifdef IO_MMAP
+        port_init_mmap(&cfg);
+        tx_setup_buffers(&cfg);
+
+        thread_config_t rx_cfg = {0};
+        rx_cfg.cfg = &cfg;
+        pthread_t rx_thread;
+        if( pthread_create(&rx_thread, NULL, rx_mmap_loop, (void*)&rx_cfg) < 0 ) {
             perror("pthread_create()");
             exit(1);
         }
-        set_cpu_affinity(60 + 2*i, 60 + 2*i, &tx_thread[i]);
-    }
+        set_cpu_affinity(50, 50, &rx_thread);
+
+        thread_config_t tx_cfg = {0};
+        tx_cfg.cfg = &cfg;
+        pthread_t tx_thread;
+        if( pthread_create(&tx_thread, NULL, tx_mmap_loop, (void*)&tx_cfg) < 0 ) {
+            perror("pthread_create()");
+            exit(1);
+        }
+        set_cpu_affinity(52, 52, &tx_thread);
+
+        tx_pkt_t mempool[MEMPOOL_SIZE];
+        while(is_running) {
+            tx_mmap_enqueue(&cfg, mempool, MEMPOOL_SIZE);
+        }
+    #else
+        if(port_init(&cfg, iface, inet_addr(ipv4_dstaddr)) < 0) {
+            exit(1);
+        }
+        
+        thread_config_t tx_cfg[NUM_TX_THREADS], rx_cfg[NUM_RX_THREADS];
+        for(int i = 0; i < NUM_TX_THREADS; i++) {
+            memset(&tx_cfg[i], 0, sizeof(thread_config_t));
+            tx_cfg[i].thread_id = i;
+            tx_cfg[i].cfg = &cfg;
+            tx_cfg[i].tx_pps = tx_pps / NUM_TX_THREADS;
+        }
+        /*int num_blocks = cfg.pmmap.num_blocks / NUM_RX_THREADS;
+        int num_frames = cfg.pmmap.frames_per_buffer * num_blocks;
+        int remaining_blocks = cfg.pmmap.num_blocks * cfg.pmmap.frames_per_buffer;
+        for(int i = 0; i < NUM_RX_THREADS; i++) {
+            memset(&rx_cfg[i], 0, sizeof(thread_config_t));
+            rx_cfg[i].thread_id = i;
+            rx_cfg[i].cfg = &cfg;
+            rx_cfg[i].rx_handler = rx_handler;
+            rx_cfg[i].num_frames = num_frames;
+            rx_cfg[i].frame_offset = i * num_frames;
+            remaining_blocks -= num_frames;
+        }
+        rx_cfg[NUM_RX_THREADS - 1].num_frames += remaining_blocks;*/
+
+        pthread_t rx_thread[NUM_RX_THREADS];
+        for(int i = 0; i < NUM_RX_THREADS; i++) {
+            if( pthread_create(&rx_thread[i], NULL, rx_mmap_loop, (void*)&rx_cfg[i]) < 0 ) {
+                perror("pthread_create()");
+                exit(1);
+            }
+            set_cpu_affinity(50 + 2*i, 50 + 2*i, &rx_thread[i]);
+        }
+
+        pthread_t tx_thread[NUM_TX_THREADS];
+        for(int i = 0; i < NUM_TX_THREADS; i++) {
+            if( pthread_create(&tx_thread[i], NULL, tx_burst_sender, (void*)&tx_cfg[i]) < 0 ) {
+                perror("pthread_create()");
+                exit(1);
+            }
+            set_cpu_affinity(60 + 2*i, 60 + 2*i, &tx_thread[i]);
+        }
+
+        for(int i = 0; i < NUM_RX_THREADS; i++)
+            pthread_join(rx_thread[i], NULL);
+
+        for(int i = 0; i < NUM_TX_THREADS; i++)
+            pthread_join(tx_thread[i], NULL);
+    #endif
 
     pthread_join(timer_thread, NULL);
-
-    for(int i = 0; i < NUM_RX_THREADS; i++)
-        pthread_join(rx_thread[i], NULL);
-
-    for(int i = 0; i < NUM_TX_THREADS; i++)
-        pthread_join(tx_thread[i], NULL);
 
     return 0;
 }
