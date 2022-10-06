@@ -71,17 +71,17 @@ typedef struct {
 typedef struct {
     int                     sockfd;
     struct iovec*           rd;
-    struct tpacket_req      req;
+    struct tpacket_req3     req;
     size_t                  ring_size;
     char*                   ring_buffer;
-    struct tpacket_stats    stats;
+    struct tpacket_stats_v3 stats;
 } ring_t;
 
 typedef struct {
     struct iovec*       rx_rd;
     struct iovec*       tx_rd;
-    struct tpacket_req rx_req;
-    struct tpacket_req tx_req;
+    struct tpacket_req3 rx_req;
+    struct tpacket_req3 tx_req;
     size_t              rx_ring_size;
     size_t              tx_ring_size;
     char*               rx_ring;
@@ -486,8 +486,8 @@ void* rx_mmap_loop(void* argp) {
         fds[0].fd = ring->sockfd;
         fds[0].events = POLLIN;
 
-        struct tpacket_hdr* tphdr = (struct tpacket_hdr*)frame_ptr;
-        while(!(tphdr->tp_status & TP_STATUS_USER)) {
+        struct tpacket3_hdr* tphdr = (struct tpacket3_hdr*)frame_ptr;
+        while(!(tphdr->tp_status & TP_STATUS_USER) && is_running) {
             if (poll(fds, 1, -1) < 0) {
                 perror("poll()");
                 exit(1);
@@ -521,20 +521,36 @@ void* tx_mmap_loop(void* argp) {
     port_config_t* cfg = th_cfg->cfg;
     ring_t* ring = &cfg->tx_ring;
 
-    int bytes_sent, pkts_sent = 0;
+    fd_set write_fds;
+
+    int bytes_sent, pkts_sent = 0, ret;
 
     printf("[INFO] Starting TX thread ... \n");
 
     while(is_running) {
-        if( (bytes_sent = sendto(ring->sockfd, NULL, 0, MSG_DONTWAIT, (struct sockaddr*)&cfg->eth_dst_addr, sizeof(struct sockaddr_ll))) < 0) {
-            if(errno == EAGAIN || errno == EWOULDBLOCK) continue;
-            perror("sendto()");
+        
+        FD_ZERO(&write_fds);
+        FD_SET(ring->sockfd, &write_fds);
+        
+        ret = select(ring->sockfd + 1, NULL, &write_fds, NULL, NULL);
+        
+        if(ret < 0 && errno == EINTR) continue;
+        if(ret < 0) {
+            perror("select()");
             exit(1);
-        } else if(bytes_sent > 0) {
-            pkts_sent = bytes_sent / PACKET_SIZE;
-            /*pthread_mutex_lock(&lock);
-            stats.count += pkts_sent;
-            pthread_mutex_unlock(&lock);*/
+        }
+        
+        if(FD_ISSET(ring->sockfd, &write_fds)) {
+            if( (bytes_sent = sendto(ring->sockfd, NULL, 0, MSG_DONTWAIT, (struct sockaddr*)&cfg->eth_dst_addr, sizeof(struct sockaddr_ll))) < 0) {
+                //if(errno == EAGAIN || errno == EWOULDBLOCK) continue;
+                perror("sendto()");
+                exit(1);
+            } else if(bytes_sent > 0) {
+                pkts_sent = bytes_sent / PACKET_SIZE;
+                /*pthread_mutex_lock(&lock);
+                stats.count += pkts_sent;
+                pthread_mutex_unlock(&lock);*/
+            }
         }
     }
 
@@ -545,20 +561,21 @@ void tx_mmap_enqueue(port_config_t* cfg, tx_pkt_t* pkts, int num_pkts) {
 
     ring_t* ring = &cfg->tx_ring;
 
-    struct tpacket_hdr* tphdr;
+    struct tpacket3_hdr* tphdr;
 
     char* frame_ptr = NULL;
     char* block_ptr = NULL;
     int frames_per_block = ring->req.tp_block_size / ring->req.tp_frame_size;
     
     int enqueued = 0;
+    num_pkts = ring->req.tp_frame_nr;
 
     for(int i = 0; i < ring->req.tp_frame_nr && enqueued < num_pkts; i++) {
         block_ptr = ring->ring_buffer + (i / frames_per_block) * ring->req.tp_block_size;
         frame_ptr = block_ptr + (i % frames_per_block) * ring->req.tp_frame_size;
-        tphdr = (struct tpacket_hdr*)frame_ptr;
+        tphdr = (struct tpacket3_hdr*)frame_ptr;
         if(tphdr->tp_status == TP_STATUS_AVAILABLE) {
-            // TODO modify send buffer with data.
+            // TODO modify send buffer with data / batch fill and send.
             tphdr->tp_status = TP_STATUS_SEND_REQUEST;
             enqueued++;
         }
@@ -569,7 +586,7 @@ void tx_setup_buffers(port_config_t* cfg) {
 
     ring_t* ring = &cfg->tx_ring;
 
-    struct tpacket_hdr* tphdr;
+    struct tpacket3_hdr* tphdr;
 
     char* frame_ptr = NULL;
     char* block_ptr = NULL;
@@ -587,7 +604,7 @@ void tx_setup_buffers(port_config_t* cfg) {
         block_ptr = ring->ring_buffer + (i / frames_per_block) * ring->req.tp_block_size;
         frame_ptr = block_ptr + (i % frames_per_block) * ring->req.tp_frame_size;
 
-        tphdr = (struct tpacket_hdr*)frame_ptr;
+        tphdr = (struct tpacket3_hdr*)frame_ptr;
         if(!(tphdr->tp_status == TP_STATUS_AVAILABLE)) continue;
 
         buf = frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll);
@@ -610,9 +627,13 @@ void tx_setup_buffers(port_config_t* cfg) {
         iph->saddr = cfg->dev_info.ipv4addr;
         iph->daddr = cfg->ipv4_dstaddr;
 
+        iph->check = compute_checksum((uint16_t*)iph, sizeof(struct iphdr));
+
         udph = (struct udphdr*)(buf + sizeof(struct ethhdr) + sizeof(struct iphdr));
         udph->source = htons(1234);
         udph->dest = htons(5678);
+        udph->len = htons(8);
+        udph->check = htons(0);
 
         tphdr->tp_len = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
         tphdr->tp_status = TP_STATUS_SEND_REQUEST;
@@ -625,18 +646,18 @@ void tx_setup_buffers(port_config_t* cfg) {
 
 void setup_rx_ring(ring_t* ring) {
 
-    if((ring->sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+    if((ring->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
         perror("socket()");
         exit(1);
     }
 
-    int version = TPACKET_V1;
+    int version = TPACKET_V3;
     if((setsockopt(ring->sockfd, SOL_PACKET, PACKET_VERSION, &version, sizeof(version))) < 0) {
         perror("setsockopt(PACKET_VERSION)");
         exit(1);
     }
 
-    memset(&ring->req, 0, sizeof(struct tpacket_req));
+    memset(&ring->req, 0, sizeof(struct tpacket_req3));
     ring->req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
     ring->req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->req.tp_block_size < ring->req.tp_frame_size)
@@ -672,18 +693,18 @@ void setup_rx_ring(ring_t* ring) {
 
 void setup_tx_ring(ring_t* ring, int iface_index) {
 
-    if((ring->sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+    if((ring->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
         perror("socket()");
         exit(1);
     }
 
-    int version = TPACKET_V1;
+    int version = TPACKET_V3;
     if((setsockopt(ring->sockfd, SOL_PACKET, PACKET_VERSION, &version, sizeof(version))) < 0) {
         perror("setsockopt(PACKET_VERSION)");
         exit(1);
     }
 
-    memset(&ring->req, 0, sizeof(struct tpacket_req));
+    memset(&ring->req, 0, sizeof(struct tpacket_req3));
     ring->req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
     ring->req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->req.tp_block_size < ring->req.tp_frame_size)
@@ -745,7 +766,7 @@ void port_init_mmap(port_config_t* cfg) {
         exit(1);
     }
 
-    memset(&ring->rx_req, 0, sizeof(struct tpacket_req));
+    memset(&ring->rx_req, 0, sizeof(struct tpacket_req3));
     ring->rx_req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
     ring->rx_req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->rx_req.tp_block_size < ring->rx_req.tp_frame_size)
@@ -773,7 +794,7 @@ void port_init_mmap(port_config_t* cfg) {
         exit(1);
     }
 
-    memset(&ring->tx_req, 0, sizeof(struct tpacket_req));
+    memset(&ring->tx_req, 0, sizeof(struct tpacket_req3));
     ring->tx_req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
     ring->tx_req.tp_block_size = sysconf(_SC_PAGESIZE);
     while (ring->tx_req.tp_block_size < ring->tx_req.tp_frame_size)
@@ -815,6 +836,18 @@ void port_init_mmap(port_config_t* cfg) {
     printf("[INFO] Memory mapped I/O buffers set for %u RX/TX frames.", ring->tx_req.tp_frame_nr);
 }
 
-void port_teardown_mmap(port_config_t* cfg) {}
+void port_teardown_mmap(port_config_t* cfg) {
+
+    munmap(cfg->rx_ring.ring_buffer, cfg->rx_ring.ring_size);
+    munmap(cfg->tx_ring.ring_buffer, cfg->tx_ring.ring_size);
+
+    free(cfg->rx_ring.rd);
+    free(cfg->tx_ring.rd);
+
+    close(cfg->rx_ring.sockfd);
+    close(cfg->tx_ring.sockfd);
+
+    printf("[INFO] Port teardown complete.\n");
+}
 
 #endif

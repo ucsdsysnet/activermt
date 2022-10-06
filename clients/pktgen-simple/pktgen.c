@@ -82,6 +82,11 @@ void* tx_mmap_sender(void* argp) {
     }
 }
 
+static void interrupt_handler(int sig) {
+    is_running = 0;
+    printf("[INFO] Stopping threads ... \n");
+}
+
 void* mmap_monitor(void* argp) {
 
     port_config_t* cfg = (port_config_t*)argp;
@@ -123,6 +128,8 @@ static inline void set_cpu_affinity(int core_id_start, int core_id_end, pthread_
 }
 
 int main(int argc, char** argv) {
+
+    signal(SIGINT, interrupt_handler);
 
     if(argc < 3) {
         printf("Usage: %s <iface> <ipv4_dstaddr> [tx_rate_pps]\n", argv[0]);
@@ -272,6 +279,8 @@ int main(int argc, char** argv) {
     #ifndef IO_MMAP
     pthread_join(timer_thread, NULL);
     #endif
+
+    port_teardown_mmap(&cfg);
     
     return 0;
 }
