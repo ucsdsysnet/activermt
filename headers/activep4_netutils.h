@@ -9,6 +9,7 @@
 #define QUEUELEN        1024
 #define IPADDRSIZE      16
 #define SNAPLEN_ETH     1500
+#define DIVISOR_MMAP    256
 #define PACKET_SIZE     42
 
 #include <stdio.h>
@@ -68,11 +69,12 @@ typedef struct {
 } tx_queue_t;
 
 typedef struct {
-    int                 sockfd;
-    struct iovec*       rd;
-    struct tpacket_req  req;
-    size_t              ring_size;
-    char*               ring_buffer;
+    int                     sockfd;
+    struct iovec*           rd;
+    struct tpacket_req      req;
+    size_t                  ring_size;
+    char*                   ring_buffer;
+    struct tpacket_stats    stats;
 } ring_t;
 
 typedef struct {
@@ -499,9 +501,9 @@ void* rx_mmap_loop(void* argp) {
         struct ethhdr* eth = (struct ethhdr*)l2content;
 
         if(hwaddr_equals(eth->h_dest, cfg->dev_info.hwaddr)) {
-            pthread_mutex_lock(&lock_alt);
+            /*pthread_mutex_lock(&lock_alt);
             stats.count_alt++;
-            pthread_mutex_unlock(&lock_alt);
+            pthread_mutex_unlock(&lock_alt);*/
             if(extract_network_headers(l2content, &hdrs, tphdr->tp_len) >= 0) {
                 th_cfg->rx_handler(&hdrs);
             }
@@ -530,9 +532,9 @@ void* tx_mmap_loop(void* argp) {
             exit(1);
         } else if(bytes_sent > 0) {
             pkts_sent = bytes_sent / PACKET_SIZE;
-            pthread_mutex_lock(&lock);
+            /*pthread_mutex_lock(&lock);
             stats.count += pkts_sent;
-            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock);*/
         }
     }
 
@@ -639,7 +641,7 @@ void setup_rx_ring(ring_t* ring) {
     ring->req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->req.tp_block_size < ring->req.tp_frame_size)
         ring->req.tp_block_size <<= 1;
-    ring->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (512 * ring->req.tp_block_size);
+    ring->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (DIVISOR_MMAP * ring->req.tp_block_size);
     ring->req.tp_frame_nr = (ring->req.tp_block_size / ring->req.tp_frame_size) * ring->req.tp_block_nr;
     // ring->req.tp_retire_blk_tov = 60;
     // ring->req.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
@@ -686,7 +688,7 @@ void setup_tx_ring(ring_t* ring, int iface_index) {
     ring->req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->req.tp_block_size < ring->req.tp_frame_size)
         ring->req.tp_block_size <<= 1;
-    ring->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (512 * ring->req.tp_block_size);
+    ring->req.tp_block_nr = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (DIVISOR_MMAP * ring->req.tp_block_size);
     ring->req.tp_frame_nr = (ring->req.tp_block_size / ring->req.tp_frame_size) * ring->req.tp_block_nr;
     ring->ring_size = ring->req.tp_block_size * ring->req.tp_block_nr;
 

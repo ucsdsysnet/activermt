@@ -7,6 +7,7 @@
 #define MEMPOOL_SIZE    2048
 #define NUM_TX_THREADS  2
 #define NUM_RX_THREADS  2
+#define INTVL_SEC       1E9
 
 void rx_handler(net_headers_t* hdrs) {}
 
@@ -81,6 +82,36 @@ void* tx_mmap_sender(void* argp) {
     }
 }
 
+void* mmap_monitor(void* argp) {
+
+    port_config_t* cfg = (port_config_t*)argp;
+    ring_t* rx_ring = &cfg->rx_ring;
+    ring_t* tx_ring = &cfg->tx_ring;
+
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
+    int stats_len = sizeof(struct tpacket_stats);
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
+
+    while(is_running) {
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+        if(elapsed_ns >= INTVL_SEC) {
+            memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
+            if(getsockopt(rx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &rx_ring->stats, &stats_len) < 0) {
+                perror("setsocketopt(PACKET_STATISTICS:RX)");
+                continue;
+            }
+            if(getsockopt(tx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &tx_ring->stats, &stats_len) < 0) {
+                perror("setsocketopt(PACKET_STATISTICS:TX)");
+                continue;
+            }
+            printf("[STATS] (RX) %u/%u pkts/drops (TX) %u/%u pkts/drops.\n", rx_ring->stats.tp_packets, rx_ring->stats.tp_drops, tx_ring->stats.tp_packets, tx_ring->stats.tp_drops);
+        }
+    }
+}
+
 static inline void set_cpu_affinity(int core_id_start, int core_id_end, pthread_t* thread) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -107,6 +138,7 @@ int main(int argc, char** argv) {
 
     is_running = 1;
 
+    #ifndef IO_MMAP
     memset(&stats, 0, sizeof(stats_t));
     pthread_t timer_thread;
     if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
@@ -114,6 +146,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     set_cpu_affinity(40, 40, &timer_thread);
+    #endif
 
     port_config_t cfg;
     memset(&cfg, 0, sizeof(port_config_t));
@@ -146,6 +179,13 @@ int main(int argc, char** argv) {
         setup_tx_ring(&cfg.tx_ring, cfg.dev_info.iface_index);
         tx_setup_buffers(&cfg);
 
+        pthread_t monitor_thread;
+        if( pthread_create(&monitor_thread, NULL, mmap_monitor, (void*)&cfg) < 0 ) {
+            perror("pthread_create()");
+            exit(1);
+        }
+        set_cpu_affinity(40, 40, &monitor_thread);
+
         thread_config_t rx_cfg = {0};
         rx_cfg.cfg = &cfg;
         rx_cfg.rx_handler = rx_handler;
@@ -177,6 +217,7 @@ int main(int argc, char** argv) {
         pthread_join(rx_thread, NULL);
         pthread_join(tx_thread, NULL);
         pthread_join(tx_qthread, NULL);
+        pthread_join(monitor_thread, NULL);
     #else
         if(port_init(&cfg, iface, inet_addr(ipv4_dstaddr)) < 0) {
             exit(1);
@@ -228,7 +269,9 @@ int main(int argc, char** argv) {
             pthread_join(tx_thread[i], NULL);
     #endif
 
+    #ifndef IO_MMAP
     pthread_join(timer_thread, NULL);
+    #endif
     
     return 0;
 }
