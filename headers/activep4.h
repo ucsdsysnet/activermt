@@ -272,10 +272,11 @@ static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_arg
     return offset;
 }
 
-static inline int get_active_eof(char* buf) {
-    int eof = 0;
+static inline int get_active_eof(char* buf, int buflen) {
+    if(buflen < sizeof(activep4_instr)) return 0;
+    int eof = 0, remaining_bytes = buflen - sizeof(activep4_instr);
     activep4_instr* instr = (activep4_instr*) buf;
-    while(instr->opcode != 0) {
+    while(instr->opcode != 0 && remaining_bytes >= sizeof(activep4_instr)) {
         eof = eof + sizeof(activep4_instr);
         instr++;
     }

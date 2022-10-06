@@ -70,6 +70,17 @@ void* tx_burst_sender(void* argp) {
     }
 }
 
+void* tx_mmap_sender(void* argp) {
+
+    thread_config_t* th_cfg = (thread_config_t*)argp;
+    port_config_t* cfg = th_cfg->cfg;
+    
+    tx_pkt_t mempool[MEMPOOL_SIZE];
+    while(is_running) {
+        tx_mmap_enqueue(cfg, mempool, MEMPOOL_SIZE);
+    }
+}
+
 static inline void set_cpu_affinity(int core_id_start, int core_id_end, pthread_t* thread) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -109,6 +120,13 @@ int main(int argc, char** argv) {
 
     cfg.dev_info.iface_name = iface;
     cfg.ipv4_dstaddr = inet_addr(ipv4_dstaddr);
+
+    int sockfd;
+    if((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("socket()");
+        exit(1);
+    }
+    get_iface(&cfg.dev_info, cfg.dev_info.iface_name, sockfd);
     
     if(arp_resolve(cfg.ipv4_dstaddr, iface, cfg.eth_dstaddr) == 0) {
         printf("Error: IP address could not be resolved!\n");
@@ -123,11 +141,14 @@ int main(int argc, char** argv) {
     memcpy(&cfg.eth_dst_addr.sll_addr, cfg.eth_dstaddr, ETH_ALEN);
 
     #ifdef IO_MMAP
-        port_init_mmap(&cfg);
+        //port_init_mmap(&cfg);
+        setup_rx_ring(&cfg.rx_ring);
+        setup_tx_ring(&cfg.tx_ring, cfg.dev_info.iface_index);
         tx_setup_buffers(&cfg);
 
         thread_config_t rx_cfg = {0};
         rx_cfg.cfg = &cfg;
+        rx_cfg.rx_handler = rx_handler;
         pthread_t rx_thread;
         if( pthread_create(&rx_thread, NULL, rx_mmap_loop, (void*)&rx_cfg) < 0 ) {
             perror("pthread_create()");
@@ -144,10 +165,18 @@ int main(int argc, char** argv) {
         }
         set_cpu_affinity(52, 52, &tx_thread);
 
-        tx_pkt_t mempool[MEMPOOL_SIZE];
-        while(is_running) {
-            tx_mmap_enqueue(&cfg, mempool, MEMPOOL_SIZE);
+        thread_config_t tx_qcfg = {0};
+        tx_qcfg.cfg = &cfg;
+        pthread_t tx_qthread;
+        if( pthread_create(&tx_qthread, NULL, tx_mmap_sender, (void*)&tx_qcfg) < 0 ) {
+            perror("pthread_create()");
+            exit(1);
         }
+        set_cpu_affinity(54, 54, &tx_qthread);
+
+        pthread_join(rx_thread, NULL);
+        pthread_join(tx_thread, NULL);
+        pthread_join(tx_qthread, NULL);
     #else
         if(port_init(&cfg, iface, inet_addr(ipv4_dstaddr)) < 0) {
             exit(1);
@@ -200,6 +229,6 @@ int main(int argc, char** argv) {
     #endif
 
     pthread_join(timer_thread, NULL);
-
+    
     return 0;
 }
