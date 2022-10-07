@@ -75,10 +75,13 @@ void* tx_mmap_sender(void* argp) {
 
     thread_config_t* th_cfg = (thread_config_t*)argp;
     port_config_t* cfg = th_cfg->cfg;
+
+    int num_pkts_sent = 0;
     
     tx_pkt_t mempool[MEMPOOL_SIZE];
     while(is_running) {
-        tx_mmap_enqueue(cfg, mempool, MEMPOOL_SIZE);
+        //tx_mmap_enqueue(cfg, mempool, MEMPOOL_SIZE);
+        num_pkts_sent = tx_setup_buffers(cfg);
     }
 }
 
@@ -184,7 +187,7 @@ int main(int argc, char** argv) {
         //port_init_mmap(&cfg);
         setup_rx_ring(&cfg.rx_ring);
         setup_tx_ring(&cfg.tx_ring, cfg.dev_info.iface_index);
-        tx_setup_buffers(&cfg);
+        //tx_setup_buffers(&cfg);
 
         pthread_t monitor_thread;
         if( pthread_create(&monitor_thread, NULL, mmap_monitor, (void*)&cfg) < 0 ) {
@@ -193,7 +196,7 @@ int main(int argc, char** argv) {
         }
         set_cpu_affinity(40, 40, &monitor_thread);
 
-        thread_config_t rx_cfg = {0};
+        /*thread_config_t rx_cfg = {0};
         rx_cfg.cfg = &cfg;
         rx_cfg.rx_handler = rx_handler;
         pthread_t rx_thread;
@@ -201,16 +204,7 @@ int main(int argc, char** argv) {
             perror("pthread_create()");
             exit(1);
         }
-        set_cpu_affinity(50, 50, &rx_thread);
-
-        thread_config_t tx_cfg = {0};
-        tx_cfg.cfg = &cfg;
-        pthread_t tx_thread;
-        if( pthread_create(&tx_thread, NULL, tx_mmap_loop, (void*)&tx_cfg) < 0 ) {
-            perror("pthread_create()");
-            exit(1);
-        }
-        set_cpu_affinity(52, 52, &tx_thread);
+        set_cpu_affinity(50, 50, &rx_thread);*/
 
         thread_config_t tx_qcfg = {0};
         tx_qcfg.cfg = &cfg;
@@ -221,7 +215,16 @@ int main(int argc, char** argv) {
         }
         set_cpu_affinity(54, 54, &tx_qthread);
 
-        pthread_join(rx_thread, NULL);
+        thread_config_t tx_cfg = {0};
+        tx_cfg.cfg = &cfg;
+        pthread_t tx_thread;
+        if( pthread_create(&tx_thread, NULL, tx_mmap_loop, (void*)&tx_cfg) < 0 ) {
+            perror("pthread_create()");
+            exit(1);
+        }
+        set_cpu_affinity(52, 52, &tx_thread);
+
+        //pthread_join(rx_thread, NULL);
         pthread_join(tx_thread, NULL);
         pthread_join(tx_qthread, NULL);
         pthread_join(monitor_thread, NULL);

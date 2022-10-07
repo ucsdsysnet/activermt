@@ -1,6 +1,7 @@
 #ifndef ACTIVEP4_NETUTILS_H
 #define ACTIVEP4_NETUTILS_H
 
+//#define DEBUG
 #define MSEND           1
 #define TRUE            1
 #define ETH_P_AP4       0x83B2
@@ -9,7 +10,7 @@
 #define QUEUELEN        1024
 #define IPADDRSIZE      16
 #define SNAPLEN_ETH     1500
-#define DIVISOR_MMAP    256
+#define DIVISOR_MMAP    128
 #define PACKET_SIZE     42
 
 #include <stdio.h>
@@ -384,7 +385,7 @@ void* rx_loop(void* argp) {
                     #endif
                 }
                 #ifdef DEBUG
-                print_pktinfo(recvbuf);
+                print_pktinfo(recvbuf, read_bytes);
                 #endif
             }
         }
@@ -582,7 +583,7 @@ void tx_mmap_enqueue(port_config_t* cfg, tx_pkt_t* pkts, int num_pkts) {
     }
 }
 
-void tx_setup_buffers(port_config_t* cfg) {
+int tx_setup_buffers(port_config_t* cfg) {
 
     ring_t* ring = &cfg->tx_ring;
 
@@ -607,7 +608,7 @@ void tx_setup_buffers(port_config_t* cfg) {
         tphdr = (struct tpacket3_hdr*)frame_ptr;
         if(!(tphdr->tp_status == TP_STATUS_AVAILABLE)) continue;
 
-        buf = frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll);
+        buf = frame_ptr + TPACKET3_HDRLEN - sizeof(struct sockaddr_ll);
 
         eth = (struct ethhdr*)buf;
         memcpy(&eth->h_source, &cfg->dev_info.hwaddr, ETH_ALEN);
@@ -641,7 +642,11 @@ void tx_setup_buffers(port_config_t* cfg) {
         constructed++;
     }
 
+    #ifdef DEBUG
     printf("[INFO] Set up TX packet buffers for %d frames.\n", constructed);
+    #endif
+
+    return constructed;
 }
 
 void setup_rx_ring(ring_t* ring) {
@@ -705,7 +710,7 @@ void setup_tx_ring(ring_t* ring, int iface_index) {
     }
 
     memset(&ring->req, 0, sizeof(struct tpacket_req3));
-    ring->req.tp_frame_size = TPACKET_ALIGN(TPACKET_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
+    ring->req.tp_frame_size = TPACKET_ALIGN(TPACKET3_HDRLEN + ETH_HLEN) + TPACKET_ALIGN(SNAPLEN_ETH);
     ring->req.tp_block_size = sysconf(_SC_PAGESIZE);
     while(ring->req.tp_block_size < ring->req.tp_frame_size)
         ring->req.tp_block_size <<= 1;
