@@ -38,6 +38,8 @@ static inline void set_cpu_affinity(int core_id_start, int core_id_end, pthread_
     }
 }
 
+void* tx_loop(void* argp) {} 
+
 int main(int argc, char** argv) {
 
     if(argc < 2) {

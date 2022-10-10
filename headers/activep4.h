@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <ctype.h>
+#include <errno.h>
+#include <arpa/inet.h>
 
 typedef struct {
     uint32_t    SIG;
@@ -225,15 +227,15 @@ static inline int read_active_args(activep4_t* ap4, char* arg_file) {
     return ap4->num_args;
 }
 
-static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
+/*static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
     activep4_ih* ap4ih = (activep4_ih*)buf;
     ap4ih->SIG = htonl(ACTIVEP4SIG);
     ap4ih->fid = htons(fid);
     ap4ih->flags = htons(flags);
     return sizeof(activep4_ih);
-}
+}*/
 
-static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
+/*static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_argval* args, int numargs) {
     int offset = 0, i, j;
     int ap4_buf_size = ap4->ap4_len * sizeof(activep4_instr);
     char* bufptr = buf;
@@ -270,7 +272,7 @@ static inline int insert_active_program(char* buf, activep4_t* ap4, activep4_arg
     memcpy(bufptr, (char*)ap4->ap4_prog, ap4_buf_size);
     offset += ap4_buf_size;
     return offset;
-}
+}*/
 
 static inline int get_active_eof(char* buf, int buflen) {
     if(buflen < sizeof(activep4_instr)) return 0;

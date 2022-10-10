@@ -12,8 +12,10 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 
-#define RX_RING_SIZE 1024
-#define TX_RING_SIZE 1024
+#include "../../headers/activep4.h"
+
+#define RX_RING_SIZE 		1024
+#define TX_RING_SIZE 		1024
 
 #define NUM_MBUFS 			8191
 #define MBUF_CACHE_SIZE 	250
@@ -21,7 +23,7 @@
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
-static int hwts_dynfield_offset = -1;
+/*static int hwts_dynfield_offset = -1;
 
 static inline rte_mbuf_timestamp_t *
 hwts_field(struct rte_mbuf *mbuf)
@@ -36,12 +38,12 @@ static inline tsc_t *
 tsc_field(struct rte_mbuf *mbuf)
 {
 	return RTE_MBUF_DYNFIELD(mbuf, tsc_dynfield_offset, tsc_t *);
-}
+}*/
 
 static const char usage[] =
 	"%s EAL_ARGS -- [-t]\n";
 
-static struct {
+/*static struct {
 	uint64_t total_cycles;
 	uint64_t total_queue_cycles;
 	uint64_t total_pkts;
@@ -50,7 +52,7 @@ static struct {
 int hw_timestamping;
 
 #define TICKS_PER_CYCLE_SHIFT 16
-static uint64_t ticks_per_cycle_mult;
+static uint64_t ticks_per_cycle_mult;*/
 
 /*static uint16_t
 add_timestamps(
@@ -127,7 +129,9 @@ modify_pkt(
 	for(int i = 0; i < nb_pkts; i++) {
 		char* pkt = rte_pktmbuf_mtod(pkts[i], char*);
 		hdr_eth = (struct rte_ether_hdr*)pkt;
-		struct rte_ether_addr tmp_eth = hdr_eth->src_addr;
+		// TODO construct active program.
+		// TODO move IP data to after offset; insert active program; update packet length.
+		/*struct rte_ether_addr tmp_eth = hdr_eth->src_addr;
 		hdr_eth->src_addr = hdr_eth->dst_addr;
 		hdr_eth->dst_addr = tmp_eth;
 		if(hdr_eth->ether_type == 8) {
@@ -135,7 +139,8 @@ modify_pkt(
 			rte_be32_t tmp_ipv4 = hdr_ipv4->src_addr;
 			hdr_ipv4->src_addr = hdr_ipv4->dst_addr;
 			hdr_ipv4->dst_addr = tmp_ipv4;
-		}
+		}*/
+		pkts[i]->pkt_len += 0;
 	}
 
 	return nb_pkts;
@@ -171,7 +176,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		port_conf.txmode.offloads |=
 			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
-	if (hw_timestamping) {
+	/*if (hw_timestamping) {
 		if (!(dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 			printf("\nERROR: Port %u does not support hardware timestamping\n"
 					, port);
@@ -183,7 +188,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			printf("ERROR: Failed to register timestamp field\n");
 			return -rte_errno;
 		}
-	}
+	}*/
 
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
@@ -215,7 +220,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval < 0)
 		return retval;
 
-	if (hw_timestamping && ticks_per_cycle_mult  == 0) {
+	/*if (hw_timestamping && ticks_per_cycle_mult  == 0) {
 		uint64_t cycles_base = rte_rdtsc();
 		uint64_t ticks_base;
 		retval = rte_eth_read_clock(port, &ticks_base);
@@ -232,11 +237,8 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 				"\nHW Freq ~= %" PRIu64
 				"\nRatio : %f\n",
 				c_freq * 10, t_freq * 10, freq_mult);
-		/* TSC will be faster than internal ticks so freq_mult is > 0
-		 * We convert the multiplication to an integer shift & mult
-		 */
 		ticks_per_cycle_mult = (1 << TICKS_PER_CYCLE_SHIFT) / freq_mult;
-	}
+	}*/
 
 	struct rte_ether_addr addr;
 
@@ -252,7 +254,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			RTE_ETHER_ADDR_BYTES(&addr));
 
 	retval = rte_eth_promiscuous_enable(port);
-	//if (retval != 0) return retval;
+	if(retval != 0 && port % 2 == 0) return retval;
 
 	//rte_eth_add_tx_callback(port, 0, modify_pkt, NULL);
 	//rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
@@ -297,7 +299,7 @@ lcore_main(void)
 	}
 }
 
-static int
+/*static int
 lcore_worker(__rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
@@ -305,7 +307,7 @@ lcore_worker(__rte_unused void *arg)
 	printf("Starting lcore %u ... \n", lcore_id);
 	
 	return 0;
-}
+}*/
 
 int
 main(int argc, char *argv[])
@@ -313,16 +315,16 @@ main(int argc, char *argv[])
 	struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
 	uint16_t portid;
-	struct option lgopts[] = {
+	
+	/*struct option lgopts[] = {
 		{ NULL,  0, 0, 0 }
 	};
 	int opt, option_index;
-
 	static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
 		.name = "example_bbdev_dynfield_tsc",
 		.size = sizeof(tsc_t),
 		.align = __alignof__(tsc_t),
-	};
+	};*/
 
 	int ret = rte_eal_init(argc, argv);
 
@@ -331,7 +333,7 @@ main(int argc, char *argv[])
 	argc -= ret;
 	argv += ret;
 
-	while((opt = getopt_long(argc, argv, "t", lgopts, &option_index)) != EOF)
+	/*while((opt = getopt_long(argc, argv, "t", lgopts, &option_index)) != EOF)
 		switch (opt) {
 		case 't':
 			hw_timestamping = 1;
@@ -340,7 +342,7 @@ main(int argc, char *argv[])
 			printf(usage, argv[0]);
 			return -1;
 		}
-	optind = 1; /* reset getopt lib */
+	optind = 1;*/
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < 1)
@@ -352,10 +354,10 @@ main(int argc, char *argv[])
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	tsc_dynfield_offset =
+	/*tsc_dynfield_offset =
 		rte_mbuf_dynfield_register(&tsc_dynfield_desc);
 	if (tsc_dynfield_offset < 0)
-		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");
+		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");*/
 
 	unsigned port_count = 0;
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -363,14 +365,11 @@ main(int argc, char *argv[])
 		char portargs[256];
 		struct rte_ether_addr addr = {0};
 
-		/* once we have created a virtio port for each physical port, stop creating more */
 		if (++port_count > nb_ports)
 			break;
 
-		/* get MAC address of physical port to use as MAC of virtio_user port */
 		rte_eth_macaddr_get(portid, &addr);
 
-		/* set the name and arguments */
 		snprintf(portname, sizeof(portname), "virtio_user%u", portid);
 		snprintf(
 			portargs, 
@@ -380,12 +379,10 @@ main(int argc, char *argv[])
 			RTE_ETHER_ADDR_BYTES(&addr)
 		);
 
-		/* add the vdev for virtio_user */
 		if (rte_eal_hotplug_add("vdev", portname, portargs) < 0)
 			rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
 	}
 
-	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid)
 		if(port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);

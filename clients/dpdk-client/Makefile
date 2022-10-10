@@ -2,10 +2,10 @@
 # Copyright(c) 2010-2015 Intel Corporation
 
 # binary name
-APP = rxtx_callbacks
+APP = ap4-netproxy
 
 # all source are stored in SRCS-y
-SRCS-y := main.c
+SRCS-y := main.c ../../headers/activep4.h
 
 PKGCONF ?= pkg-config
 
