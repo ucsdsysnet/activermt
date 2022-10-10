@@ -2,6 +2,7 @@
 #include "../../headers/activep4_netutils.h"
 
 //#define RATE_LIMITED    1
+//#define STATS           1
 #define IO_MMAP         1
 #define MAX_PPS         1000000
 #define MEMPOOL_SIZE    2048
@@ -107,11 +108,11 @@ void* mmap_monitor(void* argp) {
         elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
         if(elapsed_ns >= INTVL_SEC) {
             memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
-            if(getsockopt(rx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &rx_ring->stats, &stats_len) < 0) {
+            if(rx_ring->sockfd && getsockopt(rx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &rx_ring->stats, &stats_len) < 0) {
                 perror("setsocketopt(PACKET_STATISTICS:RX)");
                 continue;
             }
-            if(getsockopt(tx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &tx_ring->stats, &stats_len) < 0) {
+            if(tx_ring->sockfd && getsockopt(tx_ring->sockfd, SOL_PACKET, PACKET_STATISTICS, &tx_ring->stats, &stats_len) < 0) {
                 perror("setsocketopt(PACKET_STATISTICS:TX)");
                 continue;
             }
@@ -148,15 +149,13 @@ int main(int argc, char** argv) {
 
     is_running = 1;
 
-    #ifndef IO_MMAP
     memset(&stats, 0, sizeof(stats_t));
     pthread_t timer_thread;
     if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
         perror("pthread_create()");
         exit(1);
     }
-    set_cpu_affinity(40, 40, &timer_thread);
-    #endif
+    set_cpu_affinity(38, 38, &timer_thread);
 
     port_config_t cfg;
     memset(&cfg, 0, sizeof(port_config_t));
@@ -189,14 +188,16 @@ int main(int argc, char** argv) {
         setup_tx_ring(&cfg.tx_ring, cfg.dev_info.iface_index);
         //tx_setup_buffers(&cfg);
 
+        #ifdef STATS
         pthread_t monitor_thread;
         if( pthread_create(&monitor_thread, NULL, mmap_monitor, (void*)&cfg) < 0 ) {
             perror("pthread_create()");
             exit(1);
         }
         set_cpu_affinity(40, 40, &monitor_thread);
+        #endif
 
-        /*thread_config_t rx_cfg = {0};
+        thread_config_t rx_cfg = {0};
         rx_cfg.cfg = &cfg;
         rx_cfg.rx_handler = rx_handler;
         pthread_t rx_thread;
@@ -204,7 +205,7 @@ int main(int argc, char** argv) {
             perror("pthread_create()");
             exit(1);
         }
-        set_cpu_affinity(50, 50, &rx_thread);*/
+        set_cpu_affinity(50, 50, &rx_thread);
 
         thread_config_t tx_qcfg = {0};
         tx_qcfg.cfg = &cfg;
@@ -224,10 +225,12 @@ int main(int argc, char** argv) {
         }
         set_cpu_affinity(52, 52, &tx_thread);
 
-        //pthread_join(rx_thread, NULL);
+        pthread_join(rx_thread, NULL);
         pthread_join(tx_thread, NULL);
         pthread_join(tx_qthread, NULL);
+        #ifdef STATS
         pthread_join(monitor_thread, NULL);
+        #endif
     #else
         if(port_init(&cfg, iface, inet_addr(ipv4_dstaddr)) < 0) {
             exit(1);

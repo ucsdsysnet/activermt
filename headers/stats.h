@@ -37,7 +37,7 @@ void* monitor_stats(void* argp) {
             stats->reqRateAlt[stats->numSamples] = stats->count_alt;
             stats->reqRate[stats->numSamples++] = stats->count;
             if(stats->count > 0 || stats->count_alt > 0)
-                printf("[STATS] %lu / %lu pkts/sec.\n", stats->count, stats->count_alt);
+                printf("[STATS] %lu / %lu counts/sec.\n", stats->count, stats->count_alt);
             pthread_mutex_lock(&lock);
             stats->count = 0;
             pthread_mutex_unlock(&lock);

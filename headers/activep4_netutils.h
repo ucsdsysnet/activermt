@@ -11,7 +11,7 @@
 #define IPADDRSIZE      16
 #define SNAPLEN_ETH     1500
 #define DIVISOR_MMAP    128
-#define PACKET_SIZE     42
+#define PACKET_SIZE     64
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -495,7 +495,7 @@ void* rx_mmap_loop(void* argp) {
             }
         }
 
-        struct sockaddr_ll* addr = (struct sockaddr_ll*)(frame_ptr + TPACKET_HDRLEN - sizeof(struct sockaddr_ll));
+        struct sockaddr_ll* addr = (struct sockaddr_ll*)(frame_ptr + TPACKET3_HDRLEN - sizeof(struct sockaddr_ll));
         char* l2content = frame_ptr + tphdr->tp_mac;
         //char* l3content = frame_ptr + tphdr->tp_net;
 
@@ -547,8 +547,8 @@ void* tx_mmap_loop(void* argp) {
                 perror("sendto()");
                 exit(1);
             } else if(bytes_sent > 0) {
-                pkts_sent = bytes_sent / PACKET_SIZE;
-                /*pthread_mutex_lock(&lock);
+                /*pkts_sent = bytes_sent / PACKET_SIZE;
+                pthread_mutex_lock(&lock);
                 stats.count += pkts_sent;
                 pthread_mutex_unlock(&lock);*/
             }
@@ -597,8 +597,9 @@ int tx_setup_buffers(port_config_t* cfg) {
     struct ethhdr* eth;
     struct iphdr* iph;
     struct udphdr* udph;
+    char* payload;
 
-    int constructed = 0;
+    int constructed = 0, payload_length;
 
     for(int i = 0; i < ring->req.tp_frame_nr; i++) {
         
@@ -606,9 +607,14 @@ int tx_setup_buffers(port_config_t* cfg) {
         frame_ptr = block_ptr + (i % frames_per_block) * ring->req.tp_frame_size;
 
         tphdr = (struct tpacket3_hdr*)frame_ptr;
+        if(tphdr->tp_status == TP_STATUS_WRONG_FORMAT) {
+            printf("[ERROR] Wrong TP frame format!\n");
+            exit(1);
+        }
         if(!(tphdr->tp_status == TP_STATUS_AVAILABLE)) continue;
 
         buf = frame_ptr + TPACKET3_HDRLEN - sizeof(struct sockaddr_ll);
+        payload_length = PACKET_SIZE - (sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr));
 
         eth = (struct ethhdr*)buf;
         memcpy(&eth->h_source, &cfg->dev_info.hwaddr, ETH_ALEN);
@@ -619,7 +625,7 @@ int tx_setup_buffers(port_config_t* cfg) {
         iph->ihl = 5;
         iph->version = 4;
         iph->tos = 0;
-        iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr));
+        iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + payload_length);
         iph->id = htonl(0);
         iph->frag_off = 0;
         iph->ttl = 255;
@@ -632,18 +638,23 @@ int tx_setup_buffers(port_config_t* cfg) {
 
         udph = (struct udphdr*)(buf + sizeof(struct ethhdr) + sizeof(struct iphdr));
         udph->source = htons(1234);
-        udph->dest = htons(5678);
-        udph->len = htons(8);
+        udph->dest = htons(1234);
+        udph->len = htons(sizeof(struct udphdr) + payload_length);
         udph->check = htons(0);
 
-        tphdr->tp_len = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
+        payload = buf + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
+        memset(payload, 0, payload_length);
+
+        tphdr->tp_len = PACKET_SIZE;
         tphdr->tp_status = TP_STATUS_SEND_REQUEST;
 
         constructed++;
     }
 
     #ifdef DEBUG
-    printf("[INFO] Set up TX packet buffers for %d frames.\n", constructed);
+    pthread_mutex_lock(&lock);
+    stats.count += constructed;
+    pthread_mutex_unlock(&lock);
     #endif
 
     return constructed;
@@ -722,6 +733,12 @@ void setup_tx_ring(ring_t* ring, int iface_index) {
         perror("setsockopt(PACKET_TX_RING)");
         exit(1);
     }
+
+    /*int one = 1;
+    if(setsockopt(ring->sockfd, SOL_PACKET, PACKET_QDISC_BYPASS, &one, sizeof(one)) < 0) {
+        perror("setsocketopt(PACKET_QDISC_BYPASS)");
+        exit(1);
+    }*/
 
     struct sockaddr_ll ll;
     ll.sll_family = PF_PACKET;

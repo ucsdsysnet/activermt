@@ -8,6 +8,7 @@ logs/
 _eval/
 _ica/
 .vscode/
+clients/dpdk-client/build/
 
 CMake*
 bf_drivers*
