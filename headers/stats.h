@@ -1,6 +1,7 @@
 #ifndef STATS_H
 #define STATS_H
 
+#define TRUE            1
 #define STATS_ITVL_NS   1E9
 #define MAX_SAMPLES     10000
 

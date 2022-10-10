@@ -52,25 +52,30 @@ int hw_timestamping;
 #define TICKS_PER_CYCLE_SHIFT 16
 static uint64_t ticks_per_cycle_mult;
 
-/* Callback added to the RX port and applied to packets. 8< */
-static uint16_t
-add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
-		struct rte_mbuf **pkts, uint16_t nb_pkts,
-		uint16_t max_pkts __rte_unused, void *_ __rte_unused)
-{
+/*static uint16_t
+add_timestamps(
+	uint16_t port __rte_unused, 
+	uint16_t qidx __rte_unused,
+	struct rte_mbuf **pkts, 
+	uint16_t nb_pkts,
+	uint16_t max_pkts __rte_unused, 
+	void *_ __rte_unused
+) {
 	unsigned i;
 	uint64_t now = rte_rdtsc();
-
 	for(i = 0; i < nb_pkts; i++)
 		*tsc_field(pkts[i]) = now;
 	return nb_pkts;
-}
+}*/
 
-/* Callback is added to the TX port. 8< */
-static uint16_t
-calc_latency(uint16_t port, uint16_t qidx __rte_unused,
-		struct rte_mbuf **pkts, uint16_t nb_pkts, void *_ __rte_unused)
-{
+/*static uint16_t
+calc_latency(
+	uint16_t port, 
+	uint16_t qidx __rte_unused,
+	struct rte_mbuf **pkts, 
+	uint16_t nb_pkts, 
+	void *_ __rte_unused
+) {
 	uint64_t cycles = 0;
 	uint64_t queue_ticks = 0;
 	uint64_t now = rte_rdtsc();
@@ -106,7 +111,7 @@ calc_latency(uint16_t port, uint16_t qidx __rte_unused,
 		latency_numbers.total_pkts = 0;
 	}
 	return nb_pkts;
-}
+}*/
 
 static uint16_t
 modify_pkt(
@@ -136,7 +141,6 @@ modify_pkt(
 	return nb_pkts;
 }
 
- /* Port initialization. 8< */
 static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
@@ -248,21 +252,15 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			RTE_ETHER_ADDR_BYTES(&addr));
 
 	retval = rte_eth_promiscuous_enable(port);
-	if (retval != 0)
-		return retval;
+	//if (retval != 0) return retval;
 
-	/* RX and TX callbacks are added to the ports. 8< */
-	rte_eth_add_tx_callback(port, 0, modify_pkt, NULL);
+	//rte_eth_add_tx_callback(port, 0, modify_pkt, NULL);
 	//rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
 	//rte_eth_add_tx_callback(port, 0, calc_latency, NULL);
 
 	return 0;
 }
 
-/*
- * Main thread that does the work, reading from INPUT_PORT
- * and writing to OUTPUT_PORT
- */
 static  __rte_noreturn void
 lcore_main(void)
 {
@@ -275,11 +273,12 @@ lcore_main(void)
 			printf("WARNING, port %u is on remote NUMA node to "
 					"polling thread.\n\tPerformance will "
 					"not be optimal.\n", port);
+		else
+			printf("Port %d on local NUMA node.\n", port);
 
-	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n",
-			rte_lcore_id());
+	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
 
-	for (;;) {
+	for(;;) {
 		RTE_ETH_FOREACH_DEV(port) {
 			struct rte_mbuf *bufs[BURST_SIZE];
 			const uint16_t nb_rx = rte_eth_rx_burst(port, 0, bufs, BURST_SIZE);
@@ -287,7 +286,7 @@ lcore_main(void)
 			if (unlikely(nb_rx == 0))
 				continue;
 
-			const uint16_t nb_tx = rte_eth_tx_burst(port, 0, bufs, nb_rx);
+			const uint16_t nb_tx = rte_eth_tx_burst(port^1, 0, bufs, nb_rx);
 			
 			if(unlikely(nb_tx < nb_rx)) {
 				uint16_t buf;
@@ -308,7 +307,6 @@ lcore_worker(__rte_unused void *arg)
 	return 0;
 }
 
-/* Main function, does initialisation and calls the per-lcore functions */
 int
 main(int argc, char *argv[])
 {
@@ -326,7 +324,6 @@ main(int argc, char *argv[])
 		.align = __alignof__(tsc_t),
 	};
 
-	/* init EAL */
 	int ret = rte_eal_init(argc, argv);
 
 	if (ret < 0)
@@ -360,6 +357,34 @@ main(int argc, char *argv[])
 	if (tsc_dynfield_offset < 0)
 		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");
 
+	unsigned port_count = 0;
+	RTE_ETH_FOREACH_DEV(portid) {
+		char portname[32];
+		char portargs[256];
+		struct rte_ether_addr addr = {0};
+
+		/* once we have created a virtio port for each physical port, stop creating more */
+		if (++port_count > nb_ports)
+			break;
+
+		/* get MAC address of physical port to use as MAC of virtio_user port */
+		rte_eth_macaddr_get(portid, &addr);
+
+		/* set the name and arguments */
+		snprintf(portname, sizeof(portname), "virtio_user%u", portid);
+		snprintf(
+			portargs, 
+			sizeof(portargs),
+			"path=/dev/vhost-net,queues=1,queue_size=%u,iface=%s,mac=" RTE_ETHER_ADDR_PRT_FMT,
+			RX_RING_SIZE, portname, 
+			RTE_ETHER_ADDR_BYTES(&addr)
+		);
+
+		/* add the vdev for virtio_user */
+		if (rte_eal_hotplug_add("vdev", portname, portargs) < 0)
+			rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
+	}
+
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid)
 		if(port_init(portid, mbuf_pool) != 0)
@@ -370,10 +395,8 @@ main(int argc, char *argv[])
 		rte_eal_remote_launch(lcore_worker, NULL, lcore_id);
 	}*/
 
-	/* call lcore_main on main core only */
 	lcore_main();
 
-	/* clean up the EAL */
 	rte_eal_cleanup();
 
 	return 0;
