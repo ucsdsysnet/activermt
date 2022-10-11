@@ -30,10 +30,6 @@
 #include "stats.h"
 
 typedef struct {
-    activep4_malloc_block_t mem_range[NUM_STAGES];
-} __attribute__((packed)) activep4_malloc_res_t;
-
-typedef struct {
     activep4_ih             ap4ih;
     activep4_data_t         ap4data;
     activep4_instr          ap4code[MAXPROGLEN];

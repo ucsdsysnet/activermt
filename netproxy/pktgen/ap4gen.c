@@ -11,14 +11,11 @@
 #define MODE_SYNC   1
 #define ASYNC_TX    0
 #define NUM_STAGES  20
-#define MAX_DATA    65536
-#define MAX_FIDX    256
 #define RETRY_ITVL  10000
 #define SEND_ITVL   100
 #define MAX_RETRIES 100000
 #define MAX_SYNC_R  100
 #define NUM_REPEATS 100
-#define FID_RST     255
 
 #define CMS_MAGIC       0x87654321
 #define CMS_MAXKEYS     65536
@@ -32,22 +29,6 @@ static inline void prettify_duration(unsigned long ts, char* buf) {
     else if(ts < 1E9) sprintf(buf, "%lf ms", ts / 1E6);
     else sprintf(buf, "%lf s", ts / 1E9);
 }
-
-typedef struct {
-    uint16_t    data[MAX_DATA];
-    uint8_t     valid[MAX_DATA];
-    int         mem_start;
-    int         mem_end;
-} memory_stage_t;
-
-typedef struct {
-    uint8_t         invalid;
-    memory_stage_t  sync_data[NUM_STAGES];
-    uint8_t         valid_stages[NUM_STAGES];
-    uint16_t        fid;
-    uint64_t        sync_duration;
-    struct timespec sync_time;
-} memory_t;
 
 typedef struct {
     char            eth_iface[100];

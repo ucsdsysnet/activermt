@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
+#define DEBUG
+
 #include <stdint.h>
 #include <inttypes.h>
 #include <getopt.h>
@@ -14,6 +16,8 @@
 
 #include "../../headers/activep4.h"
 
+#define TEST_FLAG(x, y)		((x & y) > 0)
+
 #define RX_RING_SIZE 		1024
 #define TX_RING_SIZE 		1024
 
@@ -22,6 +26,8 @@
 #define BURST_SIZE			32
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
+
+#define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
 
 /*static int hwts_dynfield_offset = -1;
 
@@ -115,39 +121,111 @@ calc_latency(
 	return nb_pkts;
 }*/
 
+static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {
+	
+	char* bufptr = rte_pktmbuf_mtod(pkt, char*);
+	
+	struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
+	hdr_eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+
+	int ap4hlen = sizeof(activep4_ih) + sizeof(activep4_data_t) + (ap4_ctxt->program->proglen * sizeof(activep4_instr));
+
+	for(int i = pkt->pkt_len - 1; i >= sizeof(struct rte_ether_hdr); i--) {
+		bufptr[i + ap4hlen] = bufptr[i];
+	}
+
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+	ap4ih->fid = htons(ap4_ctxt->program->fid);
+	ap4ih->seq = htons(0);
+
+	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	for(int i = 0; i < AP4_DATA_LEN; i++)
+		ap4data->data[i] = ap4_ctxt->data.data[i];
+
+	for(int i = 0; i < ap4_ctxt->program->proglen; i++) {
+		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
+		instr->flags = 0;
+		instr->opcode = ap4_ctxt->program->code[i].opcode;
+	}
+
+	pkt->pkt_len += ap4hlen;
+	pkt->data_len += ap4hlen;
+}
+
 static uint16_t
-modify_pkt(
+active_encap_filter(
 	uint16_t port_id __rte_unused, 
 	uint16_t queue __rte_unused, 
 	struct rte_mbuf** pkts, 
 	uint16_t nb_pkts, 
-	void *user_param __rte_unused
+	void *ctxt
 ) {
-	struct rte_ether_hdr* hdr_eth;
-	struct rte_ipv4_hdr* hdr_ipv4;
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
 
 	for(int i = 0; i < nb_pkts; i++) {
-		char* pkt = rte_pktmbuf_mtod(pkts[i], char*);
-		hdr_eth = (struct rte_ether_hdr*)pkt;
-		// TODO construct active program.
-		// TODO move IP data to after offset; insert active program; update packet length.
-		/*struct rte_ether_addr tmp_eth = hdr_eth->src_addr;
-		hdr_eth->src_addr = hdr_eth->dst_addr;
-		hdr_eth->dst_addr = tmp_eth;
-		if(hdr_eth->ether_type == 8) {
-			hdr_ipv4 = (struct rte_ipv4_hdr*)(pkt + sizeof(struct rte_ether_hdr));
-			rte_be32_t tmp_ipv4 = hdr_ipv4->src_addr;
-			hdr_ipv4->src_addr = hdr_ipv4->dst_addr;
-			hdr_ipv4->dst_addr = tmp_ipv4;
-		}*/
-		pkts[i]->pkt_len += 0;
+		switch(ap4_ctxt->status) {
+			case ACTIVE_STATE_TRANSMITTING:
+				// TODO update program data.
+				insert_active_program_headers(ap4_ctxt, pkts[i]);
+				break;
+			case ACTIVE_STATE_ALLOCATING:
+				// TODO implement. 
+				break;
+			default:
+				break;
+		}
 	}
 
 	return nb_pkts;
 }
 
+static inline void strip_active_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {}
+
+static uint16_t
+active_decap_filter(
+	uint16_t port_id __rte_unused, 
+	uint16_t queue __rte_unused, 
+	struct rte_mbuf** pkts, 
+	uint16_t nb_pkts, 
+	void *ctxt
+) {
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
+
+	for(int i = 0; i < nb_pkts; i++) {
+		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
+		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
+		int offset = 0;
+		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
+			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
+			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
+			uint16_t flags = ntohs(ap4ih->flags);
+			offset += sizeof(activep4_ih);
+			// TODO process active data.
+			if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
+				offset += sizeof(activep4_data_t);
+			}
+			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
+				offset += sizeof(activep4_malloc_res_t);
+			}
+			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
+				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[i]->pkt_len);
+			}
+			for(int i = 0; i < offset; i++) {
+				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
+			}
+			pkts[i]->pkt_len -= offset;
+			pkts[i]->data_len -= offset;
+		}
+	}	
+
+	return nb_pkts;
+}
+
 static inline int
-port_init(uint16_t port, struct rte_mempool *mbuf_pool)
+port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt)
 {
 	struct rte_eth_conf port_conf;
 	const uint16_t rx_rings = 1, tx_rings = 1;
@@ -159,7 +237,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
 
-	if (!rte_eth_dev_is_valid_port(port))
+	if(!rte_eth_dev_is_valid_port(port))
 		return -1;
 
 	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
@@ -256,7 +334,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	retval = rte_eth_promiscuous_enable(port);
 	if(retval != 0 && port % 2 == 0) return retval;
 
-	//rte_eth_add_tx_callback(port, 0, modify_pkt, NULL);
+	if(ctxt->is_active) {
+		if(port % 2 == 0)
+			rte_eth_add_tx_callback(port, 0, active_encap_filter, (void*)ctxt);
+		else
+			rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
+	}
+
 	//rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
 	//rte_eth_add_tx_callback(port, 0, calc_latency, NULL);
 
@@ -310,8 +394,35 @@ lcore_worker(__rte_unused void *arg)
 }*/
 
 int
-main(int argc, char *argv[])
+main(int argc, char** argv)
 {
+	if(argc < 1) {
+		printf("Usage: %s [active_program_dir <active_program_name>] [fid=1]\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	pnemonic_opcode_t instr_set;
+	activep4_def_t active_function;
+	activep4_context_t ap4_ctxt;
+
+	memset(&instr_set, 0, sizeof(pnemonic_opcode_t));
+	memset(&active_function, 0, sizeof(activep4_def_t));
+	memset(&ap4_ctxt, 0, sizeof(activep4_context_t));
+
+	int is_active = (argc > 2);
+	if(is_active) {
+		char* active_dir = argv[1];
+		char* active_program_name = argv[2];
+		int fid = (argc > 3) ? atoi(argv[3]) : 1;
+		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
+		read_active_function(&active_function, active_dir, active_program_name);
+		// TODO data argument definitions.
+		active_function.fid = fid;
+		ap4_ctxt.program = &active_function;
+		ap4_ctxt.is_active = 1;
+		printf("ActiveP4 context initialized for %s.\n", active_program_name);
+	}
+
 	struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
 	uint16_t portid;
@@ -319,8 +430,9 @@ main(int argc, char *argv[])
 	/*struct option lgopts[] = {
 		{ NULL,  0, 0, 0 }
 	};
-	int opt, option_index;
-	static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
+	int opt, option_index;*/
+	
+	/*static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
 		.name = "example_bbdev_dynfield_tsc",
 		.size = sizeof(tsc_t),
 		.align = __alignof__(tsc_t),
@@ -384,7 +496,7 @@ main(int argc, char *argv[])
 	}
 
 	RTE_ETH_FOREACH_DEV(portid)
-		if(port_init(portid, mbuf_pool) != 0)
+		if(port_init(portid, mbuf_pool, &ap4_ctxt) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
 
 	/*unsigned lcore_id;
