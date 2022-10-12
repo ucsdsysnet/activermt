@@ -466,7 +466,6 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_contr
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
-	// TODO set dst MAC to broadcast.
 	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
@@ -507,7 +506,6 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_contr
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
-	// TODO set dst MAC to broadcast.
 	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr)); 
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
@@ -532,6 +530,52 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_contr
 	mbuf->data_len = mbuf->pkt_len;
 }
 
+static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, active_control_t* ctrl, int stage_id, int mem_addr, activep4_def_t* memsync_cache) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->seq = 0;
+	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	ap4data->data[0] = htonl((uint32_t)mem_addr);
+	for(int i = 1; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
+	activep4_def_t* program = construct_memsync_program(ctrl->ctxt->program->fid, stage_id, ctrl->ctxt->instr_set, memsync_cache);
+	if(program == NULL) {
+		printf("Could not construct memsync program!\n");
+		return;
+	}
+	for(int i = 0; i < program->proglen; i++) {
+		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
+		instr->flags = 0;
+		instr->opcode = program->code[i].opcode;
+	}
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = 0;
+	iph->dst_addr = 0;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
 static int
 lcore_control(void* arg) {
 
@@ -549,14 +593,18 @@ lcore_control(void* arg) {
 		return -1;
 	}
 
+	activep4_def_t memsync_cache[NUM_STAGES];
+	memset(memsync_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
+
 	uint64_t last_sent = 0, now, elapsed_us;
+	int snapshotting_in_progress = 0;
 
 	while(TRUE) {
 		now = rte_rdtsc_precise();
 		elapsed_us = (double)(now - last_sent) * 1E6 / rte_get_tsc_hz();
-		if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 		switch(ctrl->ctxt->status) {
 			case ACTIVE_STATE_INITIALIZING:
+				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_reqalloc_packet(mbuf, ctrl);
 					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
@@ -565,6 +613,7 @@ lcore_control(void* arg) {
 				}
 				break;
 			case ACTIVE_STATE_ALLOCATING:
+				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_getalloc_packet(mbuf, ctrl);
 					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
@@ -573,6 +622,22 @@ lcore_control(void* arg) {
 				}
 				break;
 			case ACTIVE_STATE_SNAPSHOTTING:
+				snapshotting_in_progress = 1;
+				while(snapshotting_in_progress) {
+					snapshotting_in_progress = 0;
+					for(int i = 0; i < NUM_STAGES; i++) {
+						if(!ctrl->ctxt->allocation.valid_stages[i]) continue;
+						for(int j = ctrl->ctxt->allocation.sync_data->mem_start; j <= ctrl->ctxt->allocation.sync_data->mem_end; j++) {
+							if(ctrl->ctxt->allocation.sync_data->valid[j]) continue;
+							snapshotting_in_progress = 1;
+							if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+								construct_snapshot_packet(mbuf, ctrl, i, j, memsync_cache);
+								rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
+							}
+						}
+					}
+				}
+				rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
 				break;
 			default:
 				break;
@@ -617,6 +682,7 @@ main(int argc, char** argv)
 		read_active_function(&active_function, active_dir, active_program_name);
 		// TODO data argument definitions.
 		active_function.fid = fid;
+		ap4_ctxt.instr_set = &instr_set;
 		ap4_ctxt.program = &active_function;
 		ap4_ctxt.is_active = 1;
 		ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;

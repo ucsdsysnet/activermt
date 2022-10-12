@@ -126,14 +126,6 @@ typedef struct {
 } activep4_def_t;
 
 typedef struct {
-    uint8_t         is_active;
-    uint8_t         status;
-    activep4_def_t* program;
-    memory_t        allocation;
-    activep4_data_t data;
-} activep4_context_t;
-
-typedef struct {
     char    mnemonic[MNEMONIC_MAXLEN];
     char    action[MNEMONIC_MAXLEN];
     int     options;
@@ -143,6 +135,15 @@ typedef struct {
     opcode_action_map_t map[MAXINSTRSET];
     int                 num_instr;
 } pnemonic_opcode_t;
+
+typedef struct {
+    uint8_t             is_active;
+    uint8_t             status;
+    pnemonic_opcode_t*  instr_set;   
+    activep4_def_t*     program;
+    memory_t            allocation;
+    activep4_data_t     data;
+} activep4_context_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {
     int i, instr_len = sizeof(activep4_instr);
