@@ -32,6 +32,8 @@
 
 #define ACTIVE_STATE_TRANSMITTING   0
 #define ACTIVE_STATE_ALLOCATING     1
+#define ACTIVE_STATE_INITIALIZING   2
+#define ACTIVE_STATE_SNAPSHOTTING   3
 
 #include <stdio.h>
 #include <string.h>

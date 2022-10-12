@@ -24,10 +24,18 @@
 #define NUM_MBUFS 			8191
 #define MBUF_CACHE_SIZE 	250
 #define BURST_SIZE			32
+#define DELAY_SEC			1000000
+#define CTRL_SEND_INTVL_US	100
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
 #define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
+
+typedef struct {
+	uint16_t			port_id;
+	activep4_context_t*	ctxt;
+	struct rte_mempool*	mempool;
+} active_control_t;
 
 /*static int hwts_dynfield_offset = -1;
 
@@ -181,8 +189,6 @@ active_encap_filter(
 	return nb_pkts;
 }
 
-static inline void strip_active_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {}
-
 static uint16_t
 active_decap_filter(
 	uint16_t port_id __rte_unused, 
@@ -224,6 +230,53 @@ active_decap_filter(
 	return nb_pkts;
 }
 
+static uint16_t
+active_eth_rx_hook(
+	uint16_t port_id, 
+	uint16_t queue, 
+	struct rte_mbuf** pkts, 
+	uint16_t nb_pkts, 
+	uint16_t max_pkts, 
+	void *ctxt
+) {
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
+
+	for(int i = 0; i < nb_pkts; i++) {
+		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
+		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
+		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
+			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
+			uint16_t flags = ntohs(ap4ih->flags);
+			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
+				// ack for reqalloc.
+				ap4_ctxt->status = ACTIVE_STATE_ALLOCATING;
+			}
+		}
+	}
+
+	return nb_pkts;
+}
+
+static uint16_t
+active_virtio_rx_hook(
+	uint16_t port_id, 
+	uint16_t queue, 
+	struct rte_mbuf** pkts, 
+	uint16_t nb_pkts, 
+	uint16_t max_pkts, 
+	void *ctxt
+) {
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
+
+	for(int i = 0; i < nb_pkts; i++) {
+		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
+		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
+	}
+
+	return nb_pkts;
+}
+
 static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt)
 {
@@ -244,9 +297,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 
 	retval = rte_eth_dev_info_get(port, &dev_info);
 	if (retval != 0) {
-		printf("Error during getting device (port %u) info: %s\n",
-				port, strerror(-retval));
-
+		printf("Error during getting device (port %u) info: %s\n", port, strerror(-retval));
 		return retval;
 	}
 
@@ -279,8 +330,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 	rxconf = dev_info.default_rxconf;
 
 	for (q = 0; q < rx_rings; q++) {
-		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
-			rte_eth_dev_socket_id(port), &rxconf, mbuf_pool);
+		retval = rte_eth_rx_queue_setup(port, q, nb_rxd, rte_eth_dev_socket_id(port), &rxconf, mbuf_pool);
 		if (retval < 0)
 			return retval;
 	}
@@ -288,14 +338,13 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 	txconf = dev_info.default_txconf;
 	txconf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < tx_rings; q++) {
-		retval = rte_eth_tx_queue_setup(port, q, nb_txd,
-				rte_eth_dev_socket_id(port), &txconf);
-		if (retval < 0)
+		retval = rte_eth_tx_queue_setup(port, q, nb_txd, rte_eth_dev_socket_id(port), &txconf);
+		if(retval < 0)
 			return retval;
 	}
 
-	retval  = rte_eth_dev_start(port);
-	if (retval < 0)
+	retval = rte_eth_dev_start(port);
+	if(retval < 0)
 		return retval;
 
 	/*if (hw_timestamping && ticks_per_cycle_mult  == 0) {
@@ -322,23 +371,26 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 
 	retval = rte_eth_macaddr_get(port, &addr);
 	if (retval < 0) {
-		printf("Failed to get MAC address on port %u: %s\n",
-			port, rte_strerror(-retval));
+		printf("Failed to get MAC address on port %u: %s\n", port, rte_strerror(-retval));
 		return retval;
 	}
-	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
-			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
-			(unsigned)port,
-			RTE_ETHER_ADDR_BYTES(&addr));
+	printf(
+		"Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
+		(unsigned)port,
+		RTE_ETHER_ADDR_BYTES(&addr)
+	);
 
 	retval = rte_eth_promiscuous_enable(port);
 	if(retval != 0 && port % 2 == 0) return retval;
 
 	if(ctxt->is_active) {
-		if(port % 2 == 0)
+		if(port % 2 == 0) {
 			rte_eth_add_tx_callback(port, 0, active_encap_filter, (void*)ctxt);
-		else
+			rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
+		} else {
 			rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
+			rte_eth_add_rx_callback(port, 0, active_virtio_rx_hook, (void*)ctxt);
+		}
 	}
 
 	//rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
@@ -383,6 +435,153 @@ lcore_main(void)
 	}
 }
 
+static int
+lcore_stats(void* arg) {
+	
+	unsigned lcore_id = rte_lcore_id();
+
+	int port_id = *((int*)arg);
+	
+	printf("Starting stats monitor for port %d on lcore %u ... \n", port_id, lcore_id);
+
+	while(TRUE) {
+		struct rte_eth_stats stats = {0};
+		if(rte_eth_stats_get(port_id, &stats) == 0) {
+			#ifdef DEBUG
+			printf("[STATS][%d] RX %lu pkts TX %lu pkts\n", port_id, stats.ipackets, stats.opackets);
+			#endif
+		}
+		rte_delay_us_block(DELAY_SEC);
+	}
+	
+	return 0;
+}
+
+static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	// TODO set dst MAC to broadcast.
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_FLAG_REQALLOC);
+	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->seq = 0;
+	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	mreq->proglen = htons((uint16_t)ctrl->ctxt->program->proglen);
+	mreq->iglim = (uint8_t)ctrl->ctxt->program->iglim;
+	for(int i = 0; i < ctrl->ctxt->program->num_accesses; i++) {
+		mreq->mem[i] = ctrl->ctxt->program->access_idx[i];
+		mreq->dem[i] = ctrl->ctxt->program->demand[i];
+	}
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = 0;
+	iph->dst_addr = 0;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
+static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	// TODO set dst MAC to broadcast.
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr)); 
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_FLAG_GETALLOC);
+	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->seq = 0;
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = 0;
+	iph->dst_addr = 0;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
+static int
+lcore_control(void* arg) {
+
+	unsigned lcore_id = rte_lcore_id();
+
+	active_control_t* ctrl = (active_control_t*)arg;
+
+	printf("Starting controller for port %d on lcore %u ... \n", ctrl->port_id, lcore_id);
+
+	struct rte_mbuf* mbuf;
+
+	struct rte_eth_dev_tx_buffer buffer;
+	if(rte_eth_tx_buffer_init(&buffer, BURST_SIZE) != 0) {
+		printf("Unable to initialize buffer!\n");
+		return -1;
+	}
+
+	uint64_t last_sent = 0, now, elapsed_us;
+
+	while(TRUE) {
+		now = rte_rdtsc_precise();
+		elapsed_us = (double)(now - last_sent) * 1E6 / rte_get_tsc_hz();
+		if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+		switch(ctrl->ctxt->status) {
+			case ACTIVE_STATE_INITIALIZING:
+				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+					construct_reqalloc_packet(mbuf, ctrl);
+					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					last_sent = now;
+				}
+				break;
+			case ACTIVE_STATE_ALLOCATING:
+				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+					construct_getalloc_packet(mbuf, ctrl);
+					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					last_sent = now;
+				}
+				break;
+			case ACTIVE_STATE_SNAPSHOTTING:
+				break;
+			default:
+				break;
+		}
+	}
+
+	return 0;
+}
+
 /*static int
 lcore_worker(__rte_unused void *arg)
 {
@@ -420,6 +619,7 @@ main(int argc, char** argv)
 		active_function.fid = fid;
 		ap4_ctxt.program = &active_function;
 		ap4_ctxt.is_active = 1;
+		ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
 		printf("ActiveP4 context initialized for %s.\n", active_program_name);
 	}
 
@@ -495,9 +695,26 @@ main(int argc, char** argv)
 			rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
 	}
 
-	RTE_ETH_FOREACH_DEV(portid)
+	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
+
+	RTE_ETH_FOREACH_DEV(portid) {
 		if(port_init(portid, mbuf_pool, &ap4_ctxt) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
+		int port_id = portid;
+		rte_eal_remote_launch(lcore_stats, (void*)&port_id, lcore_id);
+		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+	}
+
+	RTE_ETH_FOREACH_DEV(portid) {
+		if(portid % 2 == 0) {
+			active_control_t ctrl;
+			ctrl.port_id = portid;
+			ctrl.ctxt = &ap4_ctxt;
+			ctrl.mempool = mbuf_pool;
+			rte_eal_remote_launch(lcore_control, (void*)&ctrl, lcore_id);
+			lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+		}
+	}
 
 	/*unsigned lcore_id;
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
