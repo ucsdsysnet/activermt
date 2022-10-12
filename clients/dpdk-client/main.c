@@ -201,8 +201,8 @@ active_decap_filter(
 		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 		int offset = 0;
 		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
-			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
+			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
 			offset += sizeof(activep4_ih);
@@ -215,7 +215,7 @@ active_decap_filter(
 			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
 				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[k]->pkt_len);
 			}
-			for(int i = 0; i < offset; i++) {
+			for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
 				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
 			}
 			pkts[k]->pkt_len -= offset;
@@ -475,14 +475,21 @@ lcore_stats(void* arg) {
 	unsigned lcore_id = rte_lcore_id();
 
 	int port_id = *((int*)arg);
+
+	uint64_t last_ipackets = 0, last_opackets = 0;
 	
 	printf("Starting stats monitor for port %d on lcore %u ... \n", port_id, lcore_id);
 
 	while(TRUE) {
 		struct rte_eth_stats stats = {0};
 		if(rte_eth_stats_get(port_id, &stats) == 0) {
+			uint64_t rx_pkts = stats.ipackets - last_ipackets;
+			uint64_t tx_pkts = stats.opackets - last_opackets;
+			last_ipackets = stats.ipackets;
+			last_opackets = stats.opackets;
 			#ifdef DEBUG
-			printf("[STATS][%d] RX %lu pkts TX %lu pkts\n", port_id, stats.ipackets, stats.opackets);
+			if(rx_pkts > 0 || tx_pkts > 0)
+				printf("[STATS][%d] RX %lu pkts TX %lu pkts\n", port_id, rx_pkts, tx_pkts);
 			#endif
 		}
 		rte_delay_us_block(DELAY_SEC);
@@ -755,7 +762,8 @@ main(int argc, char** argv)
 		ap4_ctxt.instr_set = &instr_set;
 		ap4_ctxt.program = &active_function;
 		ap4_ctxt.is_active = 1;
-		ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
+		//ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
+		ap4_ctxt.status = ACTIVE_STATE_TRANSMITTING;
 		printf("ActiveP4 context initialized for %s.\n", active_program_name);
 	}
 
