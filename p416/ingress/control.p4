@@ -3147,14 +3147,16 @@ table allocation_9 {
         }
     }
 
-    action remapped() {
+    action remapped(bit<16> allocation_id) {
         hdr.meta.remap = 1;
         hdr.ih.flag_remapped = 1;
+        hdr.ih.seq = allocation_id;
     }
 
     table remap_check { // TODO add bloom filter or equivalent.
         key = {
-            hdr.ih.fid  : exact;
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_initiated   : exact;
         }
         actions = {
             remapped;
@@ -3201,7 +3203,7 @@ table allocation_9 {
 		allocation_7.apply();
 		allocation_8.apply();
 		allocation_9.apply();
-        if (hdr.ipv4.isValid()) {
+        if(hdr.ipv4.isValid()) {
             ipv4_host.apply();
             /*overall_stats.count(0);
             if(vroute.apply().miss) {

@@ -191,14 +191,16 @@ control Ingress(
         }
     }
 
-    action remapped() {
+    action remapped(bit<16> allocation_id) {
         hdr.meta.remap = 1;
         hdr.ih.flag_remapped = 1;
+        hdr.ih.seq = allocation_id;
     }
 
     table remap_check { // TODO add bloom filter or equivalent.
         key = {
-            hdr.ih.fid  : exact;
+            hdr.ih.fid              : exact;
+            hdr.ih.flag_initiated   : exact;
         }
         actions = {
             remapped;

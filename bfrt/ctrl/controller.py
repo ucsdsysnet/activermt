@@ -335,7 +335,7 @@ class ActiveP4Controller:
             if tid in self.remoteDrainQueue:
                 self.remoteDrainQueue.pop(tid)
             if tid in self.remoteDrainInit:
-                self.p4.Ingress.remap_check.delete(fid=tid)
+                self.p4.Ingress.remap_check.delete(fid=tid, flag_initiated=0)
                 self.remoteDrainInit.remove(tid)
             bfrt.complete_operations()
         tElapsed = time.time() - tStart
@@ -618,7 +618,7 @@ class ActiveP4Controller:
                 print("Queueing FID %d for remapping ... " % tid)
                 self.remoteDrainInit.add(tid)
                 self.remoteDrainQueue[tid] = remaps
-                self.p4.Ingress.remap_check.add_with_remapped(fid=tid)
+                self.p4.Ingress.remap_check.add_with_remapped(fid=tid, flag_initiated=0, allocation_id=self.allocVersion[tid])
                 bfrt.complete_operations()
 
         tsOverallStop = time.time()
@@ -673,7 +673,7 @@ class ActiveP4Controller:
                 if self.DEBUG:
                     print("Drain initiated by FID", fid)
                 self.remoteDrainInit.remove(fid)
-                self.p4.Ingress.remap_check.delete(fid=fid)
+                self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
                 bfrt.complete_operations()
             if isAck and fid in self.remoteDrainQueue:
                 if self.DEBUG:

@@ -34,6 +34,7 @@
 #define ACTIVE_STATE_ALLOCATING     1
 #define ACTIVE_STATE_INITIALIZING   2
 #define ACTIVE_STATE_SNAPSHOTTING   3
+#define ACTIVE_STATE_SNAPCOMPLETING 4
 
 #include <stdio.h>
 #include <string.h>
@@ -108,8 +109,10 @@ typedef struct {
     memory_stage_t  sync_data[NUM_STAGES];
     uint8_t         valid_stages[NUM_STAGES];
     uint16_t        fid;
-    uint64_t        sync_duration;
-    struct timespec sync_time;
+    uint16_t        version;
+    uint16_t        sync_version;
+    uint64_t        sync_start_time;
+    uint64_t        sync_end_time;
 } memory_t;
 
 typedef struct {
