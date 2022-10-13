@@ -4,6 +4,9 @@
 
 #define DEBUG
 
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <getopt.h>
@@ -256,11 +259,17 @@ active_eth_rx_hook(
 						ap4_ctxt->allocation.sync_data[i].mem_end = ntohs(ap4malloc->mem_range[i].end);
 						if((ap4_ctxt->allocation.sync_data[i].mem_end - ap4_ctxt->allocation.sync_data[i].mem_start) > 0) {
 							ap4_ctxt->allocation.valid_stages[i] = 1;
+							#ifdef DEBUG
+							printf("[ALLOCATION][%d] %d - %d\n", i, ap4_ctxt->allocation.sync_data[i].mem_start, ap4_ctxt->allocation.sync_data[i].mem_end);
+							#endif
 						}
 					}
 					ap4_ctxt->allocation.version = ntohs(ap4ih->seq);
 				}
 				ap4_ctxt->status = ACTIVE_STATE_TRANSMITTING;
+				#ifdef DEBUG
+				printf("Allocated. Transmitting ... \n");
+				#endif
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED)) {
 				// TODO test.
 				if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ACK)) {
@@ -531,8 +540,8 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = 0;
-	iph->dst_addr = 0;
+	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
@@ -564,8 +573,8 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = 0;
-	iph->dst_addr = 0;
+	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
@@ -611,8 +620,8 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = 0;
-	iph->dst_addr = 0;
+	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
@@ -644,8 +653,8 @@ static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, active_c
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = 0;
-	iph->dst_addr = 0;
+	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
@@ -686,6 +695,9 @@ lcore_control(void* arg) {
 					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
 					last_sent = now;
 				}
+				#ifdef DEBUG
+				printf("Initializing ... \n");
+				#endif
 				break;
 			case ACTIVE_STATE_ALLOCATING:
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
@@ -695,6 +707,9 @@ lcore_control(void* arg) {
 					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
 					last_sent = now;
 				}
+				#ifdef DEBUG
+				printf("Allocating ... \n");
+				#endif
 				break;
 			case ACTIVE_STATE_SNAPSHOTTING:
 				snapshotting_in_progress = 1;
@@ -737,10 +752,38 @@ lcore_control(void* arg) {
 int
 main(int argc, char** argv)
 {
-	if(argc < 1) {
-		printf("Usage: %s [active_program_dir <active_program_name>] [fid=1]\n", argv[0]);
+	if(argc < 2) {
+		printf("Usage: %s <iface> [active_program_dir <active_program_name>] [fid=1]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
+
+	char* dev = argv[1];
+
+	int sockfd = 0;
+	if((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+        perror("socket()");
+        exit(EXIT_FAILURE);
+    }
+	uint32_t ipv4_ifaceaddr = 0;
+	size_t if_name_len = strlen(dev);
+	struct ifreq ifr;
+	if(if_name_len < sizeof(ifr.ifr_name)) {
+        memcpy(ifr.ifr_name, dev, if_name_len);
+        ifr.ifr_name[if_name_len] = 0;
+    } else {
+        fprintf(stderr, "Interface name is too long!\n");
+        exit(1);
+    }
+	ifr.ifr_addr.sa_family = AF_INET;
+    if(ioctl(sockfd, SIOCGIFADDR, &ifr) < 0) {
+        perror("ioctl");
+        exit(1);
+    }
+    memcpy(&ipv4_ifaceaddr, &((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr, sizeof(uint32_t));
+
+	char ip_addr_str[16];
+	inet_ntop(AF_INET, &ipv4_ifaceaddr, ip_addr_str, 16);
+	printf("Interface %s has IPv4 address %s\n", dev, ip_addr_str);
 
 	pnemonic_opcode_t instr_set;
 	activep4_def_t active_function;
@@ -750,11 +793,11 @@ main(int argc, char** argv)
 	memset(&active_function, 0, sizeof(activep4_def_t));
 	memset(&ap4_ctxt, 0, sizeof(activep4_context_t));
 
-	int is_active = (argc > 2);
+	int is_active = (argc > 3);
 	if(is_active) {
-		char* active_dir = argv[1];
-		char* active_program_name = argv[2];
-		int fid = (argc > 3) ? atoi(argv[3]) : 1;
+		char* active_dir = argv[2];
+		char* active_program_name = argv[3];
+		int fid = (argc > 4) ? atoi(argv[4]) : 1;
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
 		read_active_function(&active_function, active_dir, active_program_name);
 		// TODO data argument definitions.
@@ -762,8 +805,8 @@ main(int argc, char** argv)
 		ap4_ctxt.instr_set = &instr_set;
 		ap4_ctxt.program = &active_function;
 		ap4_ctxt.is_active = 1;
-		//ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
-		ap4_ctxt.status = ACTIVE_STATE_TRANSMITTING;
+		ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
+		ap4_ctxt.ipv4_srcaddr = ipv4_ifaceaddr;
 		printf("ActiveP4 context initialized for %s.\n", active_program_name);
 	}
 

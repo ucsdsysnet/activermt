@@ -146,6 +146,7 @@ typedef struct {
     activep4_def_t*     program;
     memory_t            allocation;
     activep4_data_t     data;
+    uint32_t            ipv4_srcaddr;
 } activep4_context_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {
