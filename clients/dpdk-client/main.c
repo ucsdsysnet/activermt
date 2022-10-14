@@ -108,6 +108,7 @@ active_decap_filter(
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
+			// Strip packet of active headers.
 			offset += sizeof(activep4_ih);
 			if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
 				offset += sizeof(activep4_data_t);
@@ -123,31 +124,7 @@ active_decap_filter(
 			}
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
-		}
-		// TODO add context for active programs.
-	}	
-
-	return nb_pkts;
-}
-
-static uint16_t
-active_eth_rx_hook(
-	uint16_t port_id, 
-	uint16_t queue, 
-	struct rte_mbuf** pkts, 
-	uint16_t nb_pkts, 
-	uint16_t max_pkts, 
-	void *ctxt
-) {
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
-
-	for(int k = 0; k < nb_pkts; k++) {
-		char* bufptr = rte_pktmbuf_mtod(pkts[k], char*);
-		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
-		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
-			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
-			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
-			uint16_t flags = ntohs(ap4ih->flags);
+			// Update control state.
 			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
 				// ack for reqalloc.
 				ap4_ctxt->status = ACTIVE_STATE_ALLOCATING;
@@ -197,7 +174,9 @@ active_eth_rx_hook(
 				}
 			}
 		}
-	}
+		// TODO add context for active programs.
+	}	
+
 	return nb_pkts;
 }
 
@@ -229,20 +208,6 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 		port_conf.txmode.offloads |=
 			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
-	/*if (hw_timestamping) {
-		if (!(dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
-			printf("\nERROR: Port %u does not support hardware timestamping\n"
-					, port);
-			return -1;
-		}
-		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
-		rte_mbuf_dyn_rx_timestamp_register(&hwts_dynfield_offset, NULL);
-		if (hwts_dynfield_offset < 0) {
-			printf("ERROR: Failed to register timestamp field\n");
-			return -rte_errno;
-		}
-	}*/
-
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
 		return retval;
@@ -271,26 +236,6 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 	if(retval < 0)
 		return retval;
 
-	/*if (hw_timestamping && ticks_per_cycle_mult  == 0) {
-		uint64_t cycles_base = rte_rdtsc();
-		uint64_t ticks_base;
-		retval = rte_eth_read_clock(port, &ticks_base);
-		if (retval != 0)
-			return retval;
-		rte_delay_ms(100);
-		uint64_t cycles = rte_rdtsc();
-		uint64_t ticks;
-		rte_eth_read_clock(port, &ticks);
-		uint64_t c_freq = cycles - cycles_base;
-		uint64_t t_freq = ticks - ticks_base;
-		double freq_mult = (double)c_freq / t_freq;
-		printf("TSC Freq ~= %" PRIu64
-				"\nHW Freq ~= %" PRIu64
-				"\nRatio : %f\n",
-				c_freq * 10, t_freq * 10, freq_mult);
-		ticks_per_cycle_mult = (1 << TICKS_PER_CYCLE_SHIFT) / freq_mult;
-	}*/
-
 	struct rte_ether_addr addr;
 
 	retval = rte_eth_macaddr_get(port, &addr);
@@ -312,11 +257,10 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 		if(retval != 0) return retval;
 	}
 
+	// Add filters to virtio interfaces.
 	if(is_virtual_dev) {
-		//rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
-		//rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
-	} else {
-		//rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
+		rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
+		rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
 	}
 
 	return 0;
