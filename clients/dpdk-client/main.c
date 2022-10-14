@@ -8,6 +8,8 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
 #include <inttypes.h>
 #include <getopt.h>
 #include <rte_eal.h>
@@ -16,6 +18,9 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
+#include <rte_compat.h>
+#include <rte_memory.h>
+#include <rte_malloc.h>
 
 #include "../../headers/activep4.h"
 
@@ -33,7 +38,7 @@
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
-#define MAX_APPS			2
+#define MAX_APPS			16
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
 
 typedef struct {
@@ -460,7 +465,11 @@ lcore_main(active_control_t* ctrl, int num_apps)
 
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
 
-	struct rte_eth_dev_tx_buffer buffer[MAX_APPS];
+	struct rte_eth_dev_tx_buffer* buffer = (struct rte_eth_dev_tx_buffer*)rte_zmalloc(NULL, MAX_APPS * sizeof(struct rte_eth_dev_tx_buffer), RTE_CACHE_LINE_SIZE);
+	if(buffer == NULL) {
+		printf("Failed to allocate buffer!\n");
+		exit(EXIT_FAILURE);
+	}
 	for(int i = 0; i < num_apps; i++) {
 		if(rte_eth_tx_buffer_init(&buffer[i], BURST_SIZE) != 0) {
 			printf("Unable to initialize buffer!\n");
@@ -863,9 +872,18 @@ main(int argc, char** argv)
 	char* dev = argv[1];
 	char* config_filename = argv[2];
 
+	int ret = rte_eal_init(argc, argv);
+
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+	argc -= ret;
+	argv += ret;
+
 	active_config_t cfg;
 	memset(&cfg, 0, sizeof(active_config_t));
 	read_activep4_config(config_filename, &cfg);
+
+	if(cfg.num_apps > MAX_APPS) cfg.num_apps = MAX_APPS;
 
 	printf("Read configurations for %d apps.\n", cfg.num_apps);
 
@@ -898,11 +916,17 @@ main(int argc, char** argv)
 	pnemonic_opcode_t instr_set;
 	memset(&instr_set, 0, sizeof(pnemonic_opcode_t));
 
-	activep4_def_t active_function[MAX_APPS];
-	activep4_context_t ap4_ctxt[MAX_APPS];
+	activep4_def_t* active_function = (activep4_def_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_def_t), RTE_CACHE_LINE_SIZE);
+	if(active_function == NULL) {
+		printf("Unable to allocate memory for active function!\n");
+		exit(EXIT_FAILURE);
+	}
 
-	memset(&active_function, 0, MAX_APPS * sizeof(activep4_def_t));
-	memset(&ap4_ctxt, 0, MAX_APPS * sizeof(activep4_context_t));
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_context_t), RTE_CACHE_LINE_SIZE);
+	if(ap4_ctxt == NULL) {
+		printf("Unable to allocate memory for active context!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	for(int i = 0; i < cfg.num_apps; i++) {
 		char* active_dir = cfg.appdir[i];
@@ -923,35 +947,6 @@ main(int argc, char** argv)
 	struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
 	uint16_t portid;
-	
-	/*struct option lgopts[] = {
-		{ NULL,  0, 0, 0 }
-	};
-	int opt, option_index;*/
-	
-	/*static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
-		.name = "example_bbdev_dynfield_tsc",
-		.size = sizeof(tsc_t),
-		.align = __alignof__(tsc_t),
-	};*/
-
-	int ret = rte_eal_init(argc, argv);
-
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
-	argc -= ret;
-	argv += ret;
-
-	/*while((opt = getopt_long(argc, argv, "t", lgopts, &option_index)) != EOF)
-		switch (opt) {
-		case 't':
-			hw_timestamping = 1;
-			break;
-		default:
-			printf(usage, argv[0]);
-			return -1;
-		}
-	optind = 1;*/
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports > 1)
@@ -963,11 +958,6 @@ main(int argc, char** argv)
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	/*tsc_dynfield_offset =
-		rte_mbuf_dynfield_register(&tsc_dynfield_desc);
-	if (tsc_dynfield_offset < 0)
-		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");*/
-
 	unsigned port_count = 0;
 	struct rte_ether_addr addr = {0};
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -976,7 +966,11 @@ main(int argc, char** argv)
 		rte_eth_macaddr_get(portid, &addr);
 	}
 
-	active_control_t ctrl[MAX_APPS];
+	active_control_t* ctrl = (active_control_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(active_control_t), RTE_CACHE_LINE_SIZE);
+	if(ctrl == NULL) {
+		printf("Unable to allocate memory for active control!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
 
