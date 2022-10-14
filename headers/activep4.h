@@ -413,6 +413,7 @@ static inline void construct_dummy_program(activep4_def_t* program, pnemonic_opc
 }
 
 static inline void construct_nop_program(activep4_def_t* program, pnemonic_opcode_t* instr_set, int proglen) {
+    if(proglen < 2) proglen = 2;
     int i;
     for(i = 0; i < proglen - 2; i++)
         add_instruction(program, instr_set, "NOP");

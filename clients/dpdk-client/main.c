@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
-#define DEBUG
+//#define DEBUG
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -29,16 +29,25 @@
 #define BURST_SIZE			32
 #define DELAY_SEC			1000000
 #define CTRL_SEND_INTVL_US	100
+#define CTRL_HEARTBEAT_ITVL	1000
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
-#define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
+#define MAX_APPS			2
+#define INSTR_SET_PATH		"opcode_action_mapping.csv"
 
 typedef struct {
-	uint16_t			port_id;
-	activep4_context_t*	ctxt;
-	struct rte_mempool*	mempool;
+	uint16_t				port_id;
+	activep4_context_t*		ctxt;
+	struct rte_mempool*		mempool;
 } active_control_t;
+
+typedef struct {
+	int			num_apps;
+	char		appname[MAX_APPS][50];
+	char		appdir[MAX_APPS][50];
+	int			fid[MAX_APPS];
+} active_config_t;
 
 /*static int hwts_dynfield_offset = -1;
 
@@ -171,6 +180,7 @@ active_encap_filter(
 	uint16_t queue __rte_unused, 
 	struct rte_mbuf** pkts, 
 	uint16_t nb_pkts, 
+	uint16_t max_pkts,
 	void *ctxt
 ) {
 	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
@@ -224,6 +234,7 @@ active_decap_filter(
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
 		}
+		// TODO add context for active programs.
 	}	
 
 	return nb_pkts;
@@ -296,25 +307,6 @@ active_eth_rx_hook(
 				}
 			}
 		}
-	}
-
-	return nb_pkts;
-}
-
-static uint16_t
-active_virtio_rx_hook(
-	uint16_t port_id, 
-	uint16_t queue, 
-	struct rte_mbuf** pkts, 
-	uint16_t nb_pkts, 
-	uint16_t max_pkts, 
-	void *ctxt
-) {
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
-
-	for(int i = 0; i < nb_pkts; i++) {
-		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
-		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 	}
 
 	return nb_pkts;
@@ -423,41 +415,58 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 		RTE_ETHER_ADDR_BYTES(&addr)
 	);
 
-	retval = rte_eth_promiscuous_enable(port);
-	if(retval != 0 && port % 2 == 0) return retval;
-
-	if(ctxt->is_active) {
-		if(port % 2 == 0) {
-			rte_eth_add_tx_callback(port, 0, active_encap_filter, (void*)ctxt);
-			rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
-		} else {
-			rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
-			rte_eth_add_rx_callback(port, 0, active_virtio_rx_hook, (void*)ctxt);
-		}
+	int is_virtual_dev = 0;
+	if(strcmp(dev_info.driver_name, "net_virtio_user") == 0) {
+		is_virtual_dev = 1;
+	} else {
+		retval = rte_eth_promiscuous_enable(port);
+		if(retval != 0) return retval;
 	}
 
-	//rte_eth_add_rx_callback(port, 0, add_timestamps, NULL);
-	//rte_eth_add_tx_callback(port, 0, calc_latency, NULL);
+	if(is_virtual_dev) {
+		rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
+		rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
+	} else {
+		rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
+	}
 
 	return 0;
 }
 
 static  __rte_noreturn void
-lcore_main(void)
+lcore_main(active_control_t* ctrl, int num_apps)
 {
 	uint16_t port;
 
-	RTE_ETH_FOREACH_DEV(port)
-		if (rte_eth_dev_socket_id(port) > 0 &&
-				rte_eth_dev_socket_id(port) !=
-						(int)rte_socket_id())
+	uint8_t vdev[MAX_APPS + 1];
+	memset(vdev, 0, MAX_APPS + 1);
+
+	RTE_ETH_FOREACH_DEV(port) {
+		struct rte_eth_dev_info dev_info;
+		if(rte_eth_dev_info_get(ctrl->port_id, &dev_info) != 0) {
+			printf("Error during getting device (port %u)\n", ctrl->port_id);
+			exit(EXIT_FAILURE);
+		}
+		if(strcmp(dev_info.driver_name, "net_virtio_user") == 0) {
+			vdev[port] = 1;
+		}
+		if(rte_eth_dev_socket_id(port) > 0 && rte_eth_dev_socket_id(port) != (int)rte_socket_id())
 			printf("WARNING, port %u is on remote NUMA node to "
 					"polling thread.\n\tPerformance will "
 					"not be optimal.\n", port);
 		else
 			printf("Port %d on local NUMA node.\n", port);
+	}
 
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
+
+	struct rte_eth_dev_tx_buffer buffer[MAX_APPS];
+	for(int i = 0; i < num_apps; i++) {
+		if(rte_eth_tx_buffer_init(&buffer[i], BURST_SIZE) != 0) {
+			printf("Unable to initialize buffer!\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	for(;;) {
 		RTE_ETH_FOREACH_DEV(port) {
@@ -467,12 +476,30 @@ lcore_main(void)
 			if (unlikely(nb_rx == 0))
 				continue;
 
-			const uint16_t nb_tx = rte_eth_tx_burst(port^1, 0, bufs, nb_rx);
-			
-			if(unlikely(nb_tx < nb_rx)) {
-				uint16_t buf;
-				for (buf = nb_tx; buf < nb_rx; buf++)
-					rte_pktmbuf_free(bufs[buf]);
+			uint16_t nb_tx = 0;
+
+			if(vdev[port]) {
+				nb_tx = rte_eth_tx_burst(0, 0, bufs, nb_rx);
+				if(unlikely(nb_tx < nb_rx)) {
+					uint16_t buf;
+					for(buf = nb_tx; buf < nb_rx; buf++)
+						rte_pktmbuf_free(bufs[buf]);
+				}
+			} else {
+				for(int i = 0; i < nb_rx; i++) {
+					char* bufptr = rte_pktmbuf_mtod(bufs[i], char*);
+					struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
+					if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
+						activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+						if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue; // TODO where to send regular packets?
+						int fid = ntohs(ap4ih->fid);
+						for(int j = 0; j < num_apps; j++) {
+							if(ctrl[j].ctxt->program->fid == fid) {
+								rte_eth_tx_buffer(ctrl[j].port_id, 0, &buffer[j], bufs[i]);
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -660,6 +687,48 @@ static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, active_c
 	mbuf->data_len = mbuf->pkt_len;
 }
 
+static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
+	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->seq = 0;
+	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
+	activep4_def_t program = {0};
+	construct_nop_program(&program, ctrl->ctxt->instr_set, 0);
+	for(int i = 0; i < program.proglen; i++) {
+		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
+		instr->flags = 0;
+		instr->opcode = program.code[i].opcode;
+	}
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program.proglen * sizeof(activep4_instr)));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program.proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
 static int
 lcore_control(void* arg) {
 
@@ -707,9 +776,6 @@ lcore_control(void* arg) {
 					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
 					last_sent = now;
 				}
-				#ifdef DEBUG
-				printf("Allocating ... \n");
-				#endif
 				break;
 			case ACTIVE_STATE_SNAPSHOTTING:
 				snapshotting_in_progress = 1;
@@ -741,6 +807,15 @@ lcore_control(void* arg) {
 					last_sent = now;
 				}
 				break;
+			case ACTIVE_STATE_TRANSMITTING:
+				if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
+				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+					construct_heartbeat_packet(mbuf, ctrl);
+					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					last_sent = now;
+				}
+				break;
 			default:
 				break;
 		}
@@ -749,15 +824,50 @@ lcore_control(void* arg) {
 	return 0;
 }
 
+void 
+read_activep4_config(char* config_filename, active_config_t* cfg) {
+	FILE* fp = fopen(config_filename, "r");
+	char buf[50];
+    const char* tok;
+	int i, n = 0;
+	while( fgets(buf, 50, fp) > 0 ) {
+		for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
+			switch(i) {
+				case 0:
+					cfg->fid[n] = atoi(tok);
+					break;
+				case 1:
+					strcpy(cfg->appdir[n], tok);
+					break;
+				case 2:
+					strcpy(cfg->appname[n], tok);
+					break;
+				default:
+					break;
+			}
+		}
+		n++;
+	}
+	cfg->num_apps = n;
+	fclose(fp);
+}
+
 int
 main(int argc, char** argv)
 {
-	if(argc < 2) {
-		printf("Usage: %s <iface> [active_program_dir <active_program_name>] [fid=1]\n", argv[0]);
+	if(argc < 3) {
+		printf("Usage: %s <iface> <config_file>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	char* dev = argv[1];
+	char* config_filename = argv[2];
+
+	active_config_t cfg;
+	memset(&cfg, 0, sizeof(active_config_t));
+	read_activep4_config(config_filename, &cfg);
+
+	printf("Read configurations for %d apps.\n", cfg.num_apps);
 
 	int sockfd = 0;
 	if((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
@@ -786,27 +896,27 @@ main(int argc, char** argv)
 	printf("Interface %s has IPv4 address %s\n", dev, ip_addr_str);
 
 	pnemonic_opcode_t instr_set;
-	activep4_def_t active_function;
-	activep4_context_t ap4_ctxt;
-
 	memset(&instr_set, 0, sizeof(pnemonic_opcode_t));
-	memset(&active_function, 0, sizeof(activep4_def_t));
-	memset(&ap4_ctxt, 0, sizeof(activep4_context_t));
 
-	int is_active = (argc > 3);
-	if(is_active) {
-		char* active_dir = argv[2];
-		char* active_program_name = argv[3];
-		int fid = (argc > 4) ? atoi(argv[4]) : 1;
+	activep4_def_t active_function[MAX_APPS];
+	activep4_context_t ap4_ctxt[MAX_APPS];
+
+	memset(&active_function, 0, MAX_APPS * sizeof(activep4_def_t));
+	memset(&ap4_ctxt, 0, MAX_APPS * sizeof(activep4_context_t));
+
+	for(int i = 0; i < cfg.num_apps; i++) {
+		char* active_dir = cfg.appdir[i];
+		char* active_program_name = cfg.appname[i];
+		int fid = cfg.fid[i];
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
-		read_active_function(&active_function, active_dir, active_program_name);
+		read_active_function(&active_function[i], active_dir, active_program_name);
 		// TODO data argument definitions.
-		active_function.fid = fid;
-		ap4_ctxt.instr_set = &instr_set;
-		ap4_ctxt.program = &active_function;
-		ap4_ctxt.is_active = 1;
-		ap4_ctxt.status = ACTIVE_STATE_INITIALIZING;
-		ap4_ctxt.ipv4_srcaddr = ipv4_ifaceaddr;
+		active_function[i].fid = fid;
+		ap4_ctxt[i].instr_set = &instr_set;
+		ap4_ctxt[i].program = &active_function[i];
+		ap4_ctxt[i].is_active = 1;
+		ap4_ctxt[i].status = ACTIVE_STATE_INITIALIZING;
+		ap4_ctxt[i].ipv4_srcaddr = ipv4_ifaceaddr;
 		printf("ActiveP4 context initialized for %s.\n", active_program_name);
 	}
 
@@ -844,8 +954,8 @@ main(int argc, char** argv)
 	optind = 1;*/
 
 	nb_ports = rte_eth_dev_count_avail();
-	if (nb_ports < 1)
-		rte_exit(EXIT_FAILURE, "Error: at least one port is required.\n");
+	if (nb_ports > 1)
+		rte_exit(EXIT_FAILURE, "Error: at most one port is required.\n");
 
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
 		NUM_MBUFS * nb_ports, MBUF_CACHE_SIZE, 0,
@@ -859,16 +969,21 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");*/
 
 	unsigned port_count = 0;
+	struct rte_ether_addr addr = {0};
 	RTE_ETH_FOREACH_DEV(portid) {
+		if(++port_count > nb_ports)
+			break;
+		rte_eth_macaddr_get(portid, &addr);
+	}
+
+	active_control_t ctrl[MAX_APPS];
+
+	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
+
+	for(int i = 0; i < cfg.num_apps; i++) {
+		portid = i + 1;
 		char portname[32];
 		char portargs[256];
-		struct rte_ether_addr addr = {0};
-
-		if (++port_count > nb_ports)
-			break;
-
-		rte_eth_macaddr_get(portid, &addr);
-
 		snprintf(portname, sizeof(portname), "virtio_user%u", portid);
 		snprintf(
 			portargs, 
@@ -877,33 +992,34 @@ main(int argc, char** argv)
 			RX_RING_SIZE, portname, 
 			RTE_ETHER_ADDR_BYTES(&addr)
 		);
-
-		if (rte_eal_hotplug_add("vdev", portname, portargs) < 0)
+		if(rte_eal_hotplug_add("vdev", portname, portargs) < 0)
 			rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
+		printf("Created virtual port %s\n", portname);
 	}
 
-	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
-
 	RTE_ETH_FOREACH_DEV(portid) {
-		if(port_init(portid, mbuf_pool, &ap4_ctxt) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
 		int port_id = portid;
+		if(port_id == 0) {
+			if(port_init(portid, mbuf_pool, NULL) != 0)
+				rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
+		} else {
+			if(port_init(portid, mbuf_pool, &ap4_ctxt[port_count - 1]) != 0)
+				rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
+		}
 		rte_eal_remote_launch(lcore_stats, (void*)&port_id, lcore_id);
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
 
-	RTE_ETH_FOREACH_DEV(portid) {
-		if(portid % 2 == 0) {
-			active_control_t ctrl;
-			ctrl.port_id = portid;
-			ctrl.ctxt = &ap4_ctxt;
-			ctrl.mempool = mbuf_pool;
-			rte_eal_remote_launch(lcore_control, (void*)&ctrl, lcore_id);
-			lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-		}
+	for(int i = 0; i < cfg.num_apps; i++) {
+		portid = i + 1;
+		ctrl[i].port_id = portid;
+		ctrl[i].ctxt = &ap4_ctxt[i];
+		ctrl[i].mempool = mbuf_pool;
+		rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
+		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
 
-	lcore_main();
+	lcore_main(ctrl, cfg.num_apps);
 
 	rte_eal_cleanup();
 
