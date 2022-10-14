@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
-//#define DEBUG
+#define DEBUG
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -23,128 +23,13 @@
 #include <rte_malloc.h>
 
 #include "../../headers/activep4.h"
+#include "./include/types.h"
+#include "./include/utils.h"
 
-#define TEST_FLAG(x, y)		((x & y) > 0)
-
-#define RX_RING_SIZE 		1024
-#define TX_RING_SIZE 		1024
-
-#define NUM_MBUFS 			8191
-#define MBUF_CACHE_SIZE 	250
-#define BURST_SIZE			32
-#define DELAY_SEC			1000000
-#define CTRL_SEND_INTVL_US	100
-#define CTRL_HEARTBEAT_ITVL	1000
-
-#define AP4_ETHER_TYPE_AP4	0x83B2
-
-#define MAX_APPS			16
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
 
-typedef struct {
-	uint16_t				port_id;
-	activep4_context_t*		ctxt;
-	struct rte_mempool*		mempool;
-} active_control_t;
-
-typedef struct {
-	int			num_apps;
-	char		appname[MAX_APPS][50];
-	char		appdir[MAX_APPS][50];
-	int			fid[MAX_APPS];
-} active_config_t;
-
-/*static int hwts_dynfield_offset = -1;
-
-static inline rte_mbuf_timestamp_t *
-hwts_field(struct rte_mbuf *mbuf)
-{
-	return RTE_MBUF_DYNFIELD(mbuf, hwts_dynfield_offset, rte_mbuf_timestamp_t *);
-}
-
-typedef uint64_t tsc_t;
-static int tsc_dynfield_offset = -1;
-
-static inline tsc_t *
-tsc_field(struct rte_mbuf *mbuf)
-{
-	return RTE_MBUF_DYNFIELD(mbuf, tsc_dynfield_offset, tsc_t *);
-}*/
-
-static const char usage[] =
-	"%s EAL_ARGS -- [-t]\n";
-
-/*static struct {
-	uint64_t total_cycles;
-	uint64_t total_queue_cycles;
-	uint64_t total_pkts;
-} latency_numbers;
-
-int hw_timestamping;
-
-#define TICKS_PER_CYCLE_SHIFT 16
-static uint64_t ticks_per_cycle_mult;*/
-
-/*static uint16_t
-add_timestamps(
-	uint16_t port __rte_unused, 
-	uint16_t qidx __rte_unused,
-	struct rte_mbuf **pkts, 
-	uint16_t nb_pkts,
-	uint16_t max_pkts __rte_unused, 
-	void *_ __rte_unused
-) {
-	unsigned i;
-	uint64_t now = rte_rdtsc();
-	for(i = 0; i < nb_pkts; i++)
-		*tsc_field(pkts[i]) = now;
-	return nb_pkts;
-}*/
-
-/*static uint16_t
-calc_latency(
-	uint16_t port, 
-	uint16_t qidx __rte_unused,
-	struct rte_mbuf **pkts, 
-	uint16_t nb_pkts, 
-	void *_ __rte_unused
-) {
-	uint64_t cycles = 0;
-	uint64_t queue_ticks = 0;
-	uint64_t now = rte_rdtsc();
-	uint64_t ticks;
-	unsigned i;
-
-	if (hw_timestamping)
-		rte_eth_read_clock(port, &ticks);
-
-	for (i = 0; i < nb_pkts; i++) {
-		cycles += now - *tsc_field(pkts[i]);
-		if (hw_timestamping)
-			queue_ticks += ticks - *hwts_field(pkts[i]);
-	}
-
-	latency_numbers.total_cycles += cycles;
-	if (hw_timestamping)
-		latency_numbers.total_queue_cycles += (queue_ticks
-			* ticks_per_cycle_mult) >> TICKS_PER_CYCLE_SHIFT;
-
-	latency_numbers.total_pkts += nb_pkts;
-
-	if (latency_numbers.total_pkts > (100 * 1000 * 1000ULL)) {
-		printf("Latency = %"PRIu64" cycles\n",
-		latency_numbers.total_cycles / latency_numbers.total_pkts);
-		if (hw_timestamping) {
-			printf("Latency from HW = %"PRIu64" cycles\n",
-			   latency_numbers.total_queue_cycles
-			   / latency_numbers.total_pkts);
-		}
-		latency_numbers.total_cycles = 0;
-		latency_numbers.total_queue_cycles = 0;
-		latency_numbers.total_pkts = 0;
-	}
-	return nb_pkts;
-}*/
+/*static const char usage[] =
+	"%s EAL_ARGS -- [-t]\n";*/
 
 static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {
 	
@@ -313,7 +198,6 @@ active_eth_rx_hook(
 			}
 		}
 	}
-
 	return nb_pkts;
 }
 
@@ -429,10 +313,10 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 	}
 
 	if(is_virtual_dev) {
-		rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
-		rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
+		//rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
+		//rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
 	} else {
-		rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
+		//rte_eth_add_rx_callback(port, 0, active_eth_rx_hook, (void*)ctxt);
 	}
 
 	return 0;
@@ -448,8 +332,8 @@ lcore_main(active_control_t* ctrl, int num_apps)
 
 	RTE_ETH_FOREACH_DEV(port) {
 		struct rte_eth_dev_info dev_info;
-		if(rte_eth_dev_info_get(ctrl->port_id, &dev_info) != 0) {
-			printf("Error during getting device (port %u)\n", ctrl->port_id);
+		if(rte_eth_dev_info_get(port, &dev_info) != 0) {
+			printf("Error during getting device (port %u)\n", port);
 			exit(EXIT_FAILURE);
 		}
 		if(strcmp(dev_info.driver_name, "net_virtio_user") == 0) {
@@ -487,27 +371,52 @@ lcore_main(active_control_t* ctrl, int num_apps)
 
 			uint16_t nb_tx = 0;
 
+			#ifdef DEBUG
+			printf("[PORT %d][RX] %d pkts.\n", port, nb_rx);
+			for(int i = 0; i < nb_rx; i++) {
+				char* pkt = rte_pktmbuf_mtod(bufs[i], char*);
+				print_pktinfo(pkt, bufs[i]->pkt_len);
+			}
+			#endif
+
+			// Perform bridging virtio-phyeth.
 			if(vdev[port]) {
-				nb_tx = rte_eth_tx_burst(0, 0, bufs, nb_rx);
+				nb_tx = rte_eth_tx_burst(PORT_PETH, 0, bufs, nb_rx);
 				if(unlikely(nb_tx < nb_rx)) {
 					uint16_t buf;
 					for(buf = nb_tx; buf < nb_rx; buf++)
 						rte_pktmbuf_free(bufs[buf]);
 				}
+				#ifdef DEBUG
+				printf("[PORT %d][TX] %d pkts.\n", PORT_PETH, nb_tx);
+				#endif
 			} else {
 				for(int i = 0; i < nb_rx; i++) {
 					char* bufptr = rte_pktmbuf_mtod(bufs[i], char*);
 					struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 					if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
 						activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
-						if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue; // TODO where to send regular packets?
+						if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue; 
 						int fid = ntohs(ap4ih->fid);
 						for(int j = 0; j < num_apps; j++) {
 							if(ctrl[j].ctxt->program->fid == fid) {
 								rte_eth_tx_buffer(ctrl[j].port_id, 0, &buffer[j], bufs[i]);
+								#ifdef DEBUG
+								printf("[PORT %d][TX] %d pkts.\n", ctrl[j].port_id, 1);
+								#endif
 							}
 						}
+					} else if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
+						struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
+						int net_id = (iph->dst_addr & 0x0000FF00) >> 8;
+						rte_eth_tx_buffer(ctrl[net_id - 1].port_id, 0, &buffer[net_id - 1], bufs[i]);
+						#ifdef DEBUG
+						printf("[PORT %d][TX] %d pkts.\n", ctrl[net_id - 1].port_id, 1);
+						#endif
 					}
+				}
+				for(int i = 0; i < num_apps; i++) {
+					rte_eth_tx_buffer_flush(ctrl[i].port_id, 0, &buffer[i]);
 				}
 			}
 		}
@@ -745,7 +654,7 @@ lcore_control(void* arg) {
 
 	active_control_t* ctrl = (active_control_t*)arg;
 
-	printf("Starting controller for port %d on lcore %u ... \n", ctrl->port_id, lcore_id);
+	printf("Starting controller for port %d on lcore %u ... \n", PORT_PETH, lcore_id);
 
 	struct rte_mbuf* mbuf;
 
@@ -769,20 +678,20 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_reqalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
 					last_sent = now;
 				}
 				#ifdef DEBUG
-				printf("Initializing ... \n");
+				//printf("Initializing ... \n");
 				#endif
 				break;
 			case ACTIVE_STATE_ALLOCATING:
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_getalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
 					last_sent = now;
 				}
 				break;
@@ -798,12 +707,12 @@ lcore_control(void* arg) {
 							snapshotting_in_progress = 1;
 							if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 								construct_snapshot_packet(mbuf, ctrl, i, j, memsync_cache);
-								rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
+								rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
 							}
 						}
 					}
 				}
-				rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+				rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
 				ctrl->ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 				ctrl->ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
 				break;
@@ -811,8 +720,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_snapcomplete_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
 					last_sent = now;
 				}
 				break;
@@ -820,8 +729,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_heartbeat_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(ctrl->port_id, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(ctrl->port_id, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
 					last_sent = now;
 				}
 				break;
@@ -1009,8 +918,8 @@ main(int argc, char** argv)
 		ctrl[i].port_id = portid;
 		ctrl[i].ctxt = &ap4_ctxt[i];
 		ctrl[i].mempool = mbuf_pool;
-		rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
-		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+		/*rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
+		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);*/
 	}
 
 	lcore_main(ctrl, cfg.num_apps);

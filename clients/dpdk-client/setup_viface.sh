@@ -1,6 +1,12 @@
 #!/bin/bash
 
 DST_MAC=$(arp | grep 10.0.0.2 | awk '{print $3}')
+NUM_APPS=$(cat config.csv | cut -f1 -d"," | uniq | wc -l)
 
-sudo ifconfig virtio_user0 10.1.0.1/24
-sudo arp -s 10.1.0.2 $DST_MAC
+#SERVER_ID=$(($NUM_APPS + 1))
+
+for (( VID = 1; VID <= $NUM_APPS; VID++ ))
+do
+    sudo ifconfig virtio_user$VID 10.$VID.0.1/24
+    sudo arp -s 10.$VID.0.2 $DST_MAC
+done

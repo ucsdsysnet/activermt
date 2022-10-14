@@ -5,7 +5,7 @@
 APP = ap4-netproxy
 
 # all source are stored in SRCS-y
-SRCS-y := main.c ../../headers/activep4.h
+SRCS-y := main.c ../../headers/activep4.h include/types.h include/utils.h
 
 PKGCONF ?= pkg-config
 
