@@ -18,17 +18,26 @@
 #define CTRL_SEND_INTVL_US	100
 #define CTRL_HEARTBEAT_ITVL	1000
 #define MAX_APPS			16
+#define MAX_INSTANCES		16
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
 typedef struct {
+	int					num_apps_instances;
+	activep4_context_t*	ctxt;
+	uint32_t			app_id[MAX_APPS];
+	uint32_t			instance_id[MAX_APPS];
+} active_apps_t;
+
+typedef struct {
 	uint16_t				port_id;
-	activep4_context_t*		ctxt;
+	active_apps_t*			apps_ctxt;
 	struct rte_mempool*		mempool;
 } active_control_t;
 
 typedef struct {
 	int			num_apps;
+	int			num_instances[MAX_APPS];
 	char		appname[MAX_APPS][50];
 	char		appdir[MAX_APPS][50];
 	int			fid[MAX_APPS];

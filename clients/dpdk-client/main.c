@@ -67,6 +67,25 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	pkt->data_len += ap4hlen;
 }
 
+static inline void get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt, activep4_context_t* ctxt) {
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)bufptr;
+	uint32_t app_id = 0, instance_id = 0;
+	ctxt = NULL;
+	if(iph->next_proto_id == IPPROTO_UDP) {
+		struct rte_udp_hdr* udph = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
+		app_id = ntohs(udph->dst_port);
+		instance_id = (app_id << 16) | ntohs(udph->src_port);
+	} else if(iph->next_proto_id == IPPROTO_TCP) {
+		struct rte_tcp_hdr* tcph = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
+		app_id = ntohs(tcph->dst_port);
+		instance_id = (app_id << 16) | ntohs(tcph->src_port);
+	} else return;
+	for(int j = 0; j < apps_ctxt->num_apps_instances; j++) {
+		if(apps_ctxt->app_id[j] == app_id && apps_ctxt->instance_id[j] == instance_id)
+			ctxt = &apps_ctxt->ctxt[0];
+	}
+}
+
 static uint16_t
 active_encap_filter(
 	uint16_t port_id __rte_unused, 
@@ -76,13 +95,19 @@ active_encap_filter(
 	uint16_t max_pkts,
 	void *ctxt
 ) {
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
+	active_apps_t* apps_ctxt = (active_apps_t*)ctxt;
 
 	for(int i = 0; i < nb_pkts; i++) {
-		switch(ap4_ctxt->status) {
+		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
+		struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+		if(eth->ether_type != htons(RTE_ETHER_TYPE_IPV4)) continue;
+		activep4_context_t* ctxt = NULL;
+		get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt, ctxt);
+		if(ctxt == NULL) continue;
+		switch(ctxt->status) {
 			case ACTIVE_STATE_TRANSMITTING:
 				// TODO update program data.
-				insert_active_program_headers(ap4_ctxt, pkts[i]);
+				insert_active_program_headers(ctxt, pkts[i]);
 				break;
 			default:
 				break;
@@ -100,7 +125,7 @@ active_decap_filter(
 	uint16_t nb_pkts, 
 	void *ctxt
 ) {
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)ctxt;
+	active_apps_t* apps_ctxt = (active_apps_t*)ctxt;
 
 	for(int k = 0; k < nb_pkts; k++) {
 		char* bufptr = rte_pktmbuf_mtod(pkts[k], char*);
@@ -127,64 +152,68 @@ active_decap_filter(
 			}
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
+			// Get active app context.
+			activep4_context_t* ctxt = NULL;
+			get_app_context_from_packet(bufptr, apps_ctxt, ctxt);
+			if(ctxt == NULL) continue;
 			// Update control state.
 			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
 				// ack for reqalloc.
-				ap4_ctxt->status = ACTIVE_STATE_ALLOCATING;
+				ctxt->status = ACTIVE_STATE_ALLOCATING;
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 				// TODO test.
-				if(ap4_ctxt->allocation.version != ntohs(ap4ih->seq)) {
+				if(ctxt->allocation.version != ntohs(ap4ih->seq)) {
 					activep4_malloc_res_t* ap4malloc = (activep4_malloc_res_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 					for(int i = 0; i < NUM_STAGES; i++) {
-						ap4_ctxt->allocation.sync_data[i].mem_start = ntohs(ap4malloc->mem_range[i].start);
-						ap4_ctxt->allocation.sync_data[i].mem_end = ntohs(ap4malloc->mem_range[i].end);
-						if((ap4_ctxt->allocation.sync_data[i].mem_end - ap4_ctxt->allocation.sync_data[i].mem_start) > 0) {
-							ap4_ctxt->allocation.valid_stages[i] = 1;
+						ctxt->allocation.sync_data[i].mem_start = ntohs(ap4malloc->mem_range[i].start);
+						ctxt->allocation.sync_data[i].mem_end = ntohs(ap4malloc->mem_range[i].end);
+						if((ctxt->allocation.sync_data[i].mem_end - ctxt->allocation.sync_data[i].mem_start) > 0) {
+							ctxt->allocation.valid_stages[i] = 1;
 							#ifdef DEBUG
 							printf("[ALLOCATION][%d] %d - %d\n", i, ap4_ctxt->allocation.sync_data[i].mem_start, ap4_ctxt->allocation.sync_data[i].mem_end);
 							#endif
 						}
 					}
-					ap4_ctxt->allocation.version = ntohs(ap4ih->seq);
+					ctxt->allocation.version = ntohs(ap4ih->seq);
 				}
-				ap4_ctxt->status = ACTIVE_STATE_TRANSMITTING;
+				ctxt->status = ACTIVE_STATE_TRANSMITTING;
 				#ifdef DEBUG
 				printf("Allocated. Transmitting ... \n");
 				#endif
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED)) {
 				// TODO test.
 				if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ACK)) {
-					ap4_ctxt->status = ACTIVE_STATE_TRANSMITTING;
-				} else if(ap4_ctxt->allocation.version == ntohs(ap4ih->seq) && ap4_ctxt->status != ACTIVE_STATE_SNAPSHOTTING) {
-					ap4_ctxt->allocation.sync_version = ntohs(ap4ih->seq);
+					ctxt->status = ACTIVE_STATE_TRANSMITTING;
+				} else if(ctxt->allocation.version == ntohs(ap4ih->seq) && ctxt->status != ACTIVE_STATE_SNAPSHOTTING) {
+					ctxt->allocation.sync_version = ntohs(ap4ih->seq);
 					for(int i = 0; i < NUM_STAGES; i++) {
 						for(int j = 0; j < MAX_DATA; j++) {
-							ap4_ctxt->allocation.sync_data[i].valid[j] = 0;
+							ctxt->allocation.sync_data[i].valid[j] = 0;
 						}
 					}
-					ap4_ctxt->allocation.invalid = 1;
-					ap4_ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
+					ctxt->allocation.invalid = 1;
+					ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 				}
-			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED) && ap4_ctxt->status == ACTIVE_STATE_SNAPSHOTTING) {
+			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED) && ctxt->status == ACTIVE_STATE_SNAPSHOTTING) {
 				// TODO test.
 				if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
 					activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 					int mem_addr = ntohl(ap4data->data[0]);
 					int mem_data = ntohl(ap4data->data[1]);
 					int stage_id = ntohl(ap4data->data[2]);
-					ap4_ctxt->allocation.sync_data[stage_id].data[mem_addr] = mem_data;
-					ap4_ctxt->allocation.sync_data[stage_id].valid[mem_addr] = 1;
+					ctxt->allocation.sync_data[stage_id].data[mem_addr] = mem_data;
+					ctxt->allocation.sync_data[stage_id].valid[mem_addr] = 1;
 				}
 			}
 		}
-		// TODO add context for active programs.
+		// TODO update application state.
 	}	
 
 	return nb_pkts;
 }
 
 static inline int
-port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt)
+port_init(uint16_t port, struct rte_mempool *mbuf_pool, active_apps_t* apps_ctxt)
 {
 	struct rte_eth_conf port_conf;
 	const uint16_t rx_rings = 1, tx_rings = 1;
@@ -221,7 +250,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 
 	rxconf = dev_info.default_rxconf;
 
-	for (q = 0; q < rx_rings; q++) {
+	for(q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd, rte_eth_dev_socket_id(port), &rxconf, mbuf_pool);
 		if (retval < 0)
 			return retval;
@@ -262,15 +291,15 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, activep4_context_t* ctxt
 
 	// Add filters to virtio interfaces.
 	if(is_virtual_dev) {
-		rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)ctxt);
-		rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)ctxt);
+		rte_eth_add_tx_callback(port, 0, active_decap_filter, (void*)apps_ctxt);
+		rte_eth_add_rx_callback(port, 0, active_encap_filter, (void*)apps_ctxt);
 	}
 
 	return 0;
 }
 
 static  __rte_noreturn void
-lcore_main(active_control_t* ctrl, int num_apps)
+lcore_main(void)
 {
 	uint16_t port;
 
@@ -312,49 +341,13 @@ lcore_main(active_control_t* ctrl, int num_apps)
 			}
 			#endif
 
-			// Perform bridging virtio-phyeth.
-			if(vdev[port]) {
-				for(int i = 0; i < nb_rx; i++)
-					nb_tx += rte_eth_tx_buffer(PORT_PETH, 0, buffer[PORT_PETH], bufs[i]);
-				/*nb_tx = rte_eth_tx_burst(PORT_PETH, 0, bufs, nb_rx);
-				if(unlikely(nb_tx < nb_rx)) {
-					uint16_t buf;
-					for(buf = nb_tx; buf < nb_rx; buf++)
-						rte_pktmbuf_free(bufs[buf]);
-				}*/
-				#ifdef DEBUG
-				printf("[PORT %d][TX] %d pkts.\n", PORT_PETH, nb_tx);
-				#endif
-			} else {
-				for(int i = 0; i < nb_rx; i++) {
-					char* bufptr = rte_pktmbuf_mtod(bufs[i], char*);
-					struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
-					if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
-						activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
-						if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue; 
-						int fid = ntohs(ap4ih->fid);
-						for(int j = 0; j < num_apps; j++) {
-							if(ctrl[j].ctxt->program->fid == fid) {
-								rte_eth_tx_buffer(ctrl[j].port_id, 0, buffer[j], bufs[i]);
-								#ifdef DEBUG
-								printf("[PORT %d][TX] %d pkts.\n", ctrl[j].port_id, 1);
-								#endif
-							}
-						}
-					} else if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
-						struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
-						int net_id = (iph->dst_addr & 0x0000FF00) >> 8;
-						if(net_id > 0 && net_id <= num_apps) {
-							rte_eth_tx_buffer(ctrl[net_id - 1].port_id, 0, buffer[ctrl[net_id - 1].port_id], bufs[i]);
-							#ifdef DEBUG
-							printf("[PORT %d][TX] %d pkts.\n", ctrl[net_id - 1].port_id, 1);
-							#endif
-						}
-					}
-				}
-			}
+			nb_tx = rte_eth_tx_burst(port^1, 0, bufs, nb_rx);
 
-			rte_eth_tx_buffer_flush(port, 0, buffer[port]);
+			if(unlikely(nb_tx < nb_rx)) {
+				uint16_t buf;
+				for(buf = nb_tx; buf < nb_rx; buf++)
+					rte_pktmbuf_free(bufs[buf]);
+			}
 		}
 	}
 }
@@ -388,12 +381,12 @@ lcore_stats(void* arg) {
 	return 0;
 }
 
-static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
@@ -402,14 +395,14 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_contr
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_FLAG_REQALLOC);
-	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-	mreq->proglen = htons((uint16_t)ctrl->ctxt->program->proglen);
-	mreq->iglim = (uint8_t)ctrl->ctxt->program->iglim;
-	for(int i = 0; i < ctrl->ctxt->program->num_accesses; i++) {
-		mreq->mem[i] = ctrl->ctxt->program->access_idx[i];
-		mreq->dem[i] = ctrl->ctxt->program->demand[i];
+	mreq->proglen = htons((uint16_t)ctxt->program->proglen);
+	mreq->iglim = (uint8_t)ctxt->program->iglim;
+	for(int i = 0; i < ctxt->program->num_accesses; i++) {
+		mreq->mem[i] = ctxt->program->access_idx[i];
+		mreq->dem[i] = ctxt->program->demand[i];
 	}
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t));
 	iph->version = 4;
@@ -421,19 +414,19 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
@@ -442,7 +435,7 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_contr
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_FLAG_GETALLOC);
-	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	iph->version = 4;
@@ -454,19 +447,19 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, active_control_t* ctrl, int stage_id, int mem_addr, activep4_def_t* memsync_cache) {
+static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
@@ -475,13 +468,13 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, active_contr
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
-	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
 	ap4data->data[0] = htonl((uint32_t)mem_addr);
 	ap4data->data[2] = htonl((uint32_t)stage_id);
-	activep4_def_t* program = construct_memsync_program(ctrl->ctxt->program->fid, stage_id, ctrl->ctxt->instr_set, memsync_cache);
+	activep4_def_t* program = construct_memsync_program(ctxt->program->fid, stage_id, ctxt->instr_set, memsync_cache);
 	if(program == NULL) {
 		printf("Could not construct memsync program!\n");
 		return;
@@ -501,19 +494,19 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, active_contr
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
@@ -522,7 +515,7 @@ static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, active_c
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK);
-	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	iph->version = 4;
@@ -534,19 +527,19 @@ static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, active_c
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, active_control_t* ctrl) {
+static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(ctrl->port_id, &eth_addr) < 0) {
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
@@ -555,12 +548,12 @@ static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, active_cont
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
-	ap4ih->fid = htons(ctrl->ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
 	activep4_def_t program = {0};
-	construct_nop_program(&program, ctrl->ctxt->instr_set, 0);
+	construct_nop_program(&program, ctxt->instr_set, 0);
 	for(int i = 0; i < program.proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
 		instr->flags = 0;
@@ -576,8 +569,8 @@ static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, active_cont
 	iph->time_to_live = 64;
 	iph->next_proto_id = 0;
 	iph->hdr_checksum = 0;
-	iph->src_addr = ctrl->ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctrl->ctxt->ipv4_srcaddr;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program.proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
@@ -590,11 +583,17 @@ lcore_control(void* arg) {
 
 	active_control_t* ctrl = (active_control_t*)arg;
 
-	printf("Starting controller for port %d on lcore %u ... \n", PORT_PETH, lcore_id);
+	printf("Starting controller for port %d on lcore %u ... \n", ctrl->port_id, lcore_id);
 
 	struct rte_mbuf* mbuf;
 
-	struct rte_eth_dev_tx_buffer* tx_buffer = buffer[PORT_PETH];
+	struct rte_eth_dev_tx_buffer* buffer = rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
+	if(buffer == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot allocate TX buffer for control thread.");
+	if(rte_eth_tx_buffer_init(buffer, BURST_SIZE) != 0)
+		rte_exit(EXIT_FAILURE, "Cannot initialize TX buffer for control thread.");
+	if(rte_eth_tx_buffer_set_err_callback(buffer, rte_eth_tx_buffer_count_callback, &drop_counter) < 0)
+		rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for control thread.");
 
 	activep4_def_t memsync_cache[NUM_STAGES];
 	memset(memsync_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
@@ -605,69 +604,72 @@ lcore_control(void* arg) {
 	while(TRUE) {
 		now = rte_rdtsc_precise();
 		elapsed_us = (double)(now - last_sent) * 1E6 / rte_get_tsc_hz();
-		switch(ctrl->ctxt->status) {
-			case ACTIVE_STATE_INITIALIZING:
-				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
-				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-					construct_reqalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
-					last_sent = now;
-				}
-				#ifdef DEBUG
-				//printf("Initializing ... \n");
-				#endif
-				break;
-			case ACTIVE_STATE_ALLOCATING:
-				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
-				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-					construct_getalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
-					last_sent = now;
-				}
-				break;
-			case ACTIVE_STATE_SNAPSHOTTING:
-				snapshotting_in_progress = 1;
-				ctrl->ctxt->allocation.sync_start_time = rte_rdtsc_precise();
-				while(snapshotting_in_progress) {
-					snapshotting_in_progress = 0;
-					for(int i = 0; i < NUM_STAGES; i++) {
-						if(!ctrl->ctxt->allocation.valid_stages[i]) continue;
-						for(int j = ctrl->ctxt->allocation.sync_data[i].mem_start; j <= ctrl->ctxt->allocation.sync_data[i].mem_end; j++) {
-							if(ctrl->ctxt->allocation.sync_data[i].valid[j]) continue;
-							snapshotting_in_progress = 1;
-							if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-								construct_snapshot_packet(mbuf, ctrl, i, j, memsync_cache);
-								rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
+		for(int i = 0; i < ctrl->apps_ctxt->num_apps_instances; i++) {
+			activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[i];
+			switch(ctxt->status) {
+				case ACTIVE_STATE_INITIALIZING:
+					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_reqalloc_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, 0, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, 0, buffer);
+						last_sent = now;
+					}
+					#ifdef DEBUG
+					//printf("Initializing ... \n");
+					#endif
+					break;
+				case ACTIVE_STATE_ALLOCATING:
+					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_getalloc_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, 0, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, 0, buffer);
+						last_sent = now;
+					}
+					break;
+				case ACTIVE_STATE_SNAPSHOTTING:
+					snapshotting_in_progress = 1;
+					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
+					while(snapshotting_in_progress) {
+						snapshotting_in_progress = 0;
+						for(int i = 0; i < NUM_STAGES; i++) {
+							if(!ctxt->allocation.valid_stages[i]) continue;
+							for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
+								if(ctxt->allocation.sync_data[i].valid[j]) continue;
+								snapshotting_in_progress = 1;
+								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache);
+									rte_eth_tx_buffer(PORT_PETH, 0, buffer, mbuf);
+								}
 							}
 						}
 					}
-				}
-				rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
-				ctrl->ctxt->allocation.sync_end_time = rte_rdtsc_precise();
-				ctrl->ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
-				break;
-			case ACTIVE_STATE_SNAPCOMPLETING:
-				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
-				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-					construct_snapcomplete_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
-					last_sent = now;
-				}
-				break;
-			case ACTIVE_STATE_TRANSMITTING:
-				if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
-				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-					construct_heartbeat_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
-					last_sent = now;
-				}
-				break;
-			default:
-				break;
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, buffer);
+					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
+					ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
+					break;
+				case ACTIVE_STATE_SNAPCOMPLETING:
+					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_snapcomplete_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, 0, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, 0, buffer);
+						last_sent = now;
+					}
+					break;
+				case ACTIVE_STATE_TRANSMITTING:
+					if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_heartbeat_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, 0, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, 0, buffer);
+						last_sent = now;
+					}
+					break;
+				default:
+					break;
+			}
 		}
 	}
 
@@ -691,6 +693,9 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 					break;
 				case 2:
 					strcpy(cfg->appname[n], tok);
+					break;
+				case 3:
+					cfg->num_instances[n] = atoi(tok);
 					break;
 				default:
 					break;
@@ -757,18 +762,19 @@ main(int argc, char** argv)
 	pnemonic_opcode_t instr_set;
 	memset(&instr_set, 0, sizeof(pnemonic_opcode_t));
 
-	activep4_def_t* active_function = (activep4_def_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_def_t), RTE_CACHE_LINE_SIZE);
+	activep4_def_t* active_function = (activep4_def_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_def_t), 0);
 	if(active_function == NULL) {
 		printf("Unable to allocate memory for active function!\n");
 		exit(EXIT_FAILURE);
 	}
 
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_context_t), RTE_CACHE_LINE_SIZE);
+	activep4_context_t* ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(activep4_context_t), 0);
 	if(ap4_ctxt == NULL) {
 		printf("Unable to allocate memory for active context!\n");
 		exit(EXIT_FAILURE);
 	}
 
+	int inst_id = 0;
 	for(int i = 0; i < cfg.num_apps; i++) {
 		char* active_dir = cfg.appdir[i];
 		char* active_program_name = cfg.appname[i];
@@ -776,14 +782,23 @@ main(int argc, char** argv)
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
 		read_active_function(&active_function[i], active_dir, active_program_name);
 		// TODO data argument definitions.
-		active_function[i].fid = fid;
-		ap4_ctxt[i].instr_set = &instr_set;
-		ap4_ctxt[i].program = &active_function[i];
-		ap4_ctxt[i].is_active = 1;
-		ap4_ctxt[i].status = ACTIVE_STATE_INITIALIZING;
-		ap4_ctxt[i].ipv4_srcaddr = ipv4_ifaceaddr;
-		printf("ActiveP4 context initialized for %s.\n", active_program_name);
+		for(int j = 0; j < cfg.num_instances[i]; j++) {
+			active_function[inst_id].fid = fid + j;
+			ap4_ctxt[inst_id].instr_set = &instr_set;
+			ap4_ctxt[inst_id].program = &active_function[i];
+			ap4_ctxt[inst_id].is_active = 1;
+			ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
+			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
+			printf("ActiveP4 context initialized for %s instance %d.\n", active_program_name, j);
+			inst_id++;
+		}
 	}
+
+	active_apps_t apps_ctxt;
+	memset(&apps_ctxt, 0, sizeof(active_apps_t));
+
+	apps_ctxt.ctxt = ap4_ctxt;
+	apps_ctxt.num_apps_instances = inst_id;
 
 	struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
@@ -799,26 +814,19 @@ main(int argc, char** argv)
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
+	active_control_t ctrl;
+	memset(&ctrl, 0, sizeof(active_control_t));
+	ctrl.apps_ctxt = &apps_ctxt;
+	ctrl.mempool = mbuf_pool;
+
 	unsigned port_count = 0;
-	struct rte_ether_addr addr = {0};
 	RTE_ETH_FOREACH_DEV(portid) {
+		struct rte_ether_addr addr = {0};
+		char portname[32];
+		char portargs[256];
 		if(++port_count > nb_ports)
 			break;
 		rte_eth_macaddr_get(portid, &addr);
-	}
-
-	active_control_t* ctrl = (active_control_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(active_control_t), RTE_CACHE_LINE_SIZE);
-	if(ctrl == NULL) {
-		printf("Unable to allocate memory for active control!\n");
-		exit(EXIT_FAILURE);
-	}
-
-	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
-
-	for(int i = 0; i < cfg.num_apps; i++) {
-		portid = i + 1;
-		char portname[32];
-		char portargs[256];
 		snprintf(portname, sizeof(portname), "virtio_user%u", portid);
 		snprintf(
 			portargs, 
@@ -830,41 +838,23 @@ main(int argc, char** argv)
 		if(rte_eal_hotplug_add("vdev", portname, portargs) < 0)
 			rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
 		printf("Created virtual port %s\n", portname);
+		ctrl.port_id = portid;
 	}
+
+	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
 
 	RTE_ETH_FOREACH_DEV(portid) {
 		int port_id = portid;
-		if(port_id == 0) {
-			if(port_init(portid, mbuf_pool, NULL) != 0)
-				rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
-		} else {
-			if(port_init(portid, mbuf_pool, &ap4_ctxt[port_count - 1]) != 0)
-				rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
-		}
-		buffer[port_id] = rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
-		if(buffer[port_id] == NULL) {
-			rte_exit(EXIT_FAILURE, "Cannot allocate TX buffer for port %d", portid);
-		}
-		if(rte_eth_tx_buffer_init(buffer[portid], BURST_SIZE) != 0) {
-			rte_exit(EXIT_FAILURE, "Cannot initialize TX buffer for port %d", portid);
-		}
-		if(rte_eth_tx_buffer_set_err_callback(buffer[portid], rte_eth_tx_buffer_count_callback, &drop_counter[portid]) < 0) {
-			rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for port %d", portid);
-		}
+		if(port_init(portid, mbuf_pool, &apps_ctxt) != 0)
+			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
 		rte_eal_remote_launch(lcore_stats, (void*)&port_id, lcore_id);
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
 
-	for(int i = 0; i < cfg.num_apps; i++) {
-		portid = i + 1;
-		ctrl[i].port_id = portid;
-		ctrl[i].ctxt = &ap4_ctxt[i];
-		ctrl[i].mempool = mbuf_pool;
-		rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
-		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-	}
+	rte_eal_remote_launch(lcore_control, (void*)&ctrl, lcore_id);
+	lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 
-	lcore_main(ctrl, cfg.num_apps);
+	lcore_main();
 
 	rte_eal_cleanup();
 
