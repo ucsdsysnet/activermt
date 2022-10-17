@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
-#define DEBUG
+//#define DEBUG
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -27,6 +27,9 @@
 #include "./include/utils.h"
 
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
+
+static struct rte_eth_dev_tx_buffer* buffer[RTE_MAX_ETHPORTS];
+static uint64_t drop_counter[RTE_MAX_ETHPORTS];
 
 /*static const char usage[] =
 	"%s EAL_ARGS -- [-t]\n";*/
@@ -271,8 +274,8 @@ lcore_main(active_control_t* ctrl, int num_apps)
 {
 	uint16_t port;
 
-	uint8_t vdev[MAX_APPS + 1];
-	memset(vdev, 0, MAX_APPS + 1);
+	uint8_t vdev[RTE_MAX_ETHPORTS];
+	memset(vdev, 0, RTE_MAX_ETHPORTS);
 
 	RTE_ETH_FOREACH_DEV(port) {
 		struct rte_eth_dev_info dev_info;
@@ -284,26 +287,12 @@ lcore_main(active_control_t* ctrl, int num_apps)
 			vdev[port] = 1;
 		}
 		if(rte_eth_dev_socket_id(port) > 0 && rte_eth_dev_socket_id(port) != (int)rte_socket_id())
-			printf("WARNING, port %u is on remote NUMA node to "
-					"polling thread.\n\tPerformance will "
-					"not be optimal.\n", port);
+			printf("WARNING, port %u is on remote NUMA node to polling thread.\n\tPerformance will not be optimal.\n", port);
 		else
 			printf("Port %d on local NUMA node.\n", port);
 	}
 
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
-
-	struct rte_eth_dev_tx_buffer* buffer = (struct rte_eth_dev_tx_buffer*)rte_zmalloc(NULL, MAX_APPS * sizeof(struct rte_eth_dev_tx_buffer), RTE_CACHE_LINE_SIZE);
-	if(buffer == NULL) {
-		printf("Failed to allocate buffer!\n");
-		exit(EXIT_FAILURE);
-	}
-	for(int i = 0; i < num_apps; i++) {
-		if(rte_eth_tx_buffer_init(&buffer[i], BURST_SIZE) != 0) {
-			printf("Unable to initialize buffer!\n");
-			exit(EXIT_FAILURE);
-		}
-	}
 
 	for(;;) {
 		RTE_ETH_FOREACH_DEV(port) {
@@ -325,12 +314,14 @@ lcore_main(active_control_t* ctrl, int num_apps)
 
 			// Perform bridging virtio-phyeth.
 			if(vdev[port]) {
-				nb_tx = rte_eth_tx_burst(PORT_PETH, 0, bufs, nb_rx);
+				for(int i = 0; i < nb_rx; i++)
+					nb_tx += rte_eth_tx_buffer(PORT_PETH, 0, buffer[PORT_PETH], bufs[i]);
+				/*nb_tx = rte_eth_tx_burst(PORT_PETH, 0, bufs, nb_rx);
 				if(unlikely(nb_tx < nb_rx)) {
 					uint16_t buf;
 					for(buf = nb_tx; buf < nb_rx; buf++)
 						rte_pktmbuf_free(bufs[buf]);
-				}
+				}*/
 				#ifdef DEBUG
 				printf("[PORT %d][TX] %d pkts.\n", PORT_PETH, nb_tx);
 				#endif
@@ -344,7 +335,7 @@ lcore_main(active_control_t* ctrl, int num_apps)
 						int fid = ntohs(ap4ih->fid);
 						for(int j = 0; j < num_apps; j++) {
 							if(ctrl[j].ctxt->program->fid == fid) {
-								rte_eth_tx_buffer(ctrl[j].port_id, 0, &buffer[j], bufs[i]);
+								rte_eth_tx_buffer(ctrl[j].port_id, 0, buffer[j], bufs[i]);
 								#ifdef DEBUG
 								printf("[PORT %d][TX] %d pkts.\n", ctrl[j].port_id, 1);
 								#endif
@@ -353,16 +344,17 @@ lcore_main(active_control_t* ctrl, int num_apps)
 					} else if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
 						struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
 						int net_id = (iph->dst_addr & 0x0000FF00) >> 8;
-						rte_eth_tx_buffer(ctrl[net_id - 1].port_id, 0, &buffer[net_id - 1], bufs[i]);
-						#ifdef DEBUG
-						printf("[PORT %d][TX] %d pkts.\n", ctrl[net_id - 1].port_id, 1);
-						#endif
+						if(net_id > 0 && net_id <= num_apps) {
+							rte_eth_tx_buffer(ctrl[net_id - 1].port_id, 0, buffer[ctrl[net_id - 1].port_id], bufs[i]);
+							#ifdef DEBUG
+							printf("[PORT %d][TX] %d pkts.\n", ctrl[net_id - 1].port_id, 1);
+							#endif
+						}
 					}
 				}
-				for(int i = 0; i < num_apps; i++) {
-					rte_eth_tx_buffer_flush(ctrl[i].port_id, 0, &buffer[i]);
-				}
 			}
+
+			rte_eth_tx_buffer_flush(port, 0, buffer[port]);
 		}
 	}
 }
@@ -602,11 +594,7 @@ lcore_control(void* arg) {
 
 	struct rte_mbuf* mbuf;
 
-	struct rte_eth_dev_tx_buffer buffer;
-	if(rte_eth_tx_buffer_init(&buffer, BURST_SIZE) != 0) {
-		printf("Unable to initialize buffer!\n");
-		return -1;
-	}
+	struct rte_eth_dev_tx_buffer* tx_buffer = buffer[PORT_PETH];
 
 	activep4_def_t memsync_cache[NUM_STAGES];
 	memset(memsync_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
@@ -622,8 +610,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_reqalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
 					last_sent = now;
 				}
 				#ifdef DEBUG
@@ -634,8 +622,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_getalloc_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
 					last_sent = now;
 				}
 				break;
@@ -651,12 +639,12 @@ lcore_control(void* arg) {
 							snapshotting_in_progress = 1;
 							if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 								construct_snapshot_packet(mbuf, ctrl, i, j, memsync_cache);
-								rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
+								rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
 							}
 						}
 					}
 				}
-				rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
+				rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
 				ctrl->ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 				ctrl->ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
 				break;
@@ -664,8 +652,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_snapcomplete_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
 					last_sent = now;
 				}
 				break;
@@ -673,8 +661,8 @@ lcore_control(void* arg) {
 				if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
 				if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 					construct_heartbeat_packet(mbuf, ctrl);
-					rte_eth_tx_buffer(PORT_PETH, 0, &buffer, mbuf);
-					rte_eth_tx_buffer_flush(PORT_PETH, 0, &buffer);
+					rte_eth_tx_buffer(PORT_PETH, 0, tx_buffer, mbuf);
+					rte_eth_tx_buffer_flush(PORT_PETH, 0, tx_buffer);
 					last_sent = now;
 				}
 				break;
@@ -853,6 +841,16 @@ main(int argc, char** argv)
 			if(port_init(portid, mbuf_pool, &ap4_ctxt[port_count - 1]) != 0)
 				rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
 		}
+		buffer[port_id] = rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
+		if(buffer[port_id] == NULL) {
+			rte_exit(EXIT_FAILURE, "Cannot allocate TX buffer for port %d", portid);
+		}
+		if(rte_eth_tx_buffer_init(buffer[portid], BURST_SIZE) != 0) {
+			rte_exit(EXIT_FAILURE, "Cannot initialize TX buffer for port %d", portid);
+		}
+		if(rte_eth_tx_buffer_set_err_callback(buffer[portid], rte_eth_tx_buffer_count_callback, &drop_counter[portid]) < 0) {
+			rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for port %d", portid);
+		}
 		rte_eal_remote_launch(lcore_stats, (void*)&port_id, lcore_id);
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
@@ -862,8 +860,8 @@ main(int argc, char** argv)
 		ctrl[i].port_id = portid;
 		ctrl[i].ctxt = &ap4_ctxt[i];
 		ctrl[i].mempool = mbuf_pool;
-		/*rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
-		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);*/
+		rte_eal_remote_launch(lcore_control, (void*)&ctrl[i], lcore_id);
+		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
 
 	lcore_main(ctrl, cfg.num_apps);
