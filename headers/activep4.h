@@ -4,6 +4,7 @@
 //#define DEBUG
 
 #define TRUE            1
+#define FALSE           0
 #define MAXINSTRSET     256
 #define MAXARGS         10
 #define MAXPROGLEN      50

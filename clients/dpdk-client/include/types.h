@@ -22,6 +22,12 @@
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
+#define CTRL_PKT_REQALLOC	1
+#define CTRL_PKT_GETALLOC	2
+#define CTRL_PKT_SNAPSHOT	3
+#define CTRL_PKT_SNAPCMPLT	4
+#define CTRL_PKT_HEARTBEAT	5
+
 typedef struct {
 	int					num_apps_instances;
 	activep4_context_t*	ctxt;
