@@ -43,6 +43,7 @@ typedef struct {
 
 typedef struct {
 	int			num_apps;
+	int			app_id[MAX_APPS];
 	int			num_instances[MAX_APPS];
 	char		appname[MAX_APPS][50];
 	char		appdir[MAX_APPS][50];

@@ -67,10 +67,10 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	pkt->data_len += ap4hlen;
 }
 
-static inline void get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt, activep4_context_t* ctxt) {
+static inline activep4_context_t* get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt) {
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)bufptr;
 	uint32_t app_id = 0, instance_id = 0;
-	ctxt = NULL;
+	activep4_context_t* ctxt = NULL;
 	if(iph->next_proto_id == IPPROTO_UDP) {
 		struct rte_udp_hdr* udph = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
 		app_id = ntohs(udph->dst_port);
@@ -79,11 +79,22 @@ static inline void get_app_context_from_packet(char* bufptr, active_apps_t* apps
 		struct rte_tcp_hdr* tcph = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
 		app_id = ntohs(tcph->dst_port);
 		instance_id = (app_id << 16) | ntohs(tcph->src_port);
-	} else return;
+	} else return NULL;
+	int empty_slot = -1;
 	for(int j = 0; j < apps_ctxt->num_apps_instances; j++) {
-		if(apps_ctxt->app_id[j] == app_id && apps_ctxt->instance_id[j] == instance_id)
-			ctxt = &apps_ctxt->ctxt[0];
+		if(apps_ctxt->app_id[j] == app_id) {
+			if(apps_ctxt->instance_id[j] == instance_id) {
+				ctxt = &apps_ctxt->ctxt[j];
+			} else if(apps_ctxt->instance_id[j] == 0 && empty_slot < 0) empty_slot = j;
+		}
 	}
+	if(ctxt == NULL && empty_slot >= 0) {
+		apps_ctxt->instance_id[empty_slot] = instance_id;
+		ctxt = &apps_ctxt->ctxt[empty_slot];
+		printf("[INFO] Created application context for FID %d with instance ID %d.\n", ctxt->program->fid, instance_id);
+		assert(ctxt != NULL);
+	}
+	return ctxt;
 }
 
 static uint16_t
@@ -101,8 +112,7 @@ active_encap_filter(
 		char* bufptr = rte_pktmbuf_mtod(pkts[i], char*);
 		struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 		if(eth->ether_type != htons(RTE_ETHER_TYPE_IPV4)) continue;
-		activep4_context_t* ctxt = NULL;
-		get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt, ctxt);
+		activep4_context_t* ctxt = get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt);
 		if(ctxt == NULL) continue;
 		switch(ctxt->status) {
 			case ACTIVE_STATE_TRANSMITTING:
@@ -153,8 +163,7 @@ active_decap_filter(
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
 			// Get active app context.
-			activep4_context_t* ctxt = NULL;
-			get_app_context_from_packet(bufptr, apps_ctxt, ctxt);
+			activep4_context_t* ctxt = get_app_context_from_packet(bufptr, apps_ctxt);
 			if(ctxt == NULL) continue;
 			// Update control state.
 			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
@@ -170,7 +179,7 @@ active_decap_filter(
 						if((ctxt->allocation.sync_data[i].mem_end - ctxt->allocation.sync_data[i].mem_start) > 0) {
 							ctxt->allocation.valid_stages[i] = 1;
 							#ifdef DEBUG
-							printf("[ALLOCATION][%d] %d - %d\n", i, ap4_ctxt->allocation.sync_data[i].mem_start, ap4_ctxt->allocation.sync_data[i].mem_end);
+							printf("[ALLOCATION][%d] %d - %d\n", i, ctxt->allocation.sync_data[i].mem_start, ctxt->allocation.sync_data[i].mem_end);
 							#endif
 						}
 					}
@@ -330,13 +339,14 @@ lcore_main(void)
 
 	for(;;) {
 		RTE_ETH_FOREACH_DEV(port) {
-			struct rte_mbuf *bufs[BURST_SIZE];
+			struct rte_mbuf* bufs[BURST_SIZE];
 			const uint16_t nb_rx = rte_eth_rx_burst(port, qid, bufs, BURST_SIZE);
 			
 			if (unlikely(nb_rx == 0))
 				continue;
 
-			uint16_t nb_tx = 0;
+			uint16_t nb_tx = 0, nb_rx_filtered = 0;
+			//struct rte_mbuf* tx_bufs[BURST_SIZE];
 
 			#ifdef DEBUG
 			printf("[PORT %d][RX] %d pkts.\n", port, nb_rx);
@@ -718,6 +728,9 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 				case 3:
 					cfg->num_instances[n] = atoi(tok);
 					break;
+				case 4:
+					cfg->app_id[n] = atoi(tok);
+					break;
 				default:
 					break;
 			}
@@ -795,6 +808,9 @@ main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
+	active_apps_t apps_ctxt;
+	memset(&apps_ctxt, 0, sizeof(active_apps_t));
+
 	int inst_id = 0;
 	for(int i = 0; i < cfg.num_apps; i++) {
 		char* active_dir = cfg.appdir[i];
@@ -811,13 +827,11 @@ main(int argc, char** argv)
 			//ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
 			ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
 			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
+			apps_ctxt.app_id[inst_id] = cfg.app_id[i];
 			printf("ActiveP4 context initialized for %s instance %d.\n", active_program_name, j);
 			inst_id++;
 		}
 	}
-
-	active_apps_t apps_ctxt;
-	memset(&apps_ctxt, 0, sizeof(active_apps_t));
 
 	apps_ctxt.ctxt = ap4_ctxt;
 	apps_ctxt.num_apps_instances = inst_id;
