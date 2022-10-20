@@ -19,6 +19,7 @@
 #define CTRL_HEARTBEAT_ITVL	1000
 #define MAX_APPS			16
 #define MAX_INSTANCES		16
+#define MAX_STATS_SAMPLES	1000
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
@@ -49,5 +50,12 @@ typedef struct {
 	char		appdir[MAX_APPS][50];
 	int			fid[MAX_APPS];
 } active_config_t;
+
+typedef struct {
+	uint64_t	rx_pkts[MAX_STATS_SAMPLES];
+	uint64_t	tx_pkts[MAX_STATS_SAMPLES];
+	uint64_t	ts[MAX_STATS_SAMPLES];
+	int			num_samples;
+} active_dpdk_stats_t;
 
 #endif

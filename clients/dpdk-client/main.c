@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <signal.h>
 #include <stddef.h>
 #include <inttypes.h>
 #include <getopt.h>
@@ -30,6 +31,11 @@
 
 static struct rte_eth_dev_tx_buffer* buffer;
 static uint64_t drop_counter;
+static int is_running;
+
+static void interrupt_handler(int sig) {
+    is_running = 0;
+}
 
 /*static const char usage[] =
 	"%s EAL_ARGS -- [-t]\n";*/
@@ -309,7 +315,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, active_apps_t* apps_ctxt
 	return 0;
 }
 
-static  __rte_noreturn void
+static void
 lcore_main(void)
 {
 	uint16_t port;
@@ -337,7 +343,7 @@ lcore_main(void)
 
 	const int qid = 0;
 
-	for(;;) {
+	while(is_running) {
 		RTE_ETH_FOREACH_DEV(port) {
 			struct rte_mbuf* bufs[BURST_SIZE];
 			const uint16_t nb_rx = rte_eth_rx_burst(port, qid, bufs, BURST_SIZE);
@@ -373,17 +379,26 @@ lcore_stats(void* arg) {
 
 	int port_id = *((int*)arg);
 
+	active_dpdk_stats_t samples;
+	memset(&samples, 0, sizeof(active_dpdk_stats_t));
+
 	uint64_t last_ipackets = 0, last_opackets = 0;
 	
 	printf("Starting stats monitor for port %d on lcore %u ... \n", port_id, lcore_id);
 
-	while(TRUE) {
+	while(is_running) {
 		struct rte_eth_stats stats = {0};
 		if(rte_eth_stats_get(port_id, &stats) == 0) {
 			uint64_t rx_pkts = stats.ipackets - last_ipackets;
 			uint64_t tx_pkts = stats.opackets - last_opackets;
 			last_ipackets = stats.ipackets;
 			last_opackets = stats.opackets;
+			if(samples.num_samples < MAX_STATS_SAMPLES) {
+				samples.ts[samples.num_samples] = rte_rdtsc_precise();
+				samples.rx_pkts[samples.num_samples] = rx_pkts;
+				samples.tx_pkts[samples.num_samples] = tx_pkts;
+				samples.num_samples++;
+			}
 			#ifdef DEBUG
 			if(rx_pkts > 0 || tx_pkts > 0)
 				printf("[STATS][%d] RX %lu pkts TX %lu pkts\n", port_id, rx_pkts, tx_pkts);
@@ -391,6 +406,16 @@ lcore_stats(void* arg) {
 		}
 		rte_delay_us_block(DELAY_SEC);
 	}
+
+	char filename[50];
+	sprintf(filename, "dpdk_ap4_stats_%d.csv", port_id);
+	FILE *fp = fopen(filename, "w");
+	if(fp == NULL) return -1;
+	for(int i = 0; i < samples.num_samples; i++) {
+		fprintf(fp, "%lu,%lu,%lu\n", samples.ts[i], samples.rx_pkts[i], samples.tx_pkts[i]);
+	}
+	fclose(fp);
+    printf("[STATS] %u samples written to %s.\n", samples.num_samples, filename);
 	
 	return 0;
 }
@@ -631,7 +656,7 @@ lcore_control(void* arg) {
 	uint64_t last_sent = 0, now, elapsed_us;
 	int snapshotting_in_progress = 0;
 
-	while(true) {
+	while(is_running) {
 		now = rte_rdtsc_precise();
 		elapsed_us = (double)(now - last_sent) * 1E6 / rte_get_tsc_hz();
 		for(int i = 0; i < ctrl->apps_ctxt->num_apps_instances; i++) {
@@ -748,6 +773,9 @@ main(int argc, char** argv)
 		printf("Usage: %s <iface> <config_file>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
+
+	is_running = 1;
+	signal(SIGINT, interrupt_handler);
 
 	char* dev = argv[1];
 	char* config_filename = argv[2];
@@ -887,11 +915,12 @@ main(int argc, char** argv)
 
 	unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
 
+	int ports[RTE_MAX_ETHPORTS];
 	RTE_ETH_FOREACH_DEV(portid) {
-		int port_id = portid;
+		ports[portid] = portid;
 		if(port_init(portid, mbuf_pool, &apps_ctxt) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
-		rte_eal_remote_launch(lcore_stats, (void*)&port_id, lcore_id);
+		rte_eal_remote_launch(lcore_stats, (void*)&ports[portid], lcore_id);
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 	}
 
