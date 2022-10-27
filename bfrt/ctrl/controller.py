@@ -5,6 +5,7 @@ import time
 import json
 import inspect
 import threading
+import queue
 import logging
 import random
 
@@ -47,6 +48,7 @@ class ActiveP4Controller:
     global time
     global inspect
     global threading
+    global queue
     global logging
     global random
     global IPAddress
@@ -61,7 +63,7 @@ class ActiveP4Controller:
         else:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
-        self.erase = False
+        self.erase = True
         self.watchdog = True
         self.block_size = 8192
         self.num_stages_ingress = 10
@@ -105,6 +107,7 @@ class ActiveP4Controller:
         # modified at runtime.
         self.allocVersion = {}
         self.queue = []
+        self.allocationRequests = queue.Queue()
         self.active = []
         self.coredumps = {}
         self.coredumpQueue = set()
@@ -112,6 +115,7 @@ class ActiveP4Controller:
         self.remoteDrainInit = set()
         self.remoteDrainInitiator = None
         self.mutex = threading.Lock()
+        self.monitorThread = None
 
     def save(self):
         """ctrlstate = {
@@ -288,17 +292,29 @@ class ActiveP4Controller:
         gress = self.p4.Ingress if memId < self.num_stages_ingress else self.p4.Egress
         memIdGress = memId if memId < self.num_stages_ingress else memId - self.num_stages_ingress
         register = getattr(gress, 'heap_s%d' % memIdGress)
-        register.operation_register_sync()
-        regValues = register.dump(return_ents=True)
+        print("Memory dump initiated ... ")
         data = []
+        register.operation_register_sync()
+        for regId in range(memRange[0], memRange[1] + 1):
+            item = register.get(REGISTER_INDEX=regId, from_hw=False)
+            regId = item.key[b'$REGISTER_INDEX']
+            regVal = item.data[b'Ingress.heap_s%d.f1' % memIdGress]
+            data.append((regId, regVal))
+            if self.erase:
+                register.add(REGISTER_INDEX=regId, f1=0)
+        """register.operation_register_sync()
+        regValues = register.dump(return_ents=True, from_hw=False)
         for item in regValues:
             regId = item.key[b'$REGISTER_INDEX']
             regVal = item.data[b'Ingress.heap_s%d.f1' % memIdGress]
             if regId >= memRange[0] and regId <= memRange[1]:
                 data.append((regId, regVal))
-        data.sort(key=lambda x: x[0])
         if self.erase:
             register.clear()
+            for regId in range(memRange[0], memRange[1] + 1):
+                register.add(REGISTER_INDEX=regId, f1=0)"""
+        print("Memory dump complete.")
+        data.sort(key=lambda x: x[0])
         return data    
 
     """def resetTrafficCounters(self):
@@ -628,6 +644,7 @@ class ActiveP4Controller:
             print("Elapsed (overall) time", elapsedOverall)
 
     def resetAllocation(self):
+        self.mutex.acquire()
         print("Initiating allocation reset ... ")
         completed = []
         for fid in self.active:
@@ -637,6 +654,7 @@ class ActiveP4Controller:
             self.active.remove(fid)
         if self.DEBUG:
             print(self.allocator.allocationMatrix)
+        self.mutex.release()
 
     def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
@@ -657,8 +675,13 @@ class ActiveP4Controller:
                 if demand > 0:
                     accessIdx.append(memIdx)
                     minDemand.append(demand)
-            th = threading.Thread(target=self.allocate, args=(fid, progLen, igLim, accessIdx, minDemand, ))
-            th.start()
+            self.allocationRequests.put({
+                'fid'       : fid,
+                'progLen'   : progLen,
+                'igLim'     : igLim,
+                'accessIdx' : accessIdx,
+                'minDemand' : minDemand
+            })
         return 0
 
     def onRemapAck(self, dev_id, pipe_id, directon, parser_id, session, msg):
@@ -694,9 +717,17 @@ class ActiveP4Controller:
         print("Digest handler registered for malloc/remap.")
 
     def monitor(self):
-        # main control loop (for ageing, etc.)
+        # main control loop (for allocating, ageing, etc.)
+        print("Starting monitor ... ")
         while self.watchdog:
-            pass
+            req = self.allocationRequests.get()
+            self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
+            while req['fid'] in self.queue:
+                pass
+
+    def listen(self):
+        self.monitorThread = threading.Thread(target=self.monitor)
+        self.monitorThread.start()
 
 # Custom settings.
 
@@ -749,6 +780,7 @@ if testMode:
         pass
     
 controller.initController()
+controller.listen()
 
 #controller.getTrafficCounters(fids)
 #controller.resetTrafficCounters()

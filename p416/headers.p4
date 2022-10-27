@@ -181,7 +181,7 @@ header bridged_metadata_h {
     bit<9>      ingress_port;
     bit<1>      carry;
     bit<1>      remap;
-    bit<8>      fid;
+    bit<16>     fid;
 }
 
 header resubmit_header_t {

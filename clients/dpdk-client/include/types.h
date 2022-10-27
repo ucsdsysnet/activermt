@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <inttypes.h>
+#include <rte_hash.h>
 
 #include "../../../headers/activep4.h"
 
@@ -28,6 +29,15 @@
 #define CTRL_PKT_SNAPSHOT	3
 #define CTRL_PKT_SNAPCMPLT	4
 #define CTRL_PKT_HEARTBEAT	5
+
+#define MEM_REMAP_TOPK		1
+#define MEM_REMAP_RAND		2
+
+typedef struct {
+	struct rte_hash*		hash[NUM_STAGES];
+	memory_t*				memalloc;
+	int						remap_algo;
+} memory_map_t;
 
 typedef struct {
 	int					num_apps_instances;

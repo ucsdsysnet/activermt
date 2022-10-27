@@ -36,6 +36,8 @@
 #define ACTIVE_STATE_INITIALIZING   2
 #define ACTIVE_STATE_SNAPSHOTTING   3
 #define ACTIVE_STATE_SNAPCOMPLETING 4
+#define ACTIVE_STATE_REMAPPING      5
+#define ACTIVE_STATE_REALLOCATING   6
 
 #include <stdio.h>
 #include <string.h>
@@ -140,6 +142,23 @@ typedef struct {
     int                 num_instr;
 } pnemonic_opcode_t;
 
+/*
+    Uses:
+    1. Data extraction from payload.
+    2. Address computation from extracted data.
+*/
+typedef struct {
+    int         valid;
+    int         key_offset;
+    int         key_length;
+    char        key[16];
+    int         value_offset;
+    char        value_eof;
+    int         data_field;
+    int         hash_field;
+    int         compute_hash;
+} activep4_datadef_t;
+
 typedef struct {
     uint8_t             is_active;
     uint8_t             status;
@@ -147,6 +166,7 @@ typedef struct {
     activep4_def_t*     program;
     memory_t            allocation;
     activep4_data_t     data;
+    activep4_datadef_t  payload_parser[AP4_DATA_LEN];
     uint32_t            ipv4_srcaddr;
 } activep4_context_t;
 

@@ -9,6 +9,8 @@ _eval/
 _ica/
 .vscode/
 clients/dpdk-client/build/
+local/
+sde
 
 CMake*
 bf_drivers*
