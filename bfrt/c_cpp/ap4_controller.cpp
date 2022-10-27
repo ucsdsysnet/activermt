@@ -1,6 +1,7 @@
 extern "C" {
 #include "common.h"
 #include <bfsys/bf_sal/bf_sys_intf.h>
+#include <bf_switchd/bf_switchd.h>
 }
 
 #include <bf_rt/bf_rt.hpp>
@@ -11,7 +12,6 @@ extern "C" {
 #include <bf_rt/bf_rt_table_data.hpp>
 #include <bf_rt/bf_rt_table.hpp>
 #include <bf_rt/bf_rt_table_operations.hpp>
-#include <bf_switchd/bf_switchd.h>
 #include <dvm/bf_drv_intf.h>
 #include <bfutils/clish/thread.h>
 
@@ -62,6 +62,18 @@ int main(int argc, char** argv) {
 
     printf("Heap 0 table type is %d with %ld entries.\n", (int)tblType, entry_count);
 
+    bfrt::BfRtTable::keyDataPairs key_data_pairs;
+    std::vector<std::unique_ptr<bfrt::BfRtTableKey>> keys(entry_count);
+    std::vector<std::unique_ptr<bfrt::BfRtTableData>> data(entry_count);
+
+    for(int i = 0; i < entry_count; ++i) {
+        bf_status = heap_s0->keyAllocate(&keys[i]);
+        assert(bf_status == BF_SUCCESS);
+        bf_status = heap_s0->dataAllocate(&data[i]);
+        assert(bf_status == BF_SUCCESS);
+        key_data_pairs.push_back(std::make_pair(keys[i].get(), data[i].get()));
+    }
+
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {
@@ -75,22 +87,10 @@ int main(int argc, char** argv) {
 
     session->beginBatch();
 
-    bf_status = idcTableOps->counterSyncSet(*session, dev_tgt, completion_cb, NULL);
+    bf_status = idcTableOps->registerSyncSet(*session, dev_tgt, completion_cb, NULL);
     assert(bf_status == BF_SUCCESS);
     bf_status = heap_s0->tableOperationsExecute(*idcTableOps);
     assert(bf_status == BF_SUCCESS);
-
-    bfrt::BfRtTable::keyDataPairs key_data_pairs;
-    std::vector<std::unique_ptr<bfrt::BfRtTableKey>> keys(entry_count);
-    std::vector<std::unique_ptr<bfrt::BfRtTableData>> data(entry_count);
-
-    for(int i = 0; i < entry_count; ++i) {
-        bf_status = heap_s0->keyAllocate(&keys[i]);
-        assert(bf_status == BF_SUCCESS);
-        bf_status = heap_s0->dataAllocate(&data[i]);
-        assert(bf_status == BF_SUCCESS);
-        key_data_pairs.push_back(std::make_pair(keys[i].get(), data[i].get()));
-    }
 
     std::unique_ptr<bfrt::BfRtTableKey> gIdcKey;
     std::unique_ptr<bfrt::BfRtTableData> gIdcData;
