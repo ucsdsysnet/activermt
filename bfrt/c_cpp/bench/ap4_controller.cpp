@@ -19,36 +19,33 @@ extern "C" {
 #include <time.h>
 #include <getopt.h>
 #include <unistd.h>
-#include <signal.h>
 
-#include "controller_common.h"
-#include "active_p4_tables.h"
+#define ALL_PIPES 0xffff
 
-#define MAX_KEYLEN      64
-#define MAX_MATCHKEYS   16
-#define MAX_ACTIONDATA  8
+static const char* p4_program_name      = "active";
+bf_rt_target_t dev_tgt                  = {0, ALL_PIPES};
 
-static int is_running = 0;
+struct timespec ts_start, ts_now;
+uint64_t elapsed_ns;
 
-/*struct timespec ts_start, ts_now;
-uint64_t elapsed_ns;*/
+int is_complete = 0;
 
-void completion_cb(const bf_rt_target_t &dev_tgt, void *cookie) {}
-
-static void interrupt_handler(int sig) {
-    is_running = 0;
-    printf("Exiting ... \n");
+void completion_cb(const bf_rt_target_t &dev_tgt, void *cookie) {
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
+    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+    printf("Sync operation complete after %ld ns.\n", elapsed_ns);
+    is_complete = 1;
 }
 
 int main(int argc, char** argv) {
 
-    signal(SIGINT, interrupt_handler);
-
-    is_running = 1;
-
-    /* Initialization. */
-
     parse_opts_and_switchd_init(argc, argv);
+
+    /*switchd_ctx.running_in_background = false;
+    switchd_ctx.is_sw_model = false;
+    switchd_ctx.is_asic = true;
+    switchd_ctx.shell_set_ucli = false;
+    bf_status_t status = bf_switchd_lib_init(&switchd_ctx);*/
 
     const bfrt::BfRtInfo *bfrtInfo = nullptr;
     std::shared_ptr<bfrt::BfRtSession> session;
@@ -57,23 +54,10 @@ int main(int argc, char** argv) {
     auto bf_status = devMgr.bfRtInfoGet(dev_tgt.dev_id, "active", &bfrtInfo);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
+    printf("Fetched info.\n");
+
     session = bfrt::BfRtSession::sessionCreate();
 
-    program_context_t ctxt = {0};
-    ctxt.bfrtInfo = bfrtInfo;
-    ctxt.session = session;
-
-    /* Setup tables. */
-
-    session->beginBatch();
-
-    add_routeback_entry(&ctxt, 1);
-    add_routeback_entry(&ctxt, 2);
-
-    session->sessionCompleteOperations();
-    session->endBatch(true);
-
-    #if 1
     const bfrt::BfRtTable* heap_s0 = nullptr;
     bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.heap_s0", &heap_s0);
     bf_sys_assert(bf_status == BF_SUCCESS);
@@ -107,10 +91,11 @@ int main(int argc, char** argv) {
     bf_status = idcTableOps->registerSyncSet(*session, dev_tgt, completion_cb, NULL);
     assert(bf_status == BF_SUCCESS);
 
-    // if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) { perror("clock_gettime"); exit(1); }
-
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) { perror("clock_gettime"); exit(1); }
     bf_status = heap_s0->tableOperationsExecute(*idcTableOps);
     assert(bf_status == BF_SUCCESS);
+
+    while(!is_complete);
 
     session->beginBatch();
 
@@ -145,13 +130,10 @@ int main(int argc, char** argv) {
     session->sessionCompleteOperations();
     session->endBatch(true);
 
-    /*if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
-    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);*/
+    // if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
+    // elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
 
-    // printf("Register sync time for %d entries %ld ns.\n", num_returned, elapsed_ns);
-    #endif
-
-    while(is_running);
+    printf("Register sync time for %d entries %ld ns.\n", num_returned, elapsed_ns);
 
     run_cli_or_cleanup();
 

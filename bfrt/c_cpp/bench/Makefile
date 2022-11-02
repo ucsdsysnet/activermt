@@ -1,8 +1,8 @@
 CC		= g++
 CCFLAGS	= -g
 
-HEADERS_DIR = .
-HEADERS = controller_common.h active_p4_tables.h
+HEADERS_DIR = ../../headers
+HEADERS = 
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 
 all: ap4_controller
