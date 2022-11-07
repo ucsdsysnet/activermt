@@ -64,6 +64,7 @@ class ActiveP4Controller:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
         self.erase = True
+        self.perform_coredump = False
         self.watchdog = True
         self.block_size = 8192
         self.num_stages_ingress = 10
@@ -628,8 +629,9 @@ class ActiveP4Controller:
         else:
             if self.DEBUG:
                 print("Initiating remote drain for FID", fid)
-            th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
-            th.start()
+            if self.perform_coredump:
+                th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
+                th.start()
             for tid in remaps:
                 print("Queueing FID %d for remapping ... " % tid)
                 self.remoteDrainInit.add(tid)

@@ -142,32 +142,18 @@ typedef struct {
     int                 num_instr;
 } pnemonic_opcode_t;
 
-/*
-    Uses:
-    1. Data extraction from payload.
-    2. Address computation from extracted data.
-*/
-typedef struct {
-    int         valid;
-    int         key_offset;
-    int         key_length;
-    char        key[16];
-    int         value_offset;
-    char        value_eof;
-    int         data_field;
-    int         hash_field;
-    int         compute_hash;
-} activep4_datadef_t;
-
 typedef struct {
     uint8_t             is_active;
     uint8_t             status;
     pnemonic_opcode_t*  instr_set;   
     activep4_def_t*     program;
     memory_t            allocation;
+    memory_t            membuf;
     activep4_data_t     data;
-    activep4_datadef_t  payload_parser[AP4_DATA_LEN];
     uint32_t            ipv4_srcaddr;
+    void                (*payload_parser)(char*, int, activep4_data_t*);
+    void                (*memory_consume)(memory_t*);
+    void                (*memory_reset)(memory_t*);
 } activep4_context_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {
@@ -406,6 +392,7 @@ static inline activep4_def_t* construct_memset_program(int fid, int stageId, pne
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
     while(i < NUM_STAGES - 1) {
         if(i >= stageId) {
+            add_instruction(&cache[stageId], instr_set, "MBR_LOAD_DATA_1"); i++;
             add_instruction(&cache[stageId], instr_set, "MEM_WRITE"); i++;
             add_instruction(&cache[stageId], instr_set, "NOP"); i++;
             break;
