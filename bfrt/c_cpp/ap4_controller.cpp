@@ -20,6 +20,9 @@ extern "C" {
 #include <getopt.h>
 #include <unistd.h>
 #include <signal.h>
+#include <arpa/inet.h>
+
+#include <unordered_map>
 
 #include "controller_common.h"
 #include "active_p4_tables.h"
@@ -46,6 +49,9 @@ int main(int argc, char** argv) {
 
     is_running = 1;
 
+    std::string basedir = "../..";
+    std::string config = "ptf";
+
     /* Initialization. */
 
     parse_opts_and_switchd_init(argc, argv);
@@ -59,9 +65,17 @@ int main(int argc, char** argv) {
 
     session = bfrt::BfRtSession::sessionCreate();
 
-    program_context_t ctxt = {0};
+    program_context_t ctxt;
     ctxt.bfrtInfo = bfrtInfo;
     ctxt.session = session;
+    ctxt.basedir = basedir;
+
+    routing_config_t routecfg;
+    
+    std::unordered_map<std::string, instrset_action_t> instruction_set;
+
+    read_routing_configuration(&ctxt, config, &routecfg);
+    read_instruction_set(&ctxt, &instruction_set);
 
     /* Setup tables. */
 
@@ -69,6 +83,14 @@ int main(int argc, char** argv) {
 
     add_routeback_entry(&ctxt, 1);
     add_routeback_entry(&ctxt, 2);
+
+    for(std::pair<std::string, int> element : routecfg.ip_config) {
+        auto ip_addr = element.first;
+        auto port = element.second;
+        in_addr ip_addr_bytes;
+        inet_aton(ip_addr.c_str(), &ip_addr_bytes);
+        //add_ipv4_host_entry(&ctxt, (uint8_t*)ip_addr_bytes.s_addr, port, routecfg.mac_config.at(port));
+    }
 
     session->sessionCompleteOperations();
     session->endBatch(true);
