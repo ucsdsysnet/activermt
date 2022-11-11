@@ -398,6 +398,7 @@ class ActiveP4Controller:
         self.remoteDrainInitiator = None
         self.save()
         self.mutex.release()
+        print("Allocation complete for FID", fid, "version", self.allocVersion[fid])
 
     def updateAllocation(self, fid, allocation, remaps):
 
@@ -497,8 +498,6 @@ class ActiveP4Controller:
                 allocTableActionSpecDefault(fid=fid, flag_allocated=1)
 
         bfrt.complete_operations()
-
-        print("Allocation complete for FID", fid)
 
     """def allocatorRandomized(self, constr):
 

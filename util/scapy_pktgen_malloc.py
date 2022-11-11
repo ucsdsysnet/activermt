@@ -14,10 +14,11 @@ else:
 
 from headers import *
 
-DEBUG = False
-FLAGS_REQ = 0x0010
-FLAGS_GET = 0x0020
-NUM_STAGES_IG = 10
+DEBUG           = False
+FLAGS_REQ       = 0x0010
+FLAGS_GET       = 0x0020
+NUM_STAGES_IG   = 10
+IFACE           = "veth0"
 
 timing = {
     'start' : 0,
@@ -60,12 +61,12 @@ def onPktRecv(p):
         #print("Allocation requested")
         pass
 
-def recvPackets(iface, dstMac):
+def recvPackets(iface):
     print("Sniffing packets on", iface)
     sniff(iface=iface, prn=onPktRecv)
 
 def sendPkt(fid, flags):
-    global FLAGS_REQ, FLAGS_GET
+    global FLAGS_REQ, FLAGS_GET, IFACE
     if flags == FLAGS_REQ:
         pkt = (
             Ether(dst="00:00:00:00:00:02", src='00:00:00:00:00:01')/
@@ -93,12 +94,12 @@ def sendPkt(fid, flags):
     else:
         print(uans)"""
 
-    sendp(pkt, iface="veth0", verbose=False)
+    sendp(pkt, iface=IFACE, verbose=False)
 
 ALLOCATION_TIMEOUT_SEC = 3
-MAX_APPS = 16
+MAX_APPS = 1
 
-th = threading.Thread(target=recvPackets, args=("veth1", "00:00:00:00:00:02", ))
+th = threading.Thread(target=recvPackets, args=(IFACE, ))
 th.start()
 
 memoryFull = False
@@ -108,7 +109,7 @@ for i in range(0, MAX_APPS):
     isAllocated = False
     fid = i + 1
     timing['start'] = time.time()
-    sendPkt(fid, FLAGS_REQ)
+    sendPkt(fid, FLAGS_GET)
     while not isAllocated:
         allocTime = time.time() - timing['start']
         if allocTime > ALLOCATION_TIMEOUT_SEC:

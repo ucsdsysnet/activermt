@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include <getopt.h>
 #include <regex.h>
+#include <ncurses.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
@@ -89,6 +90,12 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	pkt->data_len += ap4hlen;
 }
 
+/*
+	Context is defined by an application source-destination port pair.
+	Created when application traffic is seen on the interface. 
+	Assigned an instance from a pool of FIDs.
+	TODO: control traffic should be started only when an app context is created. 
+*/
 static inline activep4_context_t* get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt) {
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)bufptr;
 	uint32_t app_id = 0, instance_id = 0;
@@ -176,6 +183,8 @@ active_decap_filter(
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
+			uint16_t fid = ntohs(ap4ih->fid);
+			uint16_t seq = ntohs(ap4ih->seq);
 			// Strip packet of active headers.
 			offset += sizeof(activep4_ih);
 			if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
@@ -187,22 +196,90 @@ active_decap_filter(
 			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
 				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[k]->pkt_len);
 			}
-			for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
-				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
-			}
-			pkts[k]->pkt_len -= offset;
-			pkts[k]->data_len -= offset;
 			// Get active app context.
-			activep4_context_t* ctxt = get_app_context_from_packet(bufptr, apps_ctxt);
-			if(ctxt == NULL) continue;
+			activep4_context_t* ctxt = NULL;
+			for(int i = 0; i < apps_ctxt->num_apps_instances; i++) {
+				if(apps_ctxt->ctxt[i].program->fid == fid) ctxt = &apps_ctxt->ctxt[i];
+			}
+			if(ctxt == NULL) {
+				printf("Unable to extract app context!\n");
+				continue;
+			}
+			
 			// Update control state.
-			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC) && ctxt->status == ACTIVE_STATE_INITIALIZING) {
-				// ack for reqalloc.
-				ctxt->status = ACTIVE_STATE_ALLOCATING;
-				printf("[INFO] FID %d STATE %d\n", ctxt->program->fid, ctxt->status);
-			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED) && ctxt->status == ACTIVE_STATE_ALLOCATING) {
+			switch(ctxt->status) {
+				case ACTIVE_STATE_INITIALIZING:
+					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
+						ctxt->status = ACTIVE_STATE_ALLOCATING;
+					}
+					break;
+				case ACTIVE_STATE_REALLOCATING:
+				case ACTIVE_STATE_ALLOCATING:
+					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
+						if(ctxt->allocation.version != seq) {
+							activep4_malloc_res_t* ap4malloc = (activep4_malloc_res_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+							for(int i = 0; i < NUM_STAGES; i++) {
+								ctxt->allocation.sync_data[i].mem_start = ntohs(ap4malloc->mem_range[i].start);
+								ctxt->allocation.sync_data[i].mem_end = ntohs(ap4malloc->mem_range[i].end);
+								if((ctxt->allocation.sync_data[i].mem_end - ctxt->allocation.sync_data[i].mem_start) > 0) {
+									ctxt->allocation.valid_stages[i] = 1;
+									#ifdef DEBUG
+									printf("[ALLOCATION][%d] %d - %d\n", i, ctxt->allocation.sync_data[i].mem_start, ctxt->allocation.sync_data[i].mem_end);
+									#endif
+								}
+							}
+							ctxt->allocation.version = seq;
+							printf("[ALLOCATION] FID %d (ver %d)\n", fid, ctxt->allocation.version);
+						}
+						ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
+					}
+					break;
+				case ACTIVE_STATE_SNAPSHOTTING:
+					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
+						activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+						int mem_addr = ntohl(ap4data->data[0]);
+						int mem_data = ntohl(ap4data->data[1]);
+						int stage_id = ntohl(ap4data->data[2]);
+						ctxt->allocation.sync_data[stage_id].data[mem_addr] = mem_data;
+						ctxt->allocation.sync_data[stage_id].valid[mem_addr] = 1;
+						// printf("[SNAPACK] stage %d index %d flags %x\n", stage_id, mem_addr, flags);
+					}
+					break;
+				case ACTIVE_STATE_REMAPPING:
+					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
+						activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+						int mem_addr = ntohl(ap4data->data[0]);
+						int mem_data = ntohl(ap4data->data[1]);
+						int stage_id = ntohl(ap4data->data[2]);
+						ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;
+					}
+					break;
+				case ACTIVE_STATE_TRANSMITTING:
+					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED) && ctxt->allocation.version == seq) {
+						ctxt->allocation.sync_version = seq;
+						for(int i = 0; i < NUM_STAGES; i++) {
+							for(int j = 0; j < MAX_DATA; j++) {
+								ctxt->allocation.sync_data[i].valid[j] = 0;
+							}
+						}
+						ctxt->allocation.invalid = 1;
+						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
+					}
+					break;
+				case ACTIVE_STATE_SNAPCOMPLETING:
+					printf("FID %d Flags %x\n", fid, flags);
+					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ACK)) {
+						ctxt->status = ACTIVE_STATE_REALLOCATING;
+						printf("Snapshotting -> reallocating.\n");
+					}
+					break;
+				default:
+					break;
+			}
+			
+			/*if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED) && (ctxt->status == ACTIVE_STATE_ALLOCATING || ctxt->status == ACTIVE_STATE_REALLOCATING)) {
 				// TODO test.
-				if(ctxt->allocation.version != ntohs(ap4ih->seq)) {
+				if(ctxt->allocation.version != seq) {
 					activep4_malloc_res_t* ap4malloc = (activep4_malloc_res_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 					for(int i = 0; i < NUM_STAGES; i++) {
 						ctxt->allocation.sync_data[i].mem_start = ntohs(ap4malloc->mem_range[i].start);
@@ -214,7 +291,8 @@ active_decap_filter(
 							#endif
 						}
 					}
-					ctxt->allocation.version = ntohs(ap4ih->seq);
+					ctxt->allocation.version = seq;
+					printf("[ALLOCATION] FID %d (ver %d)\n", fid, ctxt->allocation.version);
 				}
 				if(ctxt->status == ACTIVE_STATE_ALLOCATING)
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
@@ -227,13 +305,14 @@ active_decap_filter(
 				#endif
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED)) {
 				// TODO test.
+				printf("[REMAP] FID %d, ver %d, seq %d, status %d, flags %x\n", fid, ctxt->allocation.version, seq, ctxt->status, flags);
 				if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ACK)) {
 					if(MEMMGMT_CLIENT)
 						ctxt->status = ACTIVE_STATE_REALLOCATING;
 					else
 						ctxt->status = ACTIVE_STATE_ALLOCATING;
-				} else if(MEMMGMT_CLIENT && ctxt->allocation.version == ntohs(ap4ih->seq) && ctxt->status != ACTIVE_STATE_SNAPSHOTTING) {
-					ctxt->allocation.sync_version = ntohs(ap4ih->seq);
+				} else if(MEMMGMT_CLIENT && ctxt->allocation.version == seq && ctxt->status != ACTIVE_STATE_SNAPSHOTTING) {
+					ctxt->allocation.sync_version = seq;
 					for(int i = 0; i < NUM_STAGES; i++) {
 						for(int j = 0; j < MAX_DATA; j++) {
 							ctxt->allocation.sync_data[i].valid[j] = 0;
@@ -243,7 +322,14 @@ active_decap_filter(
 					ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 				} else if(!MEMMGMT_CLIENT) {
 					ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
-				} else printf("[ERROR] Unknown transition state: %d\n", ctxt->status);
+				} else {
+					printf("[ERROR] Unknown transition state: %d\n", ctxt->status);
+				}
+				printf("[INFO] FID %d STATE %d\n", ctxt->program->fid, ctxt->status);
+			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC) && ctxt->status == ACTIVE_STATE_INITIALIZING) {
+				// ack for reqalloc.
+				ctxt->status = ACTIVE_STATE_ALLOCATING;
+				printf("[INFO] FID %d STATE %d\n", ctxt->program->fid, ctxt->status);
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED) && ctxt->status == ACTIVE_STATE_SNAPSHOTTING) {
 				// TODO test.
 				if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
@@ -253,6 +339,7 @@ active_decap_filter(
 					int stage_id = ntohl(ap4data->data[2]);
 					ctxt->allocation.sync_data[stage_id].data[mem_addr] = mem_data;
 					ctxt->allocation.sync_data[stage_id].valid[mem_addr] = 1;
+					printf("[SNAPACK] stage %d index %d flags %x\n", stage_id, mem_addr, flags);
 				}
 			} else if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && ctxt->status == ACTIVE_STATE_REMAPPING) {
 				activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
@@ -260,8 +347,15 @@ active_decap_filter(
 				int mem_data = ntohl(ap4data->data[1]);
 				int stage_id = ntohl(ap4data->data[2]);
 				ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;
+			}*/
+
+			for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
+				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
 			}
+			pkts[k]->pkt_len -= offset;
+			pkts[k]->data_len -= offset;
 		}
+		
 		// TODO update application state.
 	}	
 
@@ -373,10 +467,12 @@ lcore_main(void)
 		if(strcmp(dev_info.driver_name, "net_virtio_user") == 0) {
 			vdev[port] = 1;
 		}
-		if(rte_eth_dev_socket_id(port) > 0 && rte_eth_dev_socket_id(port) != (int)rte_socket_id())
+		if(rte_eth_dev_socket_id(port) > 0 && rte_eth_dev_socket_id(port) != (int)rte_socket_id()) {
 			printf("WARNING, port %u is on remote NUMA node to polling thread.\n\tPerformance will not be optimal.\n", port);
-		else
+		}
+		else {
 			printf("Port %d on local NUMA node.\n", port);
+		}
 		printf("Port %d Queues RX %d Tx %d\n", port, dev_info.nb_rx_queues, dev_info.nb_tx_queues);
 	}
 
@@ -392,8 +488,7 @@ lcore_main(void)
 			if (unlikely(nb_rx == 0))
 				continue;
 
-			uint16_t nb_tx = 0, nb_rx_filtered = 0;
-			//struct rte_mbuf* tx_bufs[BURST_SIZE];
+			uint16_t nb_tx = 0;
 
 			#ifdef DEBUG
 			printf("[PORT %d][RX] %d pkts.\n", port, nb_rx);
@@ -536,6 +631,39 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
+static inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr)); 
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_FLAG_GETALLOC | AP4FLAGMASK_FLAG_REMAPPED);
+	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->seq = 0;
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
 static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
@@ -549,7 +677,7 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED | AP4FLAGMASK_FLAG_REMAPPED);
 	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
@@ -706,27 +834,6 @@ static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-/*static inline void send_control_packet(int pkt_type, struct rte_mempool* mempool, int queue) {
-	
-	struct rte_mbuf* mbuf = NULL;
-
-	if((mbuf = rte_pktmbuf_alloc(mempool)) == NULL) return;
-
-	switch(pkt_type) {
-		case CTRL_PKT_REQALLOC:			break;
-		case CTRL_PKT_GETALLOC:
-			break;
-		case CTRL_PKT_SNAPSHOT:
-			break;
-		case CTRL_PKT_SNAPCMPLT:
-			break;
-		case CTRL_PKT_HEARTBEAT:
-			break;
-		default:
-			break;
-	}
-}*/
-
 static int
 lcore_control(void* arg) {
 
@@ -744,14 +851,14 @@ lcore_control(void* arg) {
 	memset(memsync_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
 	memset(memset_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
 
-	uint64_t last_sent = 0, now, elapsed_us;
+	uint64_t now, elapsed_us;
 	int snapshotting_in_progress = 0, remapping_in_progress = 0;
 
 	while(is_running) {
 		now = rte_rdtsc_precise();
-		elapsed_us = (double)(now - last_sent) * 1E6 / rte_get_tsc_hz();
 		for(int i = 0; i < ctrl->apps_ctxt->num_apps_instances; i++) {
 			activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[i];
+			elapsed_us = (double)(now - ctxt->ctrl_ts_lastsent) * 1E6 / rte_get_tsc_hz();
 			if(!ctxt->is_active) continue;
 			switch(ctxt->status) {
 				case ACTIVE_STATE_INITIALIZING:
@@ -760,25 +867,34 @@ lcore_control(void* arg) {
 						construct_reqalloc_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						last_sent = now;
+						ctxt->ctrl_ts_lastsent = now;
 					}
 					#ifdef DEBUG
 					//printf("Initializing ... \n");
 					#endif
 					break;
 				case ACTIVE_STATE_REALLOCATING:
+					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_reallocate_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+						ctxt->ctrl_ts_lastsent = now;
+					}
+					break;
 				case ACTIVE_STATE_ALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 						construct_getalloc_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						last_sent = now;
+						ctxt->ctrl_ts_lastsent = now;
 					}
 					break;
 				case ACTIVE_STATE_SNAPSHOTTING:
 					snapshotting_in_progress = 1;
 					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
+					printf("FID %d Snapshotting ... \n", ctxt->program->fid);
 					while(snapshotting_in_progress) {
 						snapshotting_in_progress = 0;
 						for(int i = 0; i < NUM_STAGES; i++) {
@@ -789,6 +905,7 @@ lcore_control(void* arg) {
 								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache);
 									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+									// printf("[SNAPSHOT] stage %d index %d \n", i, j);
 								}
 							}
 						}
@@ -796,7 +913,9 @@ lcore_control(void* arg) {
 					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
+					printf("FID %d Snapshot complete.\n", ctxt->program->fid);
 					ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
+					// ctxt->status = ACTIVE_STATE_REALLOCATING;
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
@@ -804,7 +923,7 @@ lcore_control(void* arg) {
 						construct_snapcomplete_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						last_sent = now;
+						ctxt->ctrl_ts_lastsent = now;
 					}
 					break;
 				case ACTIVE_STATE_REMAPPING:
@@ -817,6 +936,7 @@ lcore_control(void* arg) {
 						updated_region->sync_data[k].mem_end = ctxt->allocation.sync_data[k].mem_end;
 					}
 					reset_memory_region(updated_region, ctxt);
+					printf("FID %d Resetting ... \n", ctxt->program->fid);
 					while(remapping_in_progress) {
 						remapping_in_progress = 0;
 						for(int i = 0; i < NUM_STAGES; i++) {
@@ -832,6 +952,7 @@ lcore_control(void* arg) {
 						}
 					}
 					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+					printf("FID %d Reset complete.\n", ctxt->program->fid);
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
 				case ACTIVE_STATE_TRANSMITTING:
@@ -840,7 +961,9 @@ lcore_control(void* arg) {
 						construct_heartbeat_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						last_sent = now;
+						ctxt->ctrl_ts_lastsent = now;
+					} else {
+						rte_exit(EXIT_FAILURE, "Unable to allocate buffer for control packet.");
 					}
 					break;
 				default:
@@ -851,6 +974,14 @@ lcore_control(void* arg) {
 
 	return 0;
 }
+
+/*static int
+lcore_display(void* arg) {
+	while(is_running) {
+		update_screen_info();
+		rte_delay_us_sleep(1000);
+	}
+}*/
 
 void 
 read_activep4_config(char* config_filename, active_config_t* cfg) {
@@ -901,6 +1032,8 @@ main(int argc, char** argv)
 		printf("Usage: %s <iface> <config_file>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
+
+	// initialize_display();
 
 	is_running = 1;
 	signal(SIGINT, interrupt_handler);
@@ -981,6 +1114,7 @@ main(int argc, char** argv)
 			assert(ap4_ctxt[inst_id].program != NULL);
 			rte_memcpy(ap4_ctxt[inst_id].program, &active_function[i], sizeof(activep4_def_t));
 			ap4_ctxt[inst_id].program->fid = fid + j;
+			// TODO activate only when application traffic is seen.
 			ap4_ctxt[inst_id].is_active = true;
 			ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
 			//ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
@@ -1067,9 +1201,13 @@ main(int argc, char** argv)
 	}
 	#endif
 
+	// rte_eal_remote_launch(lcore_display, NULL, lcore_id);
+	// lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+
 	lcore_main();
 
 	rte_eal_cleanup();
+	// endwin();
 
 	return 0;
 }

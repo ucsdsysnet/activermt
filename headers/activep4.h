@@ -145,6 +145,7 @@ typedef struct {
 typedef struct {
     uint8_t             is_active;
     uint8_t             status;
+    uint64_t            ctrl_ts_lastsent;
     pnemonic_opcode_t*  instr_set;   
     activep4_def_t*     program;
     memory_t            allocation;
