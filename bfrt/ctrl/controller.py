@@ -466,6 +466,12 @@ class ActiveP4Controller:
                 allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
                 allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % stageId)
                 allocTableActionSpec(fid=tid, flag_allocated=1, offset_ig=memStartIg, size_ig=memEndIg, offset_eg=memStartEg, size_eg=memEndEg)
+
+        # update allocation version for remapped instances.
+        for tid in remaps:
+            self.allocVersion[tid] += 1
+            self.p4.Ingress.allocation.delete(fid=tid, flag_reqalloc=2)
+            self.p4.Ingress.allocation.add_with_allocated(fid=tid, flag_reqalloc=2, allocation_id=self.allocVersion[tid])
                 
         # build data structure for allocation table entries.
         print("allocation ::", allocation)

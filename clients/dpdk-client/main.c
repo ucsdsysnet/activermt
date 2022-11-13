@@ -214,6 +214,7 @@ active_decap_filter(
 					}
 					break;
 				case ACTIVE_STATE_REALLOCATING:
+					// printf("[INFO] FID %d STATE %d Flags %x\n", ctxt->program->fid, ctxt->status, flags);
 				case ACTIVE_STATE_ALLOCATING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 						if(ctxt->allocation.version != seq) {
@@ -230,8 +231,9 @@ active_decap_filter(
 							}
 							ctxt->allocation.version = seq;
 							printf("[ALLOCATION] FID %d (ver %d)\n", fid, ctxt->allocation.version);
+							// TODO
+							ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
 						}
-						ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
 					}
 					break;
 				case ACTIVE_STATE_SNAPSHOTTING:
@@ -267,10 +269,10 @@ active_decap_filter(
 					}
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
-					printf("FID %d Flags %x\n", fid, flags);
+					printf("[SNAPCMPLT] FID %d Flags %x\n", fid, flags);
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ACK)) {
-						ctxt->status = ACTIVE_STATE_REALLOCATING;
-						printf("Snapshotting -> reallocating.\n");
+						// ctxt->status = ACTIVE_STATE_REALLOCATING;
+						// printf("Snapshotting -> reallocating.\n");
 					}
 					break;
 				default:
@@ -640,53 +642,20 @@ static inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_i
 		printf("Unable to get device MAC address!\n");
 		return;
 	}
-	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr)); 
-	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
-	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
-	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_FLAG_GETALLOC | AP4FLAGMASK_FLAG_REMAPPED);
-	ap4ih->fid = htons(ctxt->program->fid);
-	ap4ih->seq = 0;
-	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-	iph->version = 4;
-	iph->ihl = 5;
-	iph->type_of_service = 0;
-	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
-	iph->packet_id = 0;
-	iph->fragment_offset = 0;
-	iph->time_to_live = 64;
-	iph->next_proto_id = 0;
-	iph->hdr_checksum = 0;
-	iph->src_addr = ctxt->ipv4_srcaddr;
-	iph->dst_addr = ctxt->ipv4_srcaddr;
-	iph->hdr_checksum = rte_ipv4_cksum(iph);
-	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
-	mbuf->data_len = mbuf->pkt_len;
-}
-
-static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache) {
-	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
-	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
-	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
-	struct rte_ether_addr eth_addr;
-	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
-		printf("Unable to get device MAC address!\n");
-		return;
-	}
 	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED | AP4FLAGMASK_FLAG_REMAPPED);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK | AP4FLAGMASK_FLAG_GETALLOC);
 	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
-	ap4data->data[0] = htonl((uint32_t)mem_addr);
-	ap4data->data[2] = htonl((uint32_t)stage_id);
-	activep4_def_t* program = construct_memsync_program(ctxt->program->fid, stage_id, ctxt->instr_set, memsync_cache);
+	activep4_def_t* program = NULL;
+	program = (activep4_def_t*)rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+	construct_nop_program(program, ctxt->instr_set, 0);
 	if(program == NULL) {
-		printf("Could not construct memsync program!\n");
+		rte_exit(EXIT_FAILURE, "Could not construct completion program!\n");
 		return;
 	}
 	for(int i = 0; i < program->proglen; i++) {
@@ -711,7 +680,60 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache, bool complete) {
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = (complete) ? htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK) : htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_INITIATED);
+	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->seq = 0;
+	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
+	activep4_def_t* program = NULL;
+	if(complete) {
+		program = (activep4_def_t*)rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+		construct_nop_program(program, ctxt->instr_set, 0);
+	} else {
+		ap4data->data[0] = htonl((uint32_t)mem_addr);
+		ap4data->data[2] = htonl((uint32_t)stage_id);
+		program = construct_memsync_program(ctxt->program->fid, stage_id, ctxt->instr_set, memsync_cache);
+	}
+	if(program == NULL) {
+		rte_exit(EXIT_FAILURE, "Could not construct memsync/completion program!\n");
+		return;
+	}
+	for(int i = 0; i < program->proglen; i++) {
+		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
+		instr->flags = 0;
+		instr->opcode = program->code[i].opcode;
+	}
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
+/*static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -742,7 +764,7 @@ static inline void construct_snapcomplete_packet(struct rte_mbuf* mbuf, int port
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
-}
+}*/
 
 static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
@@ -876,7 +898,14 @@ lcore_control(void* arg) {
 				case ACTIVE_STATE_REALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-						construct_reallocate_packet(mbuf, ctrl->port_id, ctxt);
+						// construct_reallocate_packet(mbuf, ctrl->port_id, ctxt);
+						construct_getalloc_packet(mbuf, ctrl->port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+						ctxt->ctrl_ts_lastsent = now;
+					}
+					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+						construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, 0, 0, NULL, true);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
@@ -903,7 +932,7 @@ lcore_control(void* arg) {
 								if(ctxt->allocation.sync_data[i].valid[j]) continue;
 								snapshotting_in_progress = 1;
 								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache);
+									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache, false);
 									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 									// printf("[SNAPSHOT] stage %d index %d \n", i, j);
 								}
@@ -914,16 +943,18 @@ lcore_control(void* arg) {
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
 					printf("FID %d Snapshot complete.\n", ctxt->program->fid);
-					ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
-					// ctxt->status = ACTIVE_STATE_REALLOCATING;
+					// ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
+					ctxt->status = ACTIVE_STATE_REALLOCATING;
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-						construct_snapcomplete_packet(mbuf, ctrl->port_id, ctxt);
+						// construct_snapcomplete_packet(mbuf, ctrl->port_id, ctxt);
+						construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, 0, 0, NULL, true);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
+						// printf("FID %d sending snapcomplete packet ... \n", ctxt->program->fid);
 					}
 					break;
 				case ACTIVE_STATE_REMAPPING:
