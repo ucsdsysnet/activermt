@@ -12,6 +12,7 @@
 #include <netinet/ip.h>
 
 #define BURST_SIZE      32
+#define MAX_KEYS        65536
 #define DPORT           5678
 
 #include "../../../../headers/stats.h"
@@ -75,7 +76,7 @@ int main(int argc, char** argv) {
     int sockfd;
     struct sockaddr_in addr;
     struct mmsghdr mhdr[BURST_SIZE];
-    struct iovec msg[1];
+    struct iovec msg[MAX_KEYS];
     int retval;
 
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -91,18 +92,19 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    memset(&msg, 0, sizeof(msg));
-    msg[0].iov_base = "GET\nfoo\n";
-    msg[0].iov_len = strlen(msg[0].iov_base);
-    
-    memset(&mhdr, 0, sizeof(mhdr));
-    for(int i = 0; i < BURST_SIZE; i++) {
-        mhdr[i].msg_hdr.msg_iov = msg;
-        mhdr[i].msg_hdr.msg_iovlen = 1;
-    }
-
     fd_set wr_set;
     int ret;
+    uint32_t keys[MAX_KEYS];
+
+    // TODO update with distribution.
+    memset(&msg, 0, sizeof(msg));
+    for(int i = 0; i < MAX_KEYS; i++) {
+        keys[i] = i;
+        msg[i].iov_base = &keys[i];
+        msg[i].iov_len = sizeof(uint32_t);
+    }
+
+    int key_current = 0;
 
     while(1) {
 
@@ -115,6 +117,13 @@ int main(int argc, char** argv) {
         if(ret < 0) {
             perror("select()");
             exit(1);
+        }
+        
+        memset(&mhdr, 0, sizeof(mhdr));
+        for(int i = 0; i < BURST_SIZE; i++) {
+            mhdr[i].msg_hdr.msg_iov = &msg[key_current];
+            mhdr[i].msg_hdr.msg_iovlen = 1;
+            key_current = (key_current + 1) % MAX_KEYS;
         }
 
         if(FD_ISSET(sockfd, &wr_set)) {

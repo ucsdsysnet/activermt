@@ -116,6 +116,7 @@ typedef struct {
     uint16_t        sync_version;
     uint64_t        sync_start_time;
     uint64_t        sync_end_time;
+    void*           hash_function;
 } memory_t;
 
 typedef struct {
@@ -152,7 +153,7 @@ typedef struct {
     memory_t            membuf;
     activep4_data_t     data;
     uint32_t            ipv4_srcaddr;
-    void                (*payload_parser)(char*, int, activep4_data_t*);
+    void                (*payload_parser)(char*, int, activep4_data_t*, memory_t*);
     void                (*memory_consume)(memory_t*);
     void                (*memory_reset)(memory_t*);
 } activep4_context_t;
