@@ -35,7 +35,7 @@ def sendActivePacket(fid, bytecode, arg_0=0, arg_1=0, arg_2=0, arg_3=0, iface="v
     )
     for i in range(0, len(bytecode)):
         pkt /= ActiveInstruction(opcode=bytecode[i]['opcode'], goto=bytecode[i]['goto'])
-    pkt /= ActiveInstruction(opcode=0)
+    # pkt /= ActiveInstruction(opcode=0)
     pkt /= IP(src="10.0.0.1", dst="10.0.0.2", proto=0x06)
     pkt /= TCP()
     sendp(pkt, iface=iface, verbose=False)

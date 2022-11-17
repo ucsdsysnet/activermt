@@ -82,7 +82,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 
 	for(int i = 0; i < ap4_ctxt->program->proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
-		instr->flags = 0;
+		instr->flags = ap4_ctxt->program->code[i].flags;
 		instr->opcode = ap4_ctxt->program->code[i].opcode;
 	}
 
@@ -231,6 +231,7 @@ active_decap_filter(
 								}
 							}
 							ctxt->allocation.version = seq;
+							ctxt->allocation.hash_function = NULL;
 							printf("[ALLOCATION] FID %d (ver %d)\n", fid, ctxt->allocation.version);
 							// TODO
 							ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
@@ -949,14 +950,15 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc) {
 	if(payload_length < sizeof(uint32_t)) return;
 	uint32_t* key = (uint32_t*)payload;
-	int stage_id_key = 3, stage_id_value = 6;
+	int stage_id_key = 2, stage_id_value = 5;
 	uint16_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
 	uint16_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
 	int memory_size = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
 	if(memory_size < 2) memory_size = MAX_DATA;
 	update_addressing_hashtable(alloc, memory_size);
 	struct rte_hash* hash = (struct rte_hash*)alloc->hash_function;
-	uint32_t addr = (uint32_t)rte_hash_hash(hash, key);
+	uint32_t addr = (uint32_t)rte_hash_add_key(hash, key);
+	// printf("Key %d addr %d\n", *key, addr);
 	ap4data->data[0] = 0;
 	ap4data->data[1] = *key;
 	ap4data->data[2] = addr;
@@ -968,7 +970,7 @@ void memory_consume_cache(memory_t* mem) {}
 void memory_reset_cache(memory_t* mem) {
 	for(int i = 0; i < NUM_STAGES; i++)
 		memset(&mem->sync_data[i], 0, MAX_DATA);
-	int stage_id_key = 3, stage_id_value = 6;
+	int stage_id_key = 2, stage_id_value = 5;
 	char* hash_name = "cache_addr_hash";
 	if(mem->valid_stages[stage_id_key] && mem->valid_stages[stage_id_value]) {
 		uint16_t memsize_keys = mem->sync_data[stage_id_key].mem_end - mem->sync_data[stage_id_key].mem_start + 1;
@@ -977,7 +979,7 @@ void memory_reset_cache(memory_t* mem) {
 		update_addressing_hashtable(mem, memsize);
 		struct rte_hash* hash = (struct rte_hash*)mem->hash_function;
 		for(int i = 0; i < memsize; i++) {
-			uint32_t addr = (uint32_t)rte_hash_hash(hash, &i);
+			uint32_t addr = (uint32_t)rte_hash_add_key(hash, &i);
 			mem->sync_data[stage_id_key].data[addr] = i;
 			mem->sync_data[stage_id_value].data[addr] = i;
 		}

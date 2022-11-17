@@ -15,6 +15,10 @@ MBR_LOAD_DATA_0,mbr_load_d0
 MBR_LOAD_DATA_1,mbr_load_d1
 MBR_LOAD_DATA_2,mbr_load_d2
 MBR_LOAD_DATA_3,mbr_load_d3
+MBR2_LOAD_DATA_0,mbr2_load_d0
+MBR2_LOAD_DATA_1,mbr2_load_d1
+MBR2_LOAD_DATA_2,mbr2_load_d2
+MBR2_LOAD_DATA_3,mbr2_load_d3
 MAR_LOAD_DATA_0,mar_load_d0
 MAR_LOAD_DATA_1,mar_load_d1
 MAR_LOAD_DATA_2,mar_load_d2
@@ -23,10 +27,6 @@ DATA_0_LOAD_MBR,d0_load_mbr
 DATA_1_LOAD_MBR,d1_load_mbr
 DATA_2_LOAD_MBR,d2_load_mbr
 DATA_3_LOAD_MBR,d3_load_mbr
-DATA_0_LOAD_MAR,d0_load_mar
-DATA_1_LOAD_MAR,d1_load_mar
-DATA_2_LOAD_MAR,d2_load_mar
-DATA_3_LOAD_MAR,d3_load_mar
 MBR_EQUALS_MBR2,mbr1_equals_mbr2
 MAX,max_mbr_mbr2
 MIN,min_mbr1_mbr2
@@ -59,4 +59,5 @@ LOAD_QDELAY,fetch_qdelay
 LOAD_QUEUE,fetch_queue
 LOAD_PKTCOUNT,fetch_pktcount
 MBR_LOAD,NULL
+MBR2_LOAD,NULL
 MAR_LOAD,NULL

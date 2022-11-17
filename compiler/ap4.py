@@ -38,7 +38,7 @@ class ActiveProgram:
             pnemonic = m[0]
             self.OPCODES[pnemonic] = opcode
             self.MNEMONICS[opcode] = pnemonic
-        self.LOAD_INSTR = [ 'MBR_LOAD', 'MAR_LOAD' ]
+        self.LOAD_INSTR = [ 'MBR_LOAD', 'MAR_LOAD', 'MBR2_LOAD' ]
         self.regex_data = re.compile('DATA_([0-9])')
         self.program = []
         self.args = {}

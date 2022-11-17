@@ -1375,58 +1375,50 @@ action max_mbr_mbr2() {
 action mar_load_d0() {
     hdr.meta.mar = hdr.data.data_0;
 }
-
-action d0_load_mar() {
-    hdr.data.data_0 = hdr.meta.mar;
-}
 action mar_load_d1() {
     hdr.meta.mar = hdr.data.data_1;
-}
-
-action d1_load_mar() {
-    hdr.data.data_1 = hdr.meta.mar;
 }
 action mar_load_d2() {
     hdr.meta.mar = hdr.data.data_2;
 }
-
-action d2_load_mar() {
-    hdr.data.data_2 = hdr.meta.mar;
-}
 action mar_load_d3() {
     hdr.meta.mar = hdr.data.data_3;
-}
-
-action d3_load_mar() {
-    hdr.data.data_3 = hdr.meta.mar;
 }
 action mbr_load_d0() {
     hdr.meta.mbr = hdr.data.data_0;
 }
-
 action d0_load_mbr() {
     hdr.data.data_0 = hdr.meta.mbr;
 }
 action mbr_load_d1() {
     hdr.meta.mbr = hdr.data.data_1;
 }
-
 action d1_load_mbr() {
     hdr.data.data_1 = hdr.meta.mbr;
 }
 action mbr_load_d2() {
     hdr.meta.mbr = hdr.data.data_2;
 }
-
 action d2_load_mbr() {
     hdr.data.data_2 = hdr.meta.mbr;
 }
 action mbr_load_d3() {
     hdr.meta.mbr = hdr.data.data_3;
 }
-
 action d3_load_mbr() {
     hdr.data.data_3 = hdr.meta.mbr;
+}
+action mbr2_load_d0() {
+    hdr.meta.mbr2 = hdr.data.data_0;
+}
+action mbr2_load_d1() {
+    hdr.meta.mbr2 = hdr.data.data_1;
+}
+action mbr2_load_d2() {
+    hdr.meta.mbr2 = hdr.data.data_2;
+}
+action mbr2_load_d3() {
+    hdr.meta.mbr2 = hdr.data.data_3;
 }
 action jump_s0() {
     hdr.meta.disabled = 1;
@@ -2117,13 +2109,9 @@ table instruction_0 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2132,6 +2120,10 @@ table instruction_0 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s0;
 		attempt_rejoin_s0;
 		memory_read_s0;
@@ -2216,13 +2208,9 @@ table instruction_1 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2231,6 +2219,10 @@ table instruction_1 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s1;
 		attempt_rejoin_s1;
 		memory_read_s1;
@@ -2315,13 +2307,9 @@ table instruction_2 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2330,6 +2318,10 @@ table instruction_2 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s2;
 		attempt_rejoin_s2;
 		memory_read_s2;
@@ -2414,13 +2406,9 @@ table instruction_3 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2429,6 +2417,10 @@ table instruction_3 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s3;
 		attempt_rejoin_s3;
 		memory_read_s3;
@@ -2513,13 +2505,9 @@ table instruction_4 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2528,6 +2516,10 @@ table instruction_4 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s4;
 		attempt_rejoin_s4;
 		memory_read_s4;
@@ -2612,13 +2604,9 @@ table instruction_5 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2627,6 +2615,10 @@ table instruction_5 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s5;
 		attempt_rejoin_s5;
 		memory_read_s5;
@@ -2711,13 +2703,9 @@ table instruction_6 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2726,6 +2714,10 @@ table instruction_6 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s6;
 		attempt_rejoin_s6;
 		memory_read_s6;
@@ -2810,13 +2802,9 @@ table instruction_7 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2825,6 +2813,10 @@ table instruction_7 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s7;
 		attempt_rejoin_s7;
 		memory_read_s7;
@@ -2909,13 +2901,9 @@ table instruction_8 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -2924,6 +2912,10 @@ table instruction_8 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s8;
 		attempt_rejoin_s8;
 		memory_read_s8;
@@ -3008,13 +3000,9 @@ table instruction_9 {
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
 		mar_load_d0;
-		d0_load_mar;
 		mar_load_d1;
-		d1_load_mar;
 		mar_load_d2;
-		d2_load_mar;
 		mar_load_d3;
-		d3_load_mar;
 		mbr_load_d0;
 		d0_load_mbr;
 		mbr_load_d1;
@@ -3023,6 +3011,10 @@ table instruction_9 {
 		d2_load_mbr;
 		mbr_load_d3;
 		d3_load_mbr;
+		mbr2_load_d0;
+		mbr2_load_d1;
+		mbr2_load_d2;
+		mbr2_load_d3;
 		jump_s9;
 		attempt_rejoin_s9;
 		memory_read_s9;
