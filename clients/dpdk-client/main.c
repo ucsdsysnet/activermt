@@ -34,6 +34,8 @@
 
 #define MEMMGMT_CLIENT		1
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
+#define MAX_SAMPLES_CACHE	100000
+#define STATS_ITVL_MS_CACHE	1
 
 static struct rte_eth_dev_tx_buffer* buffer;
 static uint64_t drop_counter;
@@ -78,7 +80,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	}
 
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-	ap4_ctxt->payload_parser(payload, payload_length, ap4data, &ap4_ctxt->allocation);
+	ap4_ctxt->payload_parser(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
 
 	for(int i = 0; i < ap4_ctxt->program->proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
@@ -127,14 +129,6 @@ static inline activep4_context_t* get_app_context_from_packet(char* bufptr, acti
 	return ctxt;
 }
 
-/* 	Extract data from packet payload.
-
-	data[x] = extract(pkt.payload) | 0
-	extract: regex - (ID_STR)(SEP)(VALUE)
-
-*/
-static inline void update_data_fields(activep4_context_t* ctxt) {}
-
 static uint16_t
 active_encap_filter(
 	uint16_t port_id __rte_unused, 
@@ -154,7 +148,6 @@ active_encap_filter(
 		if(ctxt == NULL) continue;
 		switch(ctxt->status) {
 			case ACTIVE_STATE_TRANSMITTING:
-				// TODO update program data.
 				insert_active_program_headers(ctxt, pkts[i]);
 				break;
 			default:
@@ -182,6 +175,7 @@ active_decap_filter(
 		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+			activep4_data_t* ap4data = NULL;
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
 			uint16_t fid = ntohs(ap4ih->fid);
@@ -189,6 +183,7 @@ active_decap_filter(
 			// Strip packet of active headers.
 			offset += sizeof(activep4_ih);
 			if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
+				ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 				offset += sizeof(activep4_data_t);
 			}
 			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
@@ -235,6 +230,9 @@ active_decap_filter(
 							printf("[ALLOCATION] FID %d (ver %d)\n", fid, ctxt->allocation.version);
 							// TODO
 							ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
+							#ifdef DEBUG
+							printf("[DEBUG] state %d\n", ctxt->status);
+							#endif
 						}
 					}
 					break;
@@ -251,11 +249,14 @@ active_decap_filter(
 					break;
 				case ACTIVE_STATE_REMAPPING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
-						activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-						int mem_addr = ntohl(ap4data->data[0]);
-						int mem_data = ntohl(ap4data->data[1]);
-						int stage_id = ntohl(ap4data->data[2]);
-						ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;
+						if(ap4data != NULL) {
+							int mem_addr = ntohl(ap4data->data[0]);
+							int mem_data = ntohl(ap4data->data[1]);
+							int stage_id = ntohl(ap4data->data[2]);
+							ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;	
+						} else {
+							printf("[ERROR] unable to parse args!\n");
+						}
 					}
 					break;
 				case ACTIVE_STATE_TRANSMITTING:
@@ -269,6 +270,9 @@ active_decap_filter(
 						ctxt->allocation.invalid = 1;
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 					}
+					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED))
+						ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context);
+					// printf("pkt length %d\n", pkts[k]->pkt_len);
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
 					printf("[SNAPCMPLT] FID %d Flags %x\n", fid, flags);
@@ -286,6 +290,9 @@ active_decap_filter(
 			}
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
+		} else {
+			printf("[INFO] Non active packet: ");
+			print_pktinfo(bufptr, pkts[k]->pkt_len);
 		}
 		
 		// TODO update application state.
@@ -676,7 +683,7 @@ static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_MARKED);
 	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
@@ -947,28 +954,71 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 
 /* Cache application specific. */
 
-void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc) {
+typedef struct {
+	uint64_t	last_ts;
+	uint64_t	ts[MAX_SAMPLES_CACHE];
+	uint32_t	rx_hits[MAX_SAMPLES_CACHE];
+	uint32_t	rx_total[MAX_SAMPLES_CACHE];
+	uint32_t	num_samples;
+} cache_context_t;
+
+void shutdown_cache(int id, void* context) {
+	cache_context_t* cache_ctxt = (cache_context_t*)context;
+	if(cache_ctxt->num_samples == 0) return;
+	char filename[50];
+	sprintf(filename, "cache_stats_%d.csv", id);
+	FILE* fp = fopen(filename, "w");
+	for(int i = 0; i < cache_ctxt->num_samples; i++) {
+		fprintf(fp, "%u,%u\n", cache_ctxt->rx_hits[i], cache_ctxt->rx_total[i]);
+	}
+	fclose(fp);
+}
+
+void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc, void* context) {
 	if(payload_length < sizeof(uint32_t)) return;
+	memset(ap4data, 0, sizeof(activep4_data_t));
 	uint32_t* key = (uint32_t*)payload;
 	int stage_id_key = 2, stage_id_value = 5;
 	uint16_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
 	uint16_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
 	int memory_size = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
-	if(memory_size < 2) memory_size = MAX_DATA;
-	update_addressing_hashtable(alloc, memory_size);
-	struct rte_hash* hash = (struct rte_hash*)alloc->hash_function;
-	uint32_t addr = (uint32_t)rte_hash_add_key(hash, key);
+	if(memory_size < 2) return;
+	// update_addressing_hashtable(alloc, memory_size);
+	// struct rte_hash* hash = (struct rte_hash*)alloc->hash_function;
+	// uint32_t addr = (uint32_t)rte_hash_add_key(hash, key);
+	uint16_t addr = (uint16_t)*key + alloc->sync_data[stage_id_key].mem_start;
 	// printf("Key %d addr %d\n", *key, addr);
-	ap4data->data[0] = 0;
-	ap4data->data[1] = *key;
-	ap4data->data[2] = addr;
-	ap4data->data[3] = 0;
+	ap4data->data[1] = htonl(*key);
+	ap4data->data[2] = htonl(addr);
+}
+
+void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void* context) {
+	if(ap4args == NULL) {
+		printf("[ERROR] cache arguments not present!\n");
+		return;
+	}
+	cache_context_t* cache_ctxt = (cache_context_t*)context;
+	uint32_t cached_value = ntohl(ap4args->data[0]);
+	uint32_t key = ntohl(ap4args->data[1]);
+	if(cached_value != 0) cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
+	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
+	uint64_t now = rte_rdtsc_precise();
+	uint64_t elapsed_ms = (double)(now - cache_ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
+	if(elapsed_ms >= STATS_ITVL_MS_CACHE && cache_ctxt->num_samples < MAX_SAMPLES_CACHE) {
+		printf("[DEBUG] cache hits %u total %u\n", cache_ctxt->rx_hits[cache_ctxt->num_samples], cache_ctxt->rx_total[cache_ctxt->num_samples]);
+		cache_ctxt->last_ts = now;
+		cache_ctxt->ts[cache_ctxt->num_samples] = now;
+		cache_ctxt->num_samples++;
+	}
+	#ifdef DEBUG
+	printf("Cache response: flags %x args (%u,%u,%u,%u)\n", ntohs(ap4ih->flags), ntohl(ap4args->data[0]), ntohl(ap4args->data[1]), ntohl(ap4args->data[2]), ntohl(ap4args->data[3]));
+	#endif
 }
 
 void memory_consume_cache(memory_t* mem) {}
 
 void memory_reset_cache(memory_t* mem) {
-	for(int i = 0; i < NUM_STAGES; i++)
+	/*for(int i = 0; i < NUM_STAGES; i++)
 		memset(&mem->sync_data[i], 0, MAX_DATA);
 	int stage_id_key = 2, stage_id_value = 5;
 	char* hash_name = "cache_addr_hash";
@@ -983,7 +1033,7 @@ void memory_reset_cache(memory_t* mem) {
 			mem->sync_data[stage_id_key].data[addr] = i;
 			mem->sync_data[stage_id_value].data[addr] = i;
 		}
-	}
+	}*/
 }
 
 int
@@ -1058,6 +1108,12 @@ main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
+	cache_context_t* cache_ctxt = (cache_context_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(cache_context_t), 0);
+	if(cache_ctxt == NULL) {
+		printf("Unable to allocate memory for cache context!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	active_apps_t apps_ctxt;
 	memset(&apps_ctxt, 0, sizeof(active_apps_t));
 
@@ -1068,22 +1124,22 @@ main(int argc, char** argv)
 		int fid = cfg.fid[i];
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
 		read_active_function(&active_function[i], active_dir, active_program_name);
-		// TODO data argument definitions.
 		for(int j = 0; j < cfg.num_instances[i]; j++) {
 			ap4_ctxt[inst_id].instr_set = &instr_set;
 			ap4_ctxt[inst_id].program = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
 			assert(ap4_ctxt[inst_id].program != NULL);
 			rte_memcpy(ap4_ctxt[inst_id].program, &active_function[i], sizeof(activep4_def_t));
 			ap4_ctxt[inst_id].program->fid = fid + j;
-			// TODO activate only when application traffic is seen.
 			ap4_ctxt[inst_id].is_active = false;
-			// ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
-			ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
+			ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
+			// ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
 			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
-			// TODO generalize.
+			ap4_ctxt[inst_id].app_context = &cache_ctxt[inst_id];
 			ap4_ctxt[inst_id].payload_parser = payload_parser_cache;
+			ap4_ctxt[inst_id].rx_handler = active_rx_handler_cache;
 			ap4_ctxt[inst_id].memory_consume = memory_consume_cache;
 			ap4_ctxt[inst_id].memory_reset = memory_reset_cache;
+			ap4_ctxt[inst_id].shutdown = shutdown_cache;
 			apps_ctxt.app_id[inst_id] = cfg.app_id[i];
 			printf("ActiveP4 context initialized for %s instance %d.\n", active_program_name, j);
 			inst_id++;
@@ -1166,6 +1222,10 @@ main(int argc, char** argv)
 	// lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
 
 	lcore_main();
+
+	for(int i = 0; i < apps_ctxt.num_apps_instances; i++) {
+		apps_ctxt.ctxt[i].shutdown(i, apps_ctxt.ctxt[i].app_context);
+	}
 
 	rte_eal_cleanup();
 	// endwin();

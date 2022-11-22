@@ -58,7 +58,8 @@ static inline void print_pktinfo(char* buf, int pktlen) {
     print_hwaddr(eth->h_source);
     printf(" -> ");
     print_hwaddr(eth->h_dest);
-    printf("]\n");
+    printf("] [%x] ", iph->protocol);
+    printf("\n");
 }
 
 static inline void initialize_display() {

@@ -153,9 +153,12 @@ typedef struct {
     memory_t            membuf;
     activep4_data_t     data;
     uint32_t            ipv4_srcaddr;
-    void                (*payload_parser)(char*, int, activep4_data_t*, memory_t*);
+    void*               app_context;
+    void                (*payload_parser)(char*, int, activep4_data_t*, memory_t*, void*);
+    void                (*rx_handler)(activep4_ih*, activep4_data_t*, void*);
     void                (*memory_consume)(memory_t*);
     void                (*memory_reset)(memory_t*);
+    void                (*shutdown)(int, void*);
 } activep4_context_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {

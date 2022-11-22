@@ -14,6 +14,8 @@
 
 #include "../../headers/activep4.h"
 
+// #define DEBUG
+
 #define RX_RING_SIZE 	1024
 #define TX_RING_SIZE 	1024
 
@@ -135,15 +137,27 @@ process_packet(char* pkt, int pktlen) {
 
 	int ip_offset = 0;
 
-	if(ntohs(eth_hdr->ether_type) == IP_PROTO_AP4) {
+	uint16_t ether_type = ntohs(eth_hdr->ether_type);
+
+	#ifdef DEBUG
+	printf("[DEBUG] Ethertype %x active packet.\n", ether_type);
+	#endif
+
+	if(ether_type == IP_PROTO_AP4) {
 		activep4_ih* ap4_ih = (activep4_ih*)pkt;
 		pkt += sizeof(activep4_ih);
 		ip_offset += sizeof(activep4_ih);
-		if(ntohs(ap4_ih->flags)& AP4FLAGMASK_OPT_ARGS) {
+		uint16_t flags = ntohs(ap4_ih->flags);
+		#ifdef DEBUG
+		printf("[DEBUG] Active flags %x\n", flags);
+		#endif
+		if(flags & AP4FLAGMASK_OPT_ARGS) {
+			activep4_data_t* ap4_args = (activep4_data_t*)pkt;
+			printf("[DEBUG] active args (%u,%u,%u,%u)\n", ntohl(ap4_args->data[0]), ntohl(ap4_args->data[1]), ntohl(ap4_args->data[2]), ntohl(ap4_args->data[3]));
 			pkt += sizeof(activep4_data_t);
 			ip_offset += sizeof(activep4_data_t);
 		}
-		eth_hdr->ether_type = htons(IPPROTO_IP);
+		// eth_hdr->ether_type = htons(IPPROTO_IP);
 	}
 
 	// IPv4
@@ -162,11 +176,14 @@ process_packet(char* pkt, int pktlen) {
 
 	// Update packet data
 
-	int ether_len = sizeof(struct rte_ether_hdr);
-	for(int i = 0; i < pktlen - ether_len - ip_offset; i++)
-		updatedpkt[ether_len + i] = updatedpkt[ether_len + ip_offset + i];
+	// int ether_len = sizeof(struct rte_ether_hdr);
+	// for(int i = 0; i < pktlen - ether_len - ip_offset; i++)
+	// 	updatedpkt[ether_len + i] = updatedpkt[ether_len + ip_offset + i];
+
+	// pkt = updatedpkt;
 	
-	return (pktlen - ip_offset);
+	// return (pktlen - ip_offset);
+	return pktlen;
 }
 
 /*
@@ -217,7 +234,9 @@ lcore_main(void)
 				bufs[i]->data_len = bufs[i]->pkt_len;
 			}
 
-			printf("Received (processed) %d packets.\n", nb_rx);
+			#ifdef DEBUG
+			printf("[DEBUG] Received (processed) %d packets.\n", nb_rx);
+			#endif
 
 			/* Send burst of TX packets, to second port of pair. */
 			const uint16_t nb_tx = rte_eth_tx_burst(port, 0,
