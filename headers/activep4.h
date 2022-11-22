@@ -156,8 +156,8 @@ typedef struct {
     void*               app_context;
     void                (*payload_parser)(char*, int, activep4_data_t*, memory_t*, void*);
     void                (*rx_handler)(activep4_ih*, activep4_data_t*, void*);
-    void                (*memory_consume)(memory_t*);
-    void                (*memory_reset)(memory_t*);
+    void                (*memory_consume)(memory_t*, void*);
+    void                (*memory_reset)(memory_t*, void*);
     void                (*shutdown)(int, void*);
 } activep4_context_t;
 
@@ -391,26 +391,18 @@ static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pn
 }
 
 static inline activep4_def_t* construct_memset_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
-    if(stageId > NUM_STAGES || stageId == 0) return NULL;
+    if(stageId > NUM_STAGES || stageId == 0 || stageId < 2) return NULL;
     if(cache[stageId].fid > 0) return &cache[stageId];
-    int rts_inserted = 0, i = 0;
+    int i = 0;
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
+    add_instruction(&cache[stageId], instr_set, "MBR_LOAD_DATA_1"); i++;
     while(i < NUM_STAGES - 1) {
-        if(i >= stageId) {
-            add_instruction(&cache[stageId], instr_set, "MBR_LOAD_DATA_1"); i++;
+        if(i == stageId) {
             add_instruction(&cache[stageId], instr_set, "MEM_WRITE"); i++;
-            add_instruction(&cache[stageId], instr_set, "NOP"); i++;
             break;
-        } else if(rts_inserted == 0) {
-            add_instruction(&cache[stageId], instr_set, "RTS"); i++;
-            rts_inserted = 1;
         } else {
             add_instruction(&cache[stageId], instr_set, "NOP"); i++;
         }
-    }
-    if(rts_inserted == 0) {
-        add_instruction(&cache[stageId], instr_set, "RTS");
-        i++;
     }
     add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
     add_instruction(&cache[stageId], instr_set, "EOF"); i++;

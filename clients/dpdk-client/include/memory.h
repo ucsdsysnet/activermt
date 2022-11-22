@@ -21,12 +21,12 @@ static inline void update_addressing_hashtable(memory_t* mem, int memory_size) {
 
 static inline void consume_memory_objects(memory_t* snapshot, activep4_context_t* ctxt) {
     if(ctxt->memory_consume)
-        ctxt->memory_consume(snapshot);
+        ctxt->memory_consume(snapshot, ctxt->app_context);
 }
 
 static inline void reset_memory_region(memory_t* region, activep4_context_t* ctxt) {
     if(ctxt->memory_reset)
-        ctxt->memory_reset(region);
+        ctxt->memory_reset(region, ctxt->app_context);
 }
 
 #endif
