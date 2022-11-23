@@ -990,7 +990,12 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 	memset(ap4data, 0, sizeof(activep4_data_t));
 	uint32_t* key = (uint32_t*)payload;
-	int stage_id_key = cache_ctxt->stage_id_key, stage_id_value = cache_ctxt->stage_id_value;
+	int stage_id_key = -1, stage_id_value = -1;
+	for(int i = 0; i < NUM_STAGES; i++) {
+		if(!alloc->valid_stages[i]) continue;
+		if(stage_id_key < 0) stage_id_key = i;
+		else stage_id_value = i;
+	}
 	uint32_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
 	uint32_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
 	int memory_size = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
@@ -1033,7 +1038,12 @@ void memory_reset_cache(memory_t* mem, void* context) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 	for(int i = 0; i < NUM_STAGES; i++)
 		memset(&mem->sync_data[i], 0, MAX_DATA);
-	int stage_id_key = cache_ctxt->stage_id_key, stage_id_value = cache_ctxt->stage_id_value;
+	int stage_id_key = -1, stage_id_value = -1;
+	for(int i = 0; i < NUM_STAGES; i++) {
+		if(!mem->valid_stages[i]) continue;
+		if(stage_id_key < 0) stage_id_key = i;
+		else stage_id_value = i;
+	}
 	if(mem->valid_stages[stage_id_key] && mem->valid_stages[stage_id_value]) {
 		uint32_t memsize_keys = mem->sync_data[stage_id_key].mem_end - mem->sync_data[stage_id_key].mem_start + 1;
 		uint32_t memsize_values = mem->sync_data[stage_id_value].mem_end - mem->sync_data[stage_id_value].mem_start + 1;
@@ -1136,8 +1146,8 @@ main(int argc, char** argv)
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
 		read_active_function(&active_function[i], active_dir, active_program_name);
 		for(int j = 0; j < cfg.num_instances[i]; j++) {
-			cache_ctxt[inst_id].stage_id_key = 2;
-			cache_ctxt[inst_id].stage_id_value = 5;
+			// cache_ctxt[inst_id].stage_id_key = 2;
+			// cache_ctxt[inst_id].stage_id_value = 5;
 			cache_ctxt[inst_id].ts_ref = rte_rdtsc_precise();
 			ap4_ctxt[inst_id].instr_set = &instr_set;
 			ap4_ctxt[inst_id].program = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
