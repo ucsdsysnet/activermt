@@ -32,12 +32,15 @@ Register<bit<32>, bit<32>>(32w65536) heap_s<stage-id>;
 /*
     R/W memory object.
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_rw_s<stage-id> = {
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_read_s<stage-id> = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
-        if(hdr.meta.mbr > 0) {
-            obj = hdr.meta.mbr;
-        }
+    }
+};
+
+RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_write_s<stage-id> = {
+    void apply(inout bit<32> obj, out bit<32> rv) {
+        obj = hdr.meta.mbr;
     }
 };
 
@@ -54,14 +57,14 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_accumulate_s<st
 /*
     Conditional write (max).
 */
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_rw_max_s<stage-id> = {
+/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_rw_max_s<stage-id> = {
     void apply(inout bit<32> obj, out bit<32> rv) {
         rv = obj;
         if(obj < hdr.meta.mbr) {
             obj = hdr.meta.mbr;
         } 
     }
-};
+};*/
 
 /*
     Conditional write (if not zero). 

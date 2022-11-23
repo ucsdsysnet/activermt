@@ -731,7 +731,7 @@ static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
 	ap4data->data[0] = htonl((uint32_t)mem_addr);
-	ap4data->data[1] = htonl((uint32_t)data);
+	ap4data->data[1] = htonl(data);
 	ap4data->data[2] = htonl((uint32_t)stage_id);
 	activep4_def_t* program = construct_memset_program(ctxt->program->fid, stage_id, ctxt->instr_set, memset_cache);
 	if(program == NULL) {
@@ -882,7 +882,7 @@ lcore_control(void* arg) {
 								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 									construct_memremap_packet(mbuf, ctrl->port_id, ctxt, i, j, updated_region->sync_data[i].data[j], memset_cache);
 									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
-									printf("Sending remap for stage %d index %d data %u ... \n", i, j, updated_region->sync_data[i].data[j]);
+									// printf("Sending remap for stage %d index %d data %u ... \n", i, j, updated_region->sync_data[i].data[j]);
 								}
 							}
 						}
@@ -956,6 +956,7 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 /* Cache application specific. */
 
 typedef struct {
+	uint64_t	ts_ref;
 	uint64_t	last_ts;
 	uint64_t	ts[MAX_SAMPLES_CACHE];
 	uint32_t	rx_hits[MAX_SAMPLES_CACHE];
@@ -972,7 +973,7 @@ void shutdown_cache(int id, void* context) {
 	sprintf(filename, "cache_stats_%d.csv", id);
 	FILE* fp = fopen(filename, "w");
 	for(int i = 0; i < cache_ctxt->num_samples; i++) {
-		fprintf(fp, "%u,%u\n", cache_ctxt->rx_hits[i], cache_ctxt->rx_total[i]);
+		fprintf(fp, "%lu,%u,%u\n", cache_ctxt->ts[i], cache_ctxt->rx_hits[i], cache_ctxt->rx_total[i]);
 	}
 	fclose(fp);
 }
@@ -983,8 +984,8 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	memset(ap4data, 0, sizeof(activep4_data_t));
 	uint32_t* key = (uint32_t*)payload;
 	int stage_id_key = cache_ctxt->stage_id_key, stage_id_value = cache_ctxt->stage_id_value;
-	uint16_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
-	uint16_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
+	uint32_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
+	uint32_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
 	int memory_size = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
 	if(memory_size < 2) return;
 	// update_addressing_hashtable(alloc, memory_size);
@@ -1011,7 +1012,7 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	if(elapsed_ms >= STATS_ITVL_MS_CACHE && cache_ctxt->num_samples < MAX_SAMPLES_CACHE) {
 		// printf("[DEBUG] cache hits %u total %u\n", cache_ctxt->rx_hits[cache_ctxt->num_samples], cache_ctxt->rx_total[cache_ctxt->num_samples]);
 		cache_ctxt->last_ts = now;
-		cache_ctxt->ts[cache_ctxt->num_samples] = now;
+		cache_ctxt->ts[cache_ctxt->num_samples] = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		cache_ctxt->num_samples++;
 	}
 	#ifdef DEBUG
@@ -1030,7 +1031,7 @@ void memory_reset_cache(memory_t* mem, void* context) {
 		uint32_t memsize_keys = mem->sync_data[stage_id_key].mem_end - mem->sync_data[stage_id_key].mem_start + 1;
 		uint32_t memsize_values = mem->sync_data[stage_id_value].mem_end - mem->sync_data[stage_id_value].mem_start + 1;
 		uint32_t memsize = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
-		printf("[DEBUG] remapping %d memory objects in stages (%d,%d) from base address %u.\n", memsize, stage_id_key, stage_id_value, mem->sync_data[stage_id_key].mem_start);
+		printf("[INFO] remapping %d memory objects in stages (%d,%d) from base address %u.\n", memsize, stage_id_key, stage_id_value, mem->sync_data[stage_id_key].mem_start);
 		for(int i = 0; i < memsize; i++) {
 			uint16_t addr = (uint16_t)i + mem->sync_data[stage_id_key].mem_start;
 			mem->sync_data[stage_id_key].data[addr] = i;
@@ -1130,6 +1131,7 @@ main(int argc, char** argv)
 		for(int j = 0; j < cfg.num_instances[i]; j++) {
 			cache_ctxt[inst_id].stage_id_key = 2;
 			cache_ctxt[inst_id].stage_id_value = 5;
+			cache_ctxt[inst_id].ts_ref = rte_rdtsc_precise();
 			ap4_ctxt[inst_id].instr_set = &instr_set;
 			ap4_ctxt[inst_id].program = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
 			assert(ap4_ctxt[inst_id].program != NULL);
@@ -1137,10 +1139,14 @@ main(int argc, char** argv)
 			ap4_ctxt[inst_id].program->fid = fid + j;
 			ap4_ctxt[inst_id].is_active = false;
 			ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
+			// ap4_ctxt[inst_id].allocation.valid_stages[2] = 1;
+			// ap4_ctxt[inst_id].allocation.sync_data[2].mem_start = 0;
+			// ap4_ctxt[inst_id].allocation.sync_data[2].mem_end = 65535;
 			// ap4_ctxt[inst_id].allocation.valid_stages[5] = 1;
 			// ap4_ctxt[inst_id].allocation.sync_data[5].mem_start = 0;
-			// ap4_ctxt[inst_id].allocation.sync_data[5].mem_end = 1023;
+			// ap4_ctxt[inst_id].allocation.sync_data[5].mem_end = 65535;
 			// ap4_ctxt[inst_id].status = ACTIVE_STATE_REMAPPING;
+			// ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
 			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
 			ap4_ctxt[inst_id].app_context = &cache_ctxt[inst_id];
 			ap4_ctxt[inst_id].payload_parser = payload_parser_cache;
