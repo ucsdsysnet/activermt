@@ -1,7 +1,7 @@
 clear;
 clc;
 
-num_apps = 4;
+num_apps = 1;
 
 ts_offset = 0;
 for i = 1:num_apps

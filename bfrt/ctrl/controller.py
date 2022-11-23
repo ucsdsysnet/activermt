@@ -682,6 +682,8 @@ class ActiveP4Controller:
                 if demand > 0:
                     accessIdx.append(memIdx)
                     minDemand.append(demand)
+                else:
+                    break
             self.allocationRequests.put({
                 'fid'       : fid,
                 'progLen'   : progLen,
@@ -759,7 +761,7 @@ demoApps = [{
     'fid'       : 1,
     'idx'       : [2, 5],
     'iglim'     : 7,
-    'applen'    : 9,
+    'applen'    : 10,
     'mindemand' : [1, 1]
 }]
 

@@ -246,10 +246,13 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     fclose(fp);
     ap4->num_accesses = i;
     ap4->iglim = iglim;
+    printf("Read program memory access pattern: %d stages (", ap4->num_accesses);
     for(i = 0; i < ap4->num_accesses; i++) {
         ap4->access_idx[i] = memidx[i];
         ap4->demand[i] = 1; // TODO read from config.
+        printf("%d,", memidx[i]);
     }
+    printf(") ingress limit %d\n", iglim);
 }
 
 static inline int read_active_args(activep4_def_t* ap4, char* arg_file) {

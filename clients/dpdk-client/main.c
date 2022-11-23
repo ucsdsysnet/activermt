@@ -516,10 +516,17 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	mreq->proglen = htons((uint16_t)ctxt->program->proglen);
 	mreq->iglim = (uint8_t)ctxt->program->iglim;
+	#ifdef DEBUG
+	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->program->fid, ctxt->program->num_accesses);
+	#endif
 	for(int i = 0; i < ctxt->program->num_accesses; i++) {
 		mreq->mem[i] = ctxt->program->access_idx[i];
 		mreq->dem[i] = ctxt->program->demand[i];
 	}
+	#ifdef DEBUG
+	for(int i = 0; i < 8; i++) printf("%d ", mreq->dem[i]);
+	printf("\n");
+	#endif
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t));
 	iph->version = 4;
 	iph->ihl = 5;
@@ -735,7 +742,7 @@ static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id,
 	ap4data->data[2] = htonl((uint32_t)stage_id);
 	activep4_def_t* program = construct_memset_program(ctxt->program->fid, stage_id, ctxt->instr_set, memset_cache);
 	if(program == NULL) {
-		printf("Could not construct memsync program!\n");
+		rte_exit(EXIT_FAILURE, "Could not construct memset program!\n");
 		return;
 	}
 	for(int i = 0; i < program->proglen; i++) {

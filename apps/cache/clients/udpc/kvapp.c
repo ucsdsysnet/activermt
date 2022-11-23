@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     // TODO update with distribution.
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
-        keys[i] = i;
+        keys[i] = rand() % MAX_KEYS;
         msg[i].iov_base = &keys[i];
         msg[i].iov_len = sizeof(uint32_t);
     }
@@ -124,6 +124,7 @@ int main(int argc, char** argv) {
             mhdr[i].msg_hdr.msg_iov = &msg[key_current];
             mhdr[i].msg_hdr.msg_iovlen = 1;
             key_current = (key_current + 1) % MAX_KEYS;
+            // key_current = 32765;
         }
 
         if(FD_ISSET(sockfd, &wr_set)) {
