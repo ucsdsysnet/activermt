@@ -150,6 +150,7 @@ typedef struct {
 } pnemonic_opcode_t;
 
 typedef struct {
+    int                 id;
     uint8_t             is_active;
     uint8_t             status;
     uint64_t            ctrl_ts_lastsent;

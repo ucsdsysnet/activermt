@@ -21,6 +21,8 @@
 #define MAX_APPS			16
 #define MAX_INSTANCES		16
 #define MAX_STATS_SAMPLES	1000
+#define MAX_TXSTAT_SAMPLES	1000000
+#define STATS_ITVL_MS		1
 
 #define AP4_ETHER_TYPE_AP4	0x83B2
 
@@ -31,8 +33,18 @@
 #define CTRL_PKT_HEARTBEAT	5
 
 typedef struct {
+	uint32_t	tx_active[MAX_TXSTAT_SAMPLES];
+	uint32_t	tx_total[MAX_TXSTAT_SAMPLES];
+	uint64_t	ts[MAX_TXSTAT_SAMPLES];
+	uint64_t	ts_ref;
+	uint64_t	ts_last;
+	int			num_samples;
+} active_app_stats_t;
+
+typedef struct {
 	int					num_apps_instances;
 	activep4_context_t*	ctxt;
+	active_app_stats_t*	stats;
 	uint32_t			app_id[MAX_APPS];
 	uint32_t			instance_id[MAX_APPS];
 } active_apps_t;

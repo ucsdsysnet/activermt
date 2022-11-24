@@ -118,17 +118,47 @@ static inline activep4_context_t* get_app_context_from_packet(char* bufptr, acti
 		if(apps_ctxt->app_id[j] == app_id) {
 			if(apps_ctxt->instance_id[j] == instance_id) {
 				ctxt = &apps_ctxt->ctxt[j];
+				ctxt->id = j;
 			} else if(apps_ctxt->instance_id[j] == 0 && empty_slot < 0) empty_slot = j;
 		}
 	}
 	if(ctxt == NULL && empty_slot >= 0) {
 		apps_ctxt->instance_id[empty_slot] = instance_id;
 		ctxt = &apps_ctxt->ctxt[empty_slot];
-		ctxt->is_active = true;
+		ctxt->id = empty_slot;
 		printf("[INFO] Created application context for FID %d with instance ID %d.\n", ctxt->program->fid, instance_id);
 		assert(ctxt != NULL);
 	}
+	ctxt->is_active = true;
 	return ctxt;
+}
+
+static inline void update_active_tx_stats(int status, active_app_stats_t* stats) {
+	stats->tx_total[stats->num_samples]++;
+	if(status == ACTIVE_STATE_TRANSMITTING) {
+		stats->tx_active[stats->num_samples]++;
+	}
+	uint64_t now = rte_rdtsc_precise();
+	uint64_t elapsed_ms = (double)(now - stats->ts_last) * 1E3 / rte_get_tsc_hz();
+	if(elapsed_ms >= STATS_ITVL_MS && stats->num_samples < MAX_TXSTAT_SAMPLES) {
+		stats->ts_last = now;
+		stats->ts[stats->num_samples] = (double)(now - stats->ts_ref) * 1E3 / rte_get_tsc_hz();
+		stats->num_samples++;
+	}
+}
+
+static inline void write_active_tx_stats(active_apps_t* apps) {
+	printf("[INFO] writing active TX stats ... \n");
+	for(int i = 0; i < apps->num_apps_instances; i++) {
+		if(apps->stats[i].num_samples == 0) continue;
+		char filename[50];
+		sprintf(filename, "active_tx_stats_%d.csv", apps->ctxt[i].program->fid);
+		FILE* fp = fopen(filename, "w");
+		for(int j = 0; j < apps->stats[i].num_samples; j++) {
+			fprintf(fp, "%lu,%u,%u\n", apps->stats[i].ts[j], apps->stats[i].tx_active[j], apps->stats[i].tx_total[j]);
+		}
+		fclose(fp);
+	}
 }
 
 static uint16_t
@@ -148,6 +178,7 @@ active_encap_filter(
 		if(eth->ether_type != htons(RTE_ETHER_TYPE_IPV4)) continue;
 		activep4_context_t* ctxt = get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt);
 		if(ctxt == NULL) continue;
+		update_active_tx_stats(ctxt->status, &apps_ctxt->stats[ctxt->id]);
 		switch(ctxt->status) {
 			case ACTIVE_STATE_TRANSMITTING:
 				insert_active_program_headers(ctxt, pkts[i]);
@@ -1128,8 +1159,12 @@ main(int argc, char** argv)
 
 	activep4_context_t* ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(activep4_context_t), 0);
 	if(ap4_ctxt == NULL) {
-		printf("Unable to allocate memory for active context!\n");
-		exit(EXIT_FAILURE);
+		rte_exit(EXIT_FAILURE, "Unable to allocate memory for active context!\n");
+	}
+
+	active_app_stats_t* app_stats = (active_app_stats_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(active_app_stats_t), 0);
+	if(app_stats == NULL) {
+		rte_exit(EXIT_FAILURE, "Unable to allocate memory for active stats!\n");
 	}
 
 	cache_context_t* cache_ctxt = (cache_context_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(cache_context_t), 0);
@@ -1141,6 +1176,8 @@ main(int argc, char** argv)
 	active_apps_t apps_ctxt;
 	memset(&apps_ctxt, 0, sizeof(active_apps_t));
 
+	uint64_t ts_ref = rte_rdtsc_precise();
+
 	int inst_id = 0;
 	for(int i = 0; i < cfg.num_apps; i++) {
 		char* active_dir = cfg.appdir[i];
@@ -1151,7 +1188,8 @@ main(int argc, char** argv)
 		for(int j = 0; j < cfg.num_instances[i]; j++) {
 			// cache_ctxt[inst_id].stage_id_key = 2;
 			// cache_ctxt[inst_id].stage_id_value = 5;
-			cache_ctxt[inst_id].ts_ref = rte_rdtsc_precise();
+			app_stats[inst_id].ts_ref = ts_ref;
+			cache_ctxt[inst_id].ts_ref = ts_ref;
 			ap4_ctxt[inst_id].instr_set = &instr_set;
 			ap4_ctxt[inst_id].program = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
 			assert(ap4_ctxt[inst_id].program != NULL);
@@ -1181,6 +1219,7 @@ main(int argc, char** argv)
 	}
 
 	apps_ctxt.ctxt = ap4_ctxt;
+	apps_ctxt.stats = app_stats;
 	apps_ctxt.num_apps_instances = inst_id;
 
 	struct rte_mempool *mbuf_pool;
@@ -1260,6 +1299,8 @@ main(int argc, char** argv)
 	for(int i = 0; i < apps_ctxt.num_apps_instances; i++) {
 		apps_ctxt.ctxt[i].shutdown(i, apps_ctxt.ctxt[i].app_context);
 	}
+
+	write_active_tx_stats(&apps_ctxt);
 
 	rte_eal_cleanup();
 	// endwin();
