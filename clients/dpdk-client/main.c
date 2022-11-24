@@ -55,7 +55,9 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 	hdr_eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 
-	int ap4hlen = sizeof(activep4_ih) + sizeof(activep4_data_t) + (ap4_ctxt->program->proglen * sizeof(activep4_instr));
+	active_mutant_t* program = &ap4_ctxt->program->mutant;
+
+	int ap4hlen = sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr));
 
 	for(int i = pkt->pkt_len - 1; i >= sizeof(struct rte_ether_hdr); i--) {
 		bufptr[i + ap4hlen] = bufptr[i];
@@ -82,10 +84,10 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	ap4_ctxt->payload_parser(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
 
-	for(int i = 0; i < ap4_ctxt->program->proglen; i++) {
+	for(int i = 0; i < program->proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
-		instr->flags = ap4_ctxt->program->code[i].flags;
-		instr->opcode = ap4_ctxt->program->code[i].opcode;
+		instr->flags = program->code[i].flags;
+		instr->opcode = program->code[i].opcode;
 	}
 
 	pkt->pkt_len += ap4hlen;
@@ -229,6 +231,7 @@ active_decap_filter(
 							printf("\n");
 							// TODO
 							// ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
+							mutate_active_program(ctxt->program, &ctxt->allocation, 1);
 							ctxt->status = ACTIVE_STATE_REMAPPING;
 							#ifdef DEBUG
 							printf("[DEBUG] state %d\n", ctxt->status);

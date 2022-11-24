@@ -120,6 +120,11 @@ typedef struct {
 } memory_t;
 
 typedef struct {
+    activep4_instr  code[MAXPROGLEN];
+    int             proglen;
+} active_mutant_t;
+
+typedef struct {
     uint16_t        fid;
     activep4_instr  code[MAXPROGLEN];
     activep4_arg    args[MAXARGS];
@@ -130,6 +135,7 @@ typedef struct {
     int             demand[NUM_STAGES];
     int             proglen;
     int             iglim;
+    active_mutant_t mutant;
 } activep4_def_t;
 
 typedef struct {
@@ -427,6 +433,50 @@ static inline void construct_nop_program(activep4_def_t* program, pnemonic_opcod
         add_instruction(program, instr_set, "NOP");
     add_instruction(program, instr_set, "RETURN");
     add_instruction(program, instr_set, "EOF");
+}
+
+static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, int NOP_OPCODE) {
+    
+    int access_idx_allocated[NUM_STAGES], i, j, block_start, block_end, offset;
+
+    memset(&access_idx_allocated, 0, NUM_STAGES * sizeof(int));
+
+    j = 0;
+    for(i = 0; i < NUM_STAGES; i++) {
+        if(memcfg->valid_stages[i] == 1) access_idx_allocated[j++] = i;
+    }
+
+    if(j != ap4->num_accesses) {
+        printf("[ERROR] Invalid number of stages allocated!\n");
+        return;
+    }
+
+    active_mutant_t* program = &ap4->mutant;
+
+    program->proglen = ap4->proglen + access_idx_allocated[ap4->num_accesses - 1] - ap4->access_idx[ap4->num_accesses - 1];
+    memset(&program->code, 0, program->proglen * sizeof(activep4_instr));
+
+    for(i = 0; i < program->proglen; i++) program->code[i].opcode = NOP_OPCODE;
+
+    block_end = ap4->proglen - 1;
+    while(j > 0) {
+        j--;
+        block_start = ap4->access_idx[j];
+        offset = access_idx_allocated[j] - ap4->access_idx[j];
+        for(i = block_end; i >= block_start; i--) {
+            program->code[i + offset] = ap4->code[i];
+        }
+        block_end = block_start - 1;
+    }
+
+    for(i = 0; i < ap4->access_idx[0]; i++) {
+        program->code[i] = ap4->code[i];
+    }
+
+    printf("[INFO] program mutant:\n");
+    for(int i = 0; i < program->proglen; i++) {
+        printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);
+    }
 }
 
 #endif
