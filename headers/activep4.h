@@ -164,6 +164,7 @@ typedef struct {
     void                (*payload_parser)(char*, int, activep4_data_t*, memory_t*, void*);
     void                (*rx_handler)(activep4_ih*, activep4_data_t*, void*);
     void                (*memory_consume)(memory_t*, void*);
+    void                (*memory_invalidate)(memory_t*, void*);
     void                (*memory_reset)(memory_t*, void*);
     void                (*shutdown)(int, void*);
 } activep4_context_t;

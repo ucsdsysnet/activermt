@@ -819,7 +819,7 @@ lcore_control(void* arg) {
 	memset(memset_cache, 0, NUM_STAGES * sizeof(activep4_def_t));
 
 	uint64_t now, elapsed_us;
-	int snapshotting_in_progress = 0, remapping_in_progress = 0;
+	int snapshotting_in_progress = 0, remapping_in_progress = 0, invalidating_in_progress = 0;
 
 	while(is_running) {
 		now = rte_rdtsc_precise();
@@ -888,7 +888,25 @@ lcore_control(void* arg) {
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
 					printf("FID %d Snapshot complete.\n", ctxt->program->fid);
-					// ctxt->status = ACTIVE_STATE_SNAPCOMPLETING;
+					invalidating_in_progress = 1;
+					ctxt->memory_invalidate(&ctxt->allocation, ctxt);
+					printf("FID %d invalidating memory ... \n", ctxt->program->fid);
+					while(invalidating_in_progress) {
+						invalidating_in_progress = 0;
+						for(int i = 0; i < NUM_STAGES; i++) {
+							if(!ctxt->allocation.valid_stages[i]) continue;
+							for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
+								if(ctxt->allocation.sync_data[i].valid[j]) continue;
+								invalidating_in_progress = 1;
+								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+									construct_memremap_packet(mbuf, ctrl->port_id, ctxt, i, j, ctxt->allocation.sync_data[i].data[j], memset_cache);
+									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+								}
+							}
+						}
+					}
+					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+					printf("FID %d invalidation complete.\n", ctxt->program->fid);
 					ctxt->status = ACTIVE_STATE_REALLOCATING;
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
@@ -1068,6 +1086,12 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 
 void memory_consume_cache(memory_t* mem, void* context) {}
 
+void memory_invalidate_cache(memory_t* mem, void* context) {
+	cache_context_t* cache_ctxt = (cache_context_t*)context;
+	for(int i = 0; i < NUM_STAGES; i++)
+		memset(&mem->sync_data[i], 0, MAX_DATA);
+}
+
 void memory_reset_cache(memory_t* mem, void* context) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 	for(int i = 0; i < NUM_STAGES; i++)
@@ -1210,6 +1234,7 @@ main(int argc, char** argv)
 			ap4_ctxt[inst_id].payload_parser = payload_parser_cache;
 			ap4_ctxt[inst_id].rx_handler = active_rx_handler_cache;
 			ap4_ctxt[inst_id].memory_consume = memory_consume_cache;
+			ap4_ctxt[inst_id].memory_invalidate = memory_invalidate_cache;
 			ap4_ctxt[inst_id].memory_reset = memory_reset_cache;
 			ap4_ctxt[inst_id].shutdown = shutdown_cache;
 			apps_ctxt.app_id[inst_id] = cfg.app_id[i];
