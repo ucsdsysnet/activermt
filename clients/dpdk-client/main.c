@@ -209,8 +209,6 @@ active_decap_filter(
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			activep4_data_t* ap4data = NULL;
-			char* payload = NULL;
-			int payload_length = 0;
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
 			uint16_t fid = ntohs(ap4ih->fid);
@@ -226,17 +224,6 @@ active_decap_filter(
 			}
 			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
 				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[k]->pkt_len);
-			}
-			inet_pkt_t inet_pkt;
-			struct rte_ipv4_hdr* hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + offset);
-			inet_pkt.hdr_ipv4 = hdr_ipv4;
-			if(hdr_ipv4->next_proto_id == IPPROTO_UDP) {
-				struct rte_udp_hdr* hdr_udp = (struct rte_udp_hdr*)(bufptr + offset + sizeof(struct rte_ipv4_hdr));
-				inet_pkt.hdr_udp = hdr_udp;
-				payload = bufptr + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
-				payload_length = ntohs(hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
-				inet_pkt.payload = payload;
-				inet_pkt.payload_length = payload_length;
 			}
 			// Get active app context.
 			activep4_context_t* ctxt = NULL;
@@ -317,8 +304,19 @@ active_decap_filter(
 						ctxt->allocation.invalid = 1;
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 					}
-					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED))
-						ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
+					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED)) {
+						inet_pkt_t inet_pkt = {0};
+						inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset);
+						if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
+							inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
+							uint16_t tmp = inet_pkt.hdr_udp->src_port;
+							inet_pkt.hdr_udp->src_port = inet_pkt.hdr_udp->dst_port;
+							inet_pkt.hdr_udp->dst_port = tmp;
+							inet_pkt.payload = bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
+							inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
+							ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
+						}
+					}
 					// printf("pkt length %d\n", pkts[k]->pkt_len);
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
@@ -1088,6 +1086,7 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
 		*hm_flag = 1;
 		inet_pkt->hdr_udp->dgram_cksum = 0;
+		// printf("dst ip %x\n", ntohl(inet_pkt->hdr_ipv4->dst_addr));
 	}
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
