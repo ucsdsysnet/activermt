@@ -207,13 +207,49 @@ control Ingress(
         }
     }
 
+    Register<bit<16>, bit<16>>(32w256) app_leader;
+    
+    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
+        void apply(inout bit<16> obj, out bit<16> rv) {
+            if((bit<16>)meta.app_instance_id < obj) {
+                obj = (bit<16>)meta.app_instance_id;
+            }
+            rv = obj;
+        }
+    };
+
+    action leader_elect() {
+        meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
+    }
+
+    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
+        void apply(inout bit<16> obj, out bit<16> rv) {
+            rv = obj;
+        }
+    };
+
+    action get_leader() {
+        hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
+    }
+
+    table leader_fetch {
+        key = {
+            hdr.ih.flag_leader  : exact;
+        }
+        actions = {
+            get_leader;
+        }
+    }
+
     // control flow
 
     apply {
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.isValid()) {
-            //activep4_stats.count((bit<32>)hdr.ih.fid);
+            // leader_elect();
+            // leader_fetch.apply();
+            // activep4_stats.count((bit<32>)hdr.ih.fid);
             routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;

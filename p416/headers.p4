@@ -84,7 +84,8 @@ header active_initial_h {
     active_malloc_t flag_reqalloc;
     bit<1>          flag_allocated;
     bit<1>          flag_pending;
-    bit<2>          _padding;
+    bit<1>          flag_leader;
+    bit<1>          _padding;
     bit<16>         fid;
     bit<16>         seq;
 }
@@ -206,6 +207,9 @@ struct ig_metadata_t {
     bit<16>     chksum_tcp;
     bit<16>     phash;
     bit<32>     idx;
+    bit<8>      app_fid;
+    bit<8>      app_instance_id;
+    bit<8>      leader_id;
 }
 
 struct eg_metadata_t {

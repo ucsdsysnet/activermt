@@ -94,14 +94,16 @@ int main(int argc, char** argv) {
 
     fd_set wr_set;
     int ret;
-    uint32_t keys[MAX_KEYS];
+    uint32_t keys[2 * MAX_KEYS];
+
+    memset(keys, 0, 2 * MAX_KEYS * sizeof(uint32_t));
 
     // TODO update with distribution.
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
-        keys[i] = rand() % MAX_KEYS;
-        msg[i].iov_base = &keys[i];
-        msg[i].iov_len = sizeof(uint32_t);
+        keys[i*2] = rand() % MAX_KEYS;
+        msg[i].iov_base = &keys[i*2];
+        msg[i].iov_len = 2 * sizeof(uint32_t);
     }
 
     int key_current = 0;

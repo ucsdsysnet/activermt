@@ -82,7 +82,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	}
 
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-	ap4_ctxt->payload_parser(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
+	ap4_ctxt->tx_handler(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
 
 	for(int i = 0; i < program->proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
@@ -209,6 +209,8 @@ active_decap_filter(
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			activep4_data_t* ap4data = NULL;
+			char* payload = NULL;
+			int payload_length = 0;
 			if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
 			uint16_t flags = ntohs(ap4ih->flags);
 			uint16_t fid = ntohs(ap4ih->fid);
@@ -224,6 +226,17 @@ active_decap_filter(
 			}
 			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
 				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[k]->pkt_len);
+			}
+			inet_pkt_t inet_pkt;
+			struct rte_ipv4_hdr* hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + offset);
+			inet_pkt.hdr_ipv4 = hdr_ipv4;
+			if(hdr_ipv4->next_proto_id == IPPROTO_UDP) {
+				struct rte_udp_hdr* hdr_udp = (struct rte_udp_hdr*)(bufptr + offset + sizeof(struct rte_ipv4_hdr));
+				inet_pkt.hdr_udp = hdr_udp;
+				payload = bufptr + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
+				payload_length = ntohs(hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
+				inet_pkt.payload = payload;
+				inet_pkt.payload_length = payload_length;
 			}
 			// Get active app context.
 			activep4_context_t* ctxt = NULL;
@@ -305,7 +318,7 @@ active_decap_filter(
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 					}
 					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED))
-						ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context);
+						ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
 					// printf("pkt length %d\n", pkts[k]->pkt_len);
 					break;
 				case ACTIVE_STATE_SNAPCOMPLETING:
@@ -1061,15 +1074,21 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	ap4data->data[2] = htonl(addr);
 }
 
-void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void* context) {
+void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void* context, void* pkt) {
 	if(ap4args == NULL) {
 		printf("[ERROR] cache arguments not present!\n");
 		return;
 	}
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
+	inet_pkt_t* inet_pkt = (inet_pkt_t*)pkt;
 	uint32_t cached_value = ntohl(ap4args->data[0]);
 	uint32_t key = ntohl(ap4args->data[1]);
-	if(cached_value != 0) cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
+	if(cached_value != 0) {
+		cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
+		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
+		*hm_flag = 1;
+		inet_pkt->hdr_udp->dgram_cksum = 0;
+	}
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
 	uint64_t elapsed_ms = (double)(now - cache_ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
@@ -1231,7 +1250,7 @@ main(int argc, char** argv)
 			// ap4_ctxt[inst_id].status = ACTIVE_STATE_TRANSMITTING;
 			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
 			ap4_ctxt[inst_id].app_context = &cache_ctxt[inst_id];
-			ap4_ctxt[inst_id].payload_parser = payload_parser_cache;
+			ap4_ctxt[inst_id].tx_handler = payload_parser_cache;
 			ap4_ctxt[inst_id].rx_handler = active_rx_handler_cache;
 			ap4_ctxt[inst_id].memory_consume = memory_consume_cache;
 			ap4_ctxt[inst_id].memory_invalidate = memory_invalidate_cache;

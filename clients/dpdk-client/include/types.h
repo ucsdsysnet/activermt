@@ -71,4 +71,11 @@ typedef struct {
 	int			num_samples;
 } active_dpdk_stats_t;
 
+typedef struct {
+	struct rte_ipv4_hdr*	hdr_ipv4;
+	struct rte_udp_hdr*		hdr_udp;
+	char*					payload;
+	int						payload_length;
+} inet_pkt_t;
+
 #endif
