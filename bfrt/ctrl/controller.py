@@ -375,7 +375,7 @@ class ActiveP4Controller:
         for pnemonic in self.opcode_action:
             act = self.opcode_action[pnemonic]
             if act['memory']:
-                print("Installing entry for:", pnemonic, "opcode", act['opcode'])
+                # print("Installing entry for:", pnemonic, "opcode", act['opcode'])
                 self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
 
     def resumeAllocation(self, fid, remaps):
@@ -760,16 +760,10 @@ restrictedInstructionSet = False
 referenceProgram = "condition"
 demoApps = [{
     'fid'       : 1,
-    'idx'       : [2, 5],
+    'idx'       : [2, 5, 13, 16],
     'iglim'     : 7,
-    'applen'    : 10,
-    'mindemand' : [1, 1]
-}, {
-    'fid'       : 2,
-    'idx'       : [3, 6],
-    'iglim'     : -1,
-    'applen'    : 9,
-    'mindemand' : [1, 1]
+    'applen'    : 19,
+    'mindemand' : [1, 1, 1, 1]
 }]
 
 # demoApps = [{
