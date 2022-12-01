@@ -93,8 +93,11 @@ void* rx_loop(void* argp) {
             if(msgs[i].msg_len == KVRESP_LEN) {
                 uint32_t* key = (uint32_t*)bufs[i];
                 uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(uint32_t));
-                if(key > 0) {
+                if(*key > 0) {
                     if(*hm_flag == 1) rx_hits++;
+                    else if(instance_id == 2) {
+                        printf("MISS key %d\n", *key);
+                    }
                     rx_total++;
                 }
                 // printf("[DEBUG] key %u HIT %d\n", *key, *hm_flag);
