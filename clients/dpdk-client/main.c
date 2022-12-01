@@ -32,12 +32,14 @@
 #include "./include/utils.h"
 #include "./include/memory.h"
 
+// #define FREQITEM_COMP		1
 #define MEMMGMT_CLIENT		1
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
 #define MAX_SAMPLES_CACHE	100000
 #define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
 #define HH_COMPUTE_ITVL_SEC	1
+#define PAYLOAD_MINLENGTH	8
 
 static struct rte_eth_dev_tx_buffer* buffer;
 static uint64_t drop_counter;
@@ -205,9 +207,28 @@ active_decap_filter(
 
 	for(int k = 0; k < nb_pkts; k++) {
 		char* bufptr = rte_pktmbuf_mtod(pkts[k], char*);
+		inet_pkt_t inet_pkt = {0};
 		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 		int offset = 0;
-		if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
+		if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
+			inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
+			if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
+				inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
+				uint16_t tmp = inet_pkt.hdr_udp->src_port;
+				inet_pkt.hdr_udp->src_port = inet_pkt.hdr_udp->dst_port;
+				inet_pkt.hdr_udp->dst_port = tmp;
+				inet_pkt.payload = bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
+				inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
+			}
+			// TODO hack.
+			struct rte_ether_addr tmp_ether = hdr_eth->src_addr;
+			hdr_eth->src_addr = hdr_eth->dst_addr;
+			hdr_eth->dst_addr = tmp_ether;
+			rte_be32_t tmp_ipv4 = inet_pkt.hdr_ipv4->src_addr;
+			inet_pkt.hdr_ipv4->src_addr = inet_pkt.hdr_ipv4->dst_addr;
+			inet_pkt.hdr_ipv4->dst_addr = tmp_ipv4;
+			// printf("[INFO] Non active packet.\n");
+		} else if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
 			activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 			activep4_data_t* ap4data = NULL;
@@ -236,7 +257,6 @@ active_decap_filter(
 				printf("Unable to extract app context!\n");
 				continue;
 			}
-			
 			// Update control state.
 			switch(ctxt->status) {
 				case ACTIVE_STATE_INITIALIZING:
@@ -307,7 +327,6 @@ active_decap_filter(
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 					}
 					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED)) {
-						inet_pkt_t inet_pkt = {0};
 						inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset);
 						if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
 							inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
@@ -316,8 +335,9 @@ active_decap_filter(
 							inet_pkt.hdr_udp->dst_port = tmp;
 							inet_pkt.payload = bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
 							inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
-							ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
 						}
+						if(inet_pkt.payload_length >= PAYLOAD_MINLENGTH)
+							ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
 					}
 					// printf("pkt length %d\n", pkts[k]->pkt_len);
 					break;
@@ -338,7 +358,7 @@ active_decap_filter(
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
 		} else {
-			printf("[INFO] Non active packet: ");
+			printf("[INFO] Unknown packet: ");
 			print_pktinfo(bufptr, pkts[k]->pkt_len);
 		}
 		
@@ -1094,9 +1114,11 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	uint32_t cached_value = ntohl(ap4args->data[0]);
 	uint32_t key = ntohl(ap4args->data[1]);
 	uint32_t freq = ntohl(ap4args->data[3]);
+	#ifdef FREQITEM_COMP
 	int hh_addr = key & MAX_KEY;
 	cache_ctxt->frequency[hh_addr].key = key;
 	cache_ctxt->frequency[hh_addr].freq = freq;
+	#endif
 	// printf("[DEBUG] key %u frequency %u\n", key, freq);
 	if(cached_value != 0) {
 		cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
@@ -1108,18 +1130,20 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
 	uint64_t elapsed_ms = (double)(now - cache_ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
-	uint64_t elapsed_sec = (double)(now - cache_ctxt->last_computed_freq) / rte_get_tsc_hz();
 	if(elapsed_ms >= STATS_ITVL_MS_CACHE && cache_ctxt->num_samples < MAX_SAMPLES_CACHE) {
 		// printf("[DEBUG] cache hits %u total %u\n", cache_ctxt->rx_hits[cache_ctxt->num_samples], cache_ctxt->rx_total[cache_ctxt->num_samples]);
 		cache_ctxt->last_ts = now;
 		cache_ctxt->ts[cache_ctxt->num_samples] = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		cache_ctxt->num_samples++;
 	}
+	#ifdef FREQITEM_COMP
+	uint64_t elapsed_sec = (double)(now - cache_ctxt->last_computed_freq) / rte_get_tsc_hz();
 	if(elapsed_sec >= HH_COMPUTE_ITVL_SEC) {
 		cache_ctxt->last_computed_freq = now;
-		printf("[DEBUG] computing frequent items ... \n");
+		// printf("[DEBUG] computing frequent items ... \n");
 		// TODO
 	}
+	#endif
 	#ifdef DEBUG
 	printf("Cache response: flags %x args (%u,%u,%u,%u)\n", ntohs(ap4ih->flags), ntohl(ap4args->data[0]), ntohl(ap4args->data[1]), ntohl(ap4args->data[2]), ntohl(ap4args->data[3]));
 	#endif

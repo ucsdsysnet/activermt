@@ -12,22 +12,34 @@ ts_offset = 0;
 %     end
 % end
 
+min_ts = -1;
+max_ts = -1;
+
 figure;
 for i = 1:num_apps
     data = csvread(sprintf('cache_stats_%d.csv', i - 1));
     hitrate = data( : , 2) ./ data( : , 3);
     ts = (data( : , 1) - ts_offset) / 1000;
+    tmp = min(ts);
+    if min_ts < 0 || tmp < min_ts
+        min_ts = tmp;
+    end
+    tmp = max(ts);
+    if max_ts < 0 || tmp > max_ts
+        max_ts = tmp;
+    end
     plot(ts, hitrate);
     hold on;
 end
 
 xlabel('Time (sec)');
 ylabel('Hitrate');
-xlim([0 100]);
+xlim([min_ts max_ts]);
 ylim([0 1.5]);
 legend(cellstr(num2str([1:num_apps]', 'App %-d')));
 set(gca, 'FontSize', 16);
 grid on;
+saveas(gcf, 'cache_hitrate.png');
 
 figure;
 for i = 1:num_apps
@@ -41,11 +53,12 @@ end
 
 xlabel('Time (sec)');
 ylabel('Fraction of Active Packets');
-xlim([0 100]);
+xlim([min_ts max_ts]);
 ylim([0 1.5]);
 legend(cellstr(num2str([1:num_apps]', 'App %-d')));
 set(gca, 'FontSize', 16);
 grid on;
+saveas(gcf, 'cache_activation.png');
 
 % data_ref = csvread(sprintf('cache_stats_%d.csv', 0));
 % data = csvread(sprintf('cache_stats_%d.csv', 3));
