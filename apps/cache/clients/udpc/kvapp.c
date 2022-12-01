@@ -31,7 +31,7 @@ typedef struct {
 stats_t stats;
 kvapp_stats_t kv_stats;
 
-int is_running;
+int is_running, instance_id;
 
 static void interrupt_handler(int sig) {
     is_running = 0;
@@ -42,11 +42,13 @@ static void on_shutdown() {
     
     write_stats(&stats, "kvapp_stats.csv");
 
-    FILE* fp = fopen("kv_hits_misses.csv", "w");
+    char filename[50];
+    sprintf(filename, "kv_hits_misses_%d.csv", instance_id);
+    FILE* fp = fopen(filename, "w");
     if(fp == NULL) {
         return;
     }
-    printf("[INFO] writing hits/misses ... \n");
+    printf("[INFO] writing hits/misses for %d samples ... \n", kv_stats.num_samples);
     for(int i = 0; i < kv_stats.num_samples; i++) {
         fprintf(fp, "%lu,%u,%u\n", kv_stats.ts[i], kv_stats.rx_hits[i], kv_stats.rx_total[i]);
     }
@@ -114,12 +116,14 @@ void* rx_loop(void* argp) {
 int main(int argc, char** argv) {
 
     if(argc < 3) {
-        printf("Usage: %s -c|-s <ipv4_dstaddr>\n", argv[0]);
+        printf("Usage: %s -c|-s <ipv4_dstaddr> [instance_id=1]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     char* mode = argv[1];
     char* ipv4_dstaddr = argv[2];
+    
+    instance_id = (argc > 3) ? atoi(argv[3]) : 1;
 
     int client_mode = 0;
     if(strcmp(mode, "-c") == 0) client_mode = 1;

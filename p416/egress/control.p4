@@ -1440,17 +1440,15 @@ action memory_increment_s0() {
     hdr.meta.mbr = heap_conditional_rw_zero_s0.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s0() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s0.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s0() {
+    hdr.meta.mbr = heap_read_s0.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s0() {
+action memory_minreadinc_s0() {
     hdr.meta.mbr = heap_accumulate_s0.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s0() {
     hdr.meta.mbr = 1;
@@ -1507,17 +1505,15 @@ action memory_increment_s1() {
     hdr.meta.mbr = heap_conditional_rw_zero_s1.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s1() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s1.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s1() {
+    hdr.meta.mbr = heap_read_s1.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s1() {
+action memory_minreadinc_s1() {
     hdr.meta.mbr = heap_accumulate_s1.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s1() {
     hdr.meta.mbr = 1;
@@ -1574,17 +1570,15 @@ action memory_increment_s2() {
     hdr.meta.mbr = heap_conditional_rw_zero_s2.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s2() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s2.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s2() {
+    hdr.meta.mbr = heap_read_s2.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s2() {
+action memory_minreadinc_s2() {
     hdr.meta.mbr = heap_accumulate_s2.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s2() {
     hdr.meta.mbr = 1;
@@ -1641,17 +1635,15 @@ action memory_increment_s3() {
     hdr.meta.mbr = heap_conditional_rw_zero_s3.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s3() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s3.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s3() {
+    hdr.meta.mbr = heap_read_s3.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s3() {
+action memory_minreadinc_s3() {
     hdr.meta.mbr = heap_accumulate_s3.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s3() {
     hdr.meta.mbr = 1;
@@ -1708,17 +1700,15 @@ action memory_increment_s4() {
     hdr.meta.mbr = heap_conditional_rw_zero_s4.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s4() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s4.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s4() {
+    hdr.meta.mbr = heap_read_s4.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s4() {
+action memory_minreadinc_s4() {
     hdr.meta.mbr = heap_accumulate_s4.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s4() {
     hdr.meta.mbr = 1;
@@ -1775,17 +1765,15 @@ action memory_increment_s5() {
     hdr.meta.mbr = heap_conditional_rw_zero_s5.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s5() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s5.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s5() {
+    hdr.meta.mbr = heap_read_s5.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s5() {
+action memory_minreadinc_s5() {
     hdr.meta.mbr = heap_accumulate_s5.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s5() {
     hdr.meta.mbr = 1;
@@ -1842,17 +1830,15 @@ action memory_increment_s6() {
     hdr.meta.mbr = heap_conditional_rw_zero_s6.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s6() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s6() {
+    hdr.meta.mbr = heap_read_s6.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s6() {
+action memory_minreadinc_s6() {
     hdr.meta.mbr = heap_accumulate_s6.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s6() {
     hdr.meta.mbr = 1;
@@ -1909,17 +1895,15 @@ action memory_increment_s7() {
     hdr.meta.mbr = heap_conditional_rw_zero_s7.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s7() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s7.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s7() {
+    hdr.meta.mbr = heap_read_s7.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s7() {
+action memory_minreadinc_s7() {
     hdr.meta.mbr = heap_accumulate_s7.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s7() {
     hdr.meta.mbr = 1;
@@ -1976,17 +1960,15 @@ action memory_increment_s8() {
     hdr.meta.mbr = heap_conditional_rw_zero_s8.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s8() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s8.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s8() {
+    hdr.meta.mbr = heap_read_s8.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s8() {
+action memory_minreadinc_s8() {
     hdr.meta.mbr = heap_accumulate_s8.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s8() {
     hdr.meta.mbr = 1;
@@ -2043,17 +2025,15 @@ action memory_increment_s9() {
     hdr.meta.mbr = heap_conditional_rw_zero_s9.execute(hdr.meta.mar);
 }*/
 
-/*action memory_minread_s9() {
-    hdr.meta.mbr = 0;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s9.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+action memory_minread_s9() {
+    hdr.meta.mbr = heap_read_s9.execute(hdr.meta.mar);
+    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
+}
 
-/*action memory_minreadinc_s9() {
+action memory_minreadinc_s9() {
     hdr.meta.mbr = heap_accumulate_s9.execute(hdr.meta.mar);
     hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
+}
 
 /*action memory_minreadset_s9() {
     hdr.meta.mbr = 1;
@@ -2139,6 +2119,8 @@ table instruction_0 {
 		memory_read_s0;
 		memory_write_s0;
 		memory_increment_s0;
+		memory_minread_s0;
+		memory_minreadinc_s0;
 		hash_s0;
     }
     size = 512;
@@ -2209,6 +2191,8 @@ table instruction_1 {
 		memory_read_s1;
 		memory_write_s1;
 		memory_increment_s1;
+		memory_minread_s1;
+		memory_minreadinc_s1;
 		hash_s1;
     }
     size = 512;
@@ -2279,6 +2263,8 @@ table instruction_2 {
 		memory_read_s2;
 		memory_write_s2;
 		memory_increment_s2;
+		memory_minread_s2;
+		memory_minreadinc_s2;
 		hash_s2;
     }
     size = 512;
@@ -2349,6 +2335,8 @@ table instruction_3 {
 		memory_read_s3;
 		memory_write_s3;
 		memory_increment_s3;
+		memory_minread_s3;
+		memory_minreadinc_s3;
 		hash_s3;
     }
     size = 512;
@@ -2419,6 +2407,8 @@ table instruction_4 {
 		memory_read_s4;
 		memory_write_s4;
 		memory_increment_s4;
+		memory_minread_s4;
+		memory_minreadinc_s4;
 		hash_s4;
     }
     size = 512;
@@ -2489,6 +2479,8 @@ table instruction_5 {
 		memory_read_s5;
 		memory_write_s5;
 		memory_increment_s5;
+		memory_minread_s5;
+		memory_minreadinc_s5;
 		hash_s5;
     }
     size = 512;
@@ -2559,6 +2551,8 @@ table instruction_6 {
 		memory_read_s6;
 		memory_write_s6;
 		memory_increment_s6;
+		memory_minread_s6;
+		memory_minreadinc_s6;
 		hash_s6;
     }
     size = 512;
@@ -2629,6 +2623,8 @@ table instruction_7 {
 		memory_read_s7;
 		memory_write_s7;
 		memory_increment_s7;
+		memory_minread_s7;
+		memory_minreadinc_s7;
 		hash_s7;
     }
     size = 512;
@@ -2699,6 +2695,8 @@ table instruction_8 {
 		memory_read_s8;
 		memory_write_s8;
 		memory_increment_s8;
+		memory_minread_s8;
+		memory_minreadinc_s8;
 		hash_s8;
     }
     size = 512;
@@ -2769,6 +2767,8 @@ table instruction_9 {
 		memory_read_s9;
 		memory_write_s9;
 		memory_increment_s9;
+		memory_minread_s9;
+		memory_minreadinc_s9;
 		hash_s9;
     }
     size = 512;
