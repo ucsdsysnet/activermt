@@ -35,7 +35,9 @@
 #define MEMMGMT_CLIENT		1
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
 #define MAX_SAMPLES_CACHE	100000
+#define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
+#define HH_COMPUTE_ITVL_SEC	1
 
 static struct rte_eth_dev_tx_buffer* buffer;
 static uint64_t drop_counter;
@@ -1026,14 +1028,21 @@ read_activep4_config(char* config_filename, active_config_t* cfg) {
 /* Cache application specific. */
 
 typedef struct {
-	uint64_t	ts_ref;
-	uint64_t	last_ts;
-	uint64_t	ts[MAX_SAMPLES_CACHE];
-	uint32_t	rx_hits[MAX_SAMPLES_CACHE];
-	uint32_t	rx_total[MAX_SAMPLES_CACHE];
-	uint32_t	num_samples;
-	int			stage_id_key;
-	int			stage_id_value;
+	uint32_t	key;
+	uint32_t	freq;
+} cache_item_freq_t;
+
+typedef struct {
+	uint64_t			ts_ref;
+	uint64_t			last_ts;
+	uint64_t			last_computed_freq;
+	uint64_t			ts[MAX_SAMPLES_CACHE];
+	uint32_t			rx_hits[MAX_SAMPLES_CACHE];
+	uint32_t			rx_total[MAX_SAMPLES_CACHE];
+	uint32_t			num_samples;
+	int					stage_id_key;
+	int					stage_id_value;
+	cache_item_freq_t	frequency[MAX_KEY];
 } cache_context_t;
 
 void shutdown_cache(int id, void* context) {
@@ -1057,7 +1066,10 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	for(int i = 0; i < NUM_STAGES; i++) {
 		if(!alloc->valid_stages[i]) continue;
 		if(stage_id_key < 0) stage_id_key = i;
-		else stage_id_value = i;
+		else {
+			stage_id_value = i;
+			break;
+		}
 	}
 	uint32_t memsize_keys = alloc->sync_data[stage_id_key].mem_end - alloc->sync_data[stage_id_key].mem_start + 1;
 	uint32_t memsize_values = alloc->sync_data[stage_id_value].mem_end - alloc->sync_data[stage_id_value].mem_start + 1;
@@ -1081,6 +1093,11 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	inet_pkt_t* inet_pkt = (inet_pkt_t*)pkt;
 	uint32_t cached_value = ntohl(ap4args->data[0]);
 	uint32_t key = ntohl(ap4args->data[1]);
+	uint32_t freq = ntohl(ap4args->data[3]);
+	int hh_addr = key & MAX_KEY;
+	cache_ctxt->frequency[hh_addr].key = key;
+	cache_ctxt->frequency[hh_addr].freq = freq;
+	// printf("[DEBUG] key %u frequency %u\n", key, freq);
 	if(cached_value != 0) {
 		cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
 		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
@@ -1091,11 +1108,17 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
 	uint64_t elapsed_ms = (double)(now - cache_ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
+	uint64_t elapsed_sec = (double)(now - cache_ctxt->last_computed_freq) / rte_get_tsc_hz();
 	if(elapsed_ms >= STATS_ITVL_MS_CACHE && cache_ctxt->num_samples < MAX_SAMPLES_CACHE) {
 		// printf("[DEBUG] cache hits %u total %u\n", cache_ctxt->rx_hits[cache_ctxt->num_samples], cache_ctxt->rx_total[cache_ctxt->num_samples]);
 		cache_ctxt->last_ts = now;
 		cache_ctxt->ts[cache_ctxt->num_samples] = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		cache_ctxt->num_samples++;
+	}
+	if(elapsed_sec >= HH_COMPUTE_ITVL_SEC) {
+		cache_ctxt->last_computed_freq = now;
+		printf("[DEBUG] computing frequent items ... \n");
+		// TODO
 	}
 	#ifdef DEBUG
 	printf("Cache response: flags %x args (%u,%u,%u,%u)\n", ntohs(ap4ih->flags), ntohl(ap4args->data[0]), ntohl(ap4args->data[1]), ntohl(ap4args->data[2]), ntohl(ap4args->data[3]));
@@ -1118,7 +1141,10 @@ void memory_reset_cache(memory_t* mem, void* context) {
 	for(int i = 0; i < NUM_STAGES; i++) {
 		if(!mem->valid_stages[i]) continue;
 		if(stage_id_key < 0) stage_id_key = i;
-		else stage_id_value = i;
+		else {
+			stage_id_value = i;
+			break;
+		}
 	}
 	if(mem->valid_stages[stage_id_key] && mem->valid_stages[stage_id_value]) {
 		uint32_t memsize_keys = mem->sync_data[stage_id_key].mem_end - mem->sync_data[stage_id_key].mem_start + 1;
@@ -1228,8 +1254,6 @@ main(int argc, char** argv)
 		read_opcode_action_map(INSTR_SET_PATH, &instr_set);
 		read_active_function(&active_function[i], active_dir, active_program_name);
 		for(int j = 0; j < cfg.num_instances[i]; j++) {
-			// cache_ctxt[inst_id].stage_id_key = 2;
-			// cache_ctxt[inst_id].stage_id_value = 5;
 			app_stats[inst_id].ts_ref = ts_ref;
 			cache_ctxt[inst_id].ts_ref = ts_ref;
 			ap4_ctxt[inst_id].instr_set = &instr_set;
