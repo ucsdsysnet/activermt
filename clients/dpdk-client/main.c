@@ -192,6 +192,11 @@ active_encap_filter(
 		}
 	}
 
+	#ifdef DEBUG
+	if(nb_pkts > 0)
+		printf("Received %d packets.\n", nb_pkts);
+	#endif
+
 	return nb_pkts;
 }
 

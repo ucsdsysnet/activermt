@@ -115,6 +115,9 @@ void* rx_loop(void* argp) {
             rx_total = 0;
             rx_hits = 0;
         }
+        pthread_mutex_lock(&lock);
+        stats.count_alt += num_msgs;
+        pthread_mutex_unlock(&lock);
     }
 }
 
