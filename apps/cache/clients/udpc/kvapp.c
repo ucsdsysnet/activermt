@@ -95,9 +95,9 @@ void* rx_loop(void* argp) {
                 uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(uint32_t));
                 if(*key > 0) {
                     if(*hm_flag == 1) rx_hits++;
-                    else if(instance_id == 2) {
+                    /*else if(instance_id == 2) {
                         printf("MISS key %d\n", *key);
-                    }
+                    }*/
                     rx_total++;
                 }
                 // printf("[DEBUG] key %u HIT %d\n", *key, *hm_flag);

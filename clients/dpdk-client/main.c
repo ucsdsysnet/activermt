@@ -216,22 +216,6 @@ active_decap_filter(
 		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 		int offset = 0;
 		if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
-			inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
-			if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
-				inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
-				uint16_t tmp = inet_pkt.hdr_udp->src_port;
-				inet_pkt.hdr_udp->src_port = inet_pkt.hdr_udp->dst_port;
-				inet_pkt.hdr_udp->dst_port = tmp;
-				inet_pkt.payload = bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
-				inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
-			}
-			// TODO hack.
-			struct rte_ether_addr tmp_ether = hdr_eth->src_addr;
-			hdr_eth->src_addr = hdr_eth->dst_addr;
-			hdr_eth->dst_addr = tmp_ether;
-			rte_be32_t tmp_ipv4 = inet_pkt.hdr_ipv4->src_addr;
-			inet_pkt.hdr_ipv4->src_addr = inet_pkt.hdr_ipv4->dst_addr;
-			inet_pkt.hdr_ipv4->dst_addr = tmp_ipv4;
 			// printf("[INFO] Non active packet.\n");
 		} else if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
 			hdr_eth->ether_type = htons(RTE_ETHER_TYPE_IPV4);
@@ -1130,7 +1114,7 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
 		*hm_flag = 1;
 		inet_pkt->hdr_udp->dgram_cksum = 0;
-		// printf("dst ip %x\n", ntohl(inet_pkt->hdr_ipv4->dst_addr));
+		// printf("[RXHDL] IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
 	}
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
