@@ -90,7 +90,7 @@ void* rx_loop(void* argp) {
         }
         for (int i = 0; i < num_msgs; i++) {
             bufs[i][msgs[i].msg_len] = 0;
-            if(msgs[i].msg_len == KVRESP_LEN) {
+            if(msgs[i].msg_len >= KVRESP_LEN) {
                 uint32_t* key = (uint32_t*)bufs[i];
                 uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(uint32_t));
                 if(*key > 0) {

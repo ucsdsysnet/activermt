@@ -234,7 +234,7 @@ active_decap_filter(
 			if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 				offset += sizeof(activep4_malloc_res_t);
 			}
-			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
+			if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE) || *(uint8_t*)(bufptr + sizeof(struct rte_ether_hdr) + offset) != 0x45) {
 				offset += get_active_eof(bufptr + sizeof(struct rte_ether_hdr) + offset, pkts[k]->pkt_len);
 			}
 			// Get active app context.
@@ -327,6 +327,10 @@ active_decap_filter(
 						}
 						if(inet_pkt.payload_length >= PAYLOAD_MINLENGTH)
 							ctxt->rx_handler(ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
+						else {
+							// printf("[DEBUG] proto %d payload not min: %d\n", inet_pkt.hdr_ipv4->next_proto_id, inet_pkt.payload_length);
+						}
+						// printf("[INFO] FID %d Flags %x OFFSET %d PKTLEN %d IP dst %x\n", ctxt->program->fid, flags, offset, pkts[k]->pkt_len, inet_pkt.hdr_ipv4->dst_addr);
 					}
 					// printf("pkt length %d\n", pkts[k]->pkt_len);
 					break;
@@ -340,7 +344,7 @@ active_decap_filter(
 				default:
 					break;
 			}
-
+			
 			for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
 				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
 			}
@@ -1114,7 +1118,9 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
 		*hm_flag = 1;
 		inet_pkt->hdr_udp->dgram_cksum = 0;
-		// printf("[RXHDL] IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
+		// printf("[RXHDL] hit IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
+	} else {
+		// printf("[RXHDL] miss IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
 	}
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();

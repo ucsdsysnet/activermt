@@ -758,21 +758,21 @@ testMode = True
 debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"
-demoApps = [{
-    'fid'       : 1,
-    'idx'       : [2, 5, 13, 16],
-    'iglim'     : 7,
-    'applen'    : 19,
-    'mindemand' : [1, 1, 1, 1]
-}]
-
 # demoApps = [{
 #     'fid'       : 1,
-#     'idx'       : [2, 5],
+#     'idx'       : [2, 5, 13, 16],
 #     'iglim'     : 7,
-#     'applen'    : 10,
-#     'mindemand' : [1, 1]
+#     'applen'    : 19,
+#     'mindemand' : [1, 1, 1, 1]
 # }]
+
+demoApps = [{
+    'fid'       : 1,
+    'idx'       : [2, 5],
+    'iglim'     : 7,
+    'applen'    : 10,
+    'mindemand' : [1, 1]
+}]
 
 customInstructions = None
 if restrictedInstructionSet:
