@@ -766,12 +766,20 @@ referenceProgram = "condition"
 #     'mindemand' : [1, 1, 1, 1]
 # }]
 
+# demoApps = [{
+#     'fid'       : 1,
+#     'idx'       : [2, 5],
+#     'iglim'     : 7,
+#     'applen'    : 10,
+#     'mindemand' : [1, 1]
+# }]
+
 demoApps = [{
     'fid'       : 1,
-    'idx'       : [2, 5],
-    'iglim'     : 7,
-    'applen'    : 10,
-    'mindemand' : [1, 1]
+    'idx'       : [2, 3, 4],
+    'iglim'     : -1,
+    'applen'    : 6,
+    'mindemand' : [1, 1, 1]
 }]
 
 customInstructions = None

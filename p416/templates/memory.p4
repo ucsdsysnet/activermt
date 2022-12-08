@@ -49,7 +49,8 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_write_s<stage-i
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_accumulate_s<stage-id> = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = obj + hdr.meta.inc;
+        // obj = obj + hdr.meta.inc;
+        obj = obj + 1;
         rv = obj;
     }
 };
@@ -73,13 +74,14 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_accumulate_s<st
 */
 RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s<stage-id>) heap_conditional_rw_zero_s<stage-id> = {
     void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-        if(obj == hdr.meta.mbr2) {
-            rv = 0;    
-        }
+        // if(obj == hdr.meta.mbr2) {
+        //     rv = 0;    
+        // } 
         if(obj == 0) {
             obj = hdr.meta.mbr2;
-            rv = 0;
+            // rv = 0;
+        } else {
+            rv = hdr.meta.mbr2 - obj;
         }
     }
 };

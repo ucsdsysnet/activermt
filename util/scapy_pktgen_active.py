@@ -26,7 +26,9 @@ utils.readConfigs()
 
 program = utils.readActiveProgram(active_program, print_bytecode=True)
 
-pkt = utils.constructActivePacket(fid, program, {})
+pkt = utils.constructActivePacket(fid, program, {
+    'data_0'   : 4
+})
 
 sendp(pkt, iface=iface, verbose=False)
 
