@@ -18,6 +18,7 @@
 #define VLEN            32
 #define ITVL_MSEC       1E6
 #define NUM_SAMPLES_HM  100000
+#define ZIPF_SIZE       100000
 
 #include "../../../../headers/stats.h"
 
@@ -164,28 +165,18 @@ int main(int argc, char** argv) {
         }
     }
 
-    int dist[MAX_KEYS];
+    int dist[ZIPF_SIZE];
 
     FILE* fp = fopen(dist_file, "r");
     char buf[100];
     int i = 0;
-    long distsize = 0;
     while(fgets(buf, 100, fp) != NULL) {
         dist[i++] = atoi(buf);
-        distsize += dist[i - 1];
-        if(i >= MAX_KEYS) break;
+        if(i >= ZIPF_SIZE) break;
     }
     fclose(fp);
-    printf("[INFO] read distribution for %d keys with a distribution size of %ld.\n", i, distsize);
-
+    printf("[INFO] read distribution of size %d.\n", i);
     int num_keys = i;
-    uint32_t* dist_flattened = (uint32_t*)malloc(distsize * sizeof(uint32_t));
-
-    i = 0;
-    for(int j = 0; j < num_keys; j++) {
-        for(int k = 0; i < dist[j]; k++)
-            dist_flattened[i++] = j + 1; // 0 is not a valid key.
-    }
 
     signal(SIGINT, interrupt_handler);
 
@@ -223,18 +214,24 @@ int main(int argc, char** argv) {
     }
 
     fd_set wr_set;
-    int ret;
-    uint32_t keys[2 * MAX_KEYS];
+    int ret, max_iter = 1000;
+    uint32_t keys[2 * MAX_KEYS], key;
 
     memset(keys, 0, 2 * MAX_KEYS * sizeof(uint32_t));
 
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
         // keys[i*2] = rand() % MAX_KEYS;
-        keys[i*2] = dist_flattened[rand() % distsize];
+        key = MAX_KEYS + 1;
+        while(key >= MAX_KEYS) {
+            key = dist[rand() % num_keys];
+        }
+        keys[i*2] = key;
         msg[i].iov_base = &keys[i*2];
         msg[i].iov_len = 2 * sizeof(uint32_t);
     }
+
+    printf("[INFO] generated keys according to distribution.\n");
 
     int key_current = 0;
 
