@@ -223,13 +223,14 @@ void* tx_loop(void* argp) {
 int main(int argc, char** argv) {
 
     if(argc < 3) {
-        printf("Usage: %s <ipv4_dstaddr> <dist_file> [num_instances=1]\n", argv[0]);
+        printf("Usage: %s <ipv4_dstaddr> <dist_file> [num_instances=1] [stagger_time_sec]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     char* ipv4_dstaddr = argv[1];
     char* dist_file = argv[2];
     int num_instances = (argc > 3) ? atoi(argv[3]) : 1;
+    int stagger_interval_sec = (argc > 4) ? atoi(argv[4]) : 0;
 
     if(num_instances > MAX_APPS) num_instances = MAX_APPS;
 
@@ -293,6 +294,11 @@ int main(int argc, char** argv) {
         if( pthread_create(&tx_thread[i], NULL, tx_loop, (void*)&ctxts[i]) < 0 ) {
             perror("pthread_create(tx_thread)");
             exit(1);
+        }
+
+        if(stagger_interval_sec > 0) {
+            printf("[INFO] staggering for %d seconds ... \n", stagger_interval_sec);
+            sleep(stagger_interval_sec);
         }
     }
 
