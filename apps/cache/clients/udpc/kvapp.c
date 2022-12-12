@@ -6,11 +6,15 @@
 #include <signal.h>
 #include <pthread.h>
 #include <errno.h>
+#include <unistd.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
 
+#define STATS
+#define MAX_APPS        1024
 #define BURST_SIZE      32
 #define MAX_KEYS        65536
 #define DPORT           5678
@@ -29,36 +33,53 @@ typedef struct {
     int         num_samples;
 } kvapp_stats_t;
 
-stats_t stats;
-kvapp_stats_t kv_stats;
+typedef struct {
+    uint16_t        fid;
+    int*            dist;
+    int             dist_size;
+    kvapp_stats_t*  kv_stats;
+    int             sockfd;
+} app_context_t;
 
-int is_running, instance_id;
+stats_t stats;
+
+int is_running;
 
 static void interrupt_handler(int sig) {
     is_running = 0;
-    // exit(EXIT_SUCCESS);
 }
 
-static void on_shutdown() {
+static void on_shutdown(app_context_t* ctxts, int num_apps) {
     
+    #ifdef STATS
     write_stats(&stats, "kvapp_stats.csv");
+    #endif
 
-    char filename[50];
-    sprintf(filename, "kv_hits_misses_%d.csv", instance_id);
-    FILE* fp = fopen(filename, "w");
-    if(fp == NULL) {
-        return;
+    for(int i = 0; i < num_apps; i++) {
+        char filename[50];
+        sprintf(filename, "kv_hits_misses_%d.csv", ctxts[i].fid);
+        FILE* fp = fopen(filename, "w");
+        if(fp == NULL) {
+            return;
+        }
+        printf("[INFO] FID %d writing hits/misses for %d samples ... ", ctxts[i].fid, ctxts[i].kv_stats->num_samples);
+        for(int j = 0; j < ctxts[i].kv_stats->num_samples; j++) {
+            fprintf(
+                fp, 
+                "%lu,%u,%u\n",
+                ctxts[i].kv_stats->ts[j], 
+                ctxts[i].kv_stats->rx_hits[j], 
+                ctxts[i].kv_stats->rx_total[j]
+            );
+        }
+        fclose(fp);
+        printf("done.\n");
     }
-    printf("[INFO] writing hits/misses for %d samples ... \n", kv_stats.num_samples);
-    for(int i = 0; i < kv_stats.num_samples; i++) {
-        fprintf(fp, "%lu,%u,%u\n", kv_stats.ts[i], kv_stats.rx_hits[i], kv_stats.rx_total[i]);
-    }
-    fclose(fp);
 }
 
 void* rx_loop(void* argp) {
     
-    int* sockfd = (int*)argp;
+    app_context_t* ctxt = (app_context_t*)argp;
 
     struct mmsghdr msgs[VLEN];
     struct iovec iovecs[VLEN];
@@ -79,13 +100,13 @@ void* rx_loop(void* argp) {
 
     uint32_t rx_hits = 0, rx_total = 0;
 
-    memset(&kv_stats, 0, sizeof(kvapp_stats_t));
+    memset(ctxt->kv_stats, 0, sizeof(kvapp_stats_t));
 
-    printf("[INFO] RX thread running ... \n");
+    printf("[INFO] RX thread for FID %d running ... \n", ctxt->fid);
 
     if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
     while(is_running) {
-        if( (num_msgs = recvmmsg(*sockfd, msgs, VLEN, 0, NULL)) < 0) {
+        if( (num_msgs = recvmmsg(ctxt->sockfd, msgs, VLEN, 0, NULL)) < 0) {
             perror("recvmmsg()");
             exit(EXIT_FAILURE);
         }
@@ -106,112 +127,35 @@ void* rx_loop(void* argp) {
         }
         if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
         elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
-        if(elapsed_ns >= ITVL_MSEC && kv_stats.num_samples < NUM_SAMPLES_HM) {
+        if(elapsed_ns >= ITVL_MSEC && ctxt->kv_stats->num_samples < NUM_SAMPLES_HM) {
             memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
             // printf("[DEBUG] rx %u hits %u\n", rx_total, rx_hits);
-            kv_stats.rx_hits[kv_stats.num_samples] = rx_hits;
-            kv_stats.rx_total[kv_stats.num_samples] = rx_total;
-            kv_stats.ts[kv_stats.num_samples] = ts_now.tv_sec * 1E9 + ts_now.tv_nsec;
-            kv_stats.num_samples++;
+            ctxt->kv_stats->rx_hits[ctxt->kv_stats->num_samples] = rx_hits;
+            ctxt->kv_stats->rx_total[ctxt->kv_stats->num_samples] = rx_total;
+            ctxt->kv_stats->ts[ctxt->kv_stats->num_samples] = ts_now.tv_sec * 1E9 + ts_now.tv_nsec;
+            ctxt->kv_stats->num_samples++;
             rx_total = 0;
             rx_hits = 0;
         }
+        #ifdef STATS
         pthread_mutex_lock(&lock);
         stats.count_alt += num_msgs;
         pthread_mutex_unlock(&lock);
+        #endif
     }
 }
 
-int main(int argc, char** argv) {
-
-    if(argc < 4) {
-        printf("Usage: %s -c|-s <ipv4_dstaddr> <dist_file> [instance_id=1]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    char* mode = argv[1];
-    char* ipv4_dstaddr = argv[2];
-    char* dist_file = argv[3];
+void* tx_loop(void* argp) {
     
-    instance_id = (argc > 4) ? atoi(argv[4]) : 1;
+    app_context_t* ctxt = (app_context_t*)argp;
 
-    int client_mode = 0;
-    if(strcmp(mode, "-c") == 0) client_mode = 1;
+    int sockfd = ctxt->sockfd;
+    int* dist = ctxt->dist;
+    int num_keys = ctxt->dist_size;
 
-    is_running = 1;
-
-    if(client_mode == 0) {
-        int s, namelen, client_address_size;
-        struct sockaddr_in client, server;
-        char buf[1500];
-        if((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-            perror("socket()");
-            exit(EXIT_FAILURE);
-        }
-        server.sin_family      = AF_INET;  
-        server.sin_port        = DPORT;        
-        server.sin_addr.s_addr = INADDR_ANY;
-        if(bind(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
-            perror("bind()");
-            exit(EXIT_FAILURE);
-        }
-        client_address_size = sizeof(client);
-        printf("Running server on port %d ... \n", DPORT);
-        while(is_running) {
-            if(recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *) &client, &client_address_size) < 0) {
-                perror("recvfrom()");
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
-
-    int dist[ZIPF_SIZE];
-
-    FILE* fp = fopen(dist_file, "r");
-    char buf[100];
-    int i = 0;
-    while(fgets(buf, 100, fp) != NULL) {
-        dist[i++] = atoi(buf);
-        if(i >= ZIPF_SIZE) break;
-    }
-    fclose(fp);
-    printf("[INFO] read distribution of size %d.\n", i);
-    int num_keys = i;
-
-    signal(SIGINT, interrupt_handler);
-
-    memset(&stats, 0, sizeof(stats_t));
-
-    pthread_t timer_thread, rx_thread;
-
-    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
-        perror("pthread_create(timer_thread)");
-        exit(1);
-    }
-
-    int sockfd;
-    struct sockaddr_in addr;
     struct mmsghdr mhdr[BURST_SIZE];
     struct iovec msg[MAX_KEYS];
     int retval;
-
-    if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket()");
-        exit(EXIT_FAILURE);
-    }
-
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(ipv4_dstaddr);
-    addr.sin_port = htons(DPORT);
-    if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-        perror("connect()");
-        exit(EXIT_FAILURE);
-    }
-
-    if( pthread_create(&rx_thread, NULL, rx_loop, (void*)&sockfd) < 0 ) {
-        perror("pthread_create(rx_thread)");
-        exit(1);
-    }
 
     fd_set wr_set;
     int ret, max_iter = 1000;
@@ -231,9 +175,13 @@ int main(int argc, char** argv) {
         msg[i].iov_len = 2 * sizeof(uint32_t);
     }
 
+    #ifdef DEBUG
     printf("[INFO] generated keys according to distribution.\n");
+    #endif
 
     int key_current = 0;
+
+    printf("[INFO] TX thread for FID %d running ... \n", ctxt->fid);
 
     while(is_running) {
 
@@ -263,13 +211,96 @@ int main(int argc, char** argv) {
                 exit(EXIT_FAILURE);
             }
             
+            #ifdef STATS
             pthread_mutex_lock(&lock);
             stats.count += retval;
             pthread_mutex_unlock(&lock);
+            #endif
+        }
+    }
+}
+
+int main(int argc, char** argv) {
+
+    if(argc < 3) {
+        printf("Usage: %s <ipv4_dstaddr> <dist_file> [num_instances=1]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    char* ipv4_dstaddr = argv[1];
+    char* dist_file = argv[2];
+    int num_instances = (argc > 3) ? atoi(argv[3]) : 1;
+
+    if(num_instances > MAX_APPS) num_instances = MAX_APPS;
+
+    is_running = 1;
+
+    int dist[ZIPF_SIZE];
+
+    FILE* fp = fopen(dist_file, "r");
+    char buf[100];
+    int i = 0;
+    while(fgets(buf, 100, fp) != NULL) {
+        dist[i++] = atoi(buf);
+        if(i >= ZIPF_SIZE) break;
+    }
+    fclose(fp);
+    printf("[INFO] read distribution of size %d.\n", i);
+    int num_keys = i;
+
+    signal(SIGINT, interrupt_handler);
+
+    app_context_t ctxts[MAX_APPS];
+
+    memset(&stats, 0, sizeof(stats_t));
+    memset(ctxts, 0, MAX_APPS * sizeof(app_context_t));
+
+    pthread_t timer_thread, rx_thread[MAX_APPS], tx_thread[MAX_APPS];
+
+    if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
+        perror("pthread_create(timer_thread)");
+        exit(1);
+    }
+
+    for(int i = 0; i < num_instances; i++) {
+
+        int sockfd;
+        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+            perror("socket()");
+            exit(EXIT_FAILURE);
+        }
+
+        struct sockaddr_in addr;
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = inet_addr(ipv4_dstaddr);
+        addr.sin_port = htons(DPORT);
+        if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+            perror("connect()");
+            exit(EXIT_FAILURE);
+        }
+
+        ctxts[i].kv_stats = (kvapp_stats_t*) malloc(sizeof(kvapp_stats_t));
+        ctxts[i].dist = dist;
+        ctxts[i].dist_size = num_keys;
+        ctxts[i].sockfd = sockfd;
+        ctxts[i].fid = i + 1;
+
+        if( pthread_create(&rx_thread[i], NULL, rx_loop, (void*)&ctxts[i]) < 0 ) {
+            perror("pthread_create(rx_thread)");
+            exit(1);
+        }
+
+        if( pthread_create(&tx_thread[i], NULL, tx_loop, (void*)&ctxts[i]) < 0 ) {
+            perror("pthread_create(tx_thread)");
+            exit(1);
         }
     }
 
-    on_shutdown();
+    for(int i = 0; i < num_instances; i++) {
+        pthread_join(tx_thread[i], NULL); // RX threads are blocking.
+    }
+
+    on_shutdown(ctxts, num_instances);
 
     return 0;
 }
