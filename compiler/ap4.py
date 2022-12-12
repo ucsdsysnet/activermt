@@ -102,6 +102,7 @@ class ActiveProgram:
                     if argname not in self.args:
                         self.args[argname] = []    
                     self.args[argname].append(len(program) - i - 1)
+            # print(program[i])
             self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], goto=label))
         self.program.reverse()
         self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], goto=0))

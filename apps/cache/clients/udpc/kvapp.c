@@ -123,15 +123,16 @@ void* rx_loop(void* argp) {
 
 int main(int argc, char** argv) {
 
-    if(argc < 3) {
-        printf("Usage: %s -c|-s <ipv4_dstaddr> [instance_id=1]\n", argv[0]);
+    if(argc < 4) {
+        printf("Usage: %s -c|-s <ipv4_dstaddr> <dist_file> [instance_id=1]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     char* mode = argv[1];
     char* ipv4_dstaddr = argv[2];
+    char* dist_file = argv[3];
     
-    instance_id = (argc > 3) ? atoi(argv[3]) : 1;
+    instance_id = (argc > 4) ? atoi(argv[4]) : 1;
 
     int client_mode = 0;
     if(strcmp(mode, "-c") == 0) client_mode = 1;
@@ -161,6 +162,29 @@ int main(int argc, char** argv) {
                 exit(EXIT_FAILURE);
             }
         }
+    }
+
+    int dist[MAX_KEYS];
+
+    FILE* fp = fopen(dist_file, "r");
+    char buf[100];
+    int i = 0;
+    long distsize = 0;
+    while(fgets(buf, 100, fp) != NULL) {
+        dist[i++] = atoi(buf);
+        distsize += dist[i - 1];
+        if(i >= MAX_KEYS) break;
+    }
+    fclose(fp);
+    printf("[INFO] read distribution for %d keys with a distribution size of %ld.\n", i, distsize);
+
+    int num_keys = i;
+    uint32_t* dist_flattened = (uint32_t*)malloc(distsize * sizeof(uint32_t));
+
+    i = 0;
+    for(int j = 0; j < num_keys; j++) {
+        for(int k = 0; i < dist[j]; k++)
+            dist_flattened[i++] = j + 1; // 0 is not a valid key.
     }
 
     signal(SIGINT, interrupt_handler);
@@ -204,10 +228,10 @@ int main(int argc, char** argv) {
 
     memset(keys, 0, 2 * MAX_KEYS * sizeof(uint32_t));
 
-    // TODO update with distribution.
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
-        keys[i*2] = rand() % MAX_KEYS;
+        // keys[i*2] = rand() % MAX_KEYS;
+        keys[i*2] = dist_flattened[rand() % distsize];
         msg[i].iov_base = &keys[i*2];
         msg[i].iov_len = 2 * sizeof(uint32_t);
     }
