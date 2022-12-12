@@ -766,13 +766,13 @@ referenceProgram = "condition"
 #     'mindemand' : [1, 1, 1, 1]
 # }]
 
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [2, 5],
-#     'iglim'     : 7,
-#     'applen'    : 10,
-#     'mindemand' : [1, 1]
-# }]
+demoApps = [{
+    'fid'       : 1,
+    'idx'       : [2, 5],
+    'iglim'     : 7,
+    'applen'    : 10,
+    'mindemand' : [1, 1]
+}]
 
 # demoApps = [{
 #     'fid'       : 1,
@@ -782,13 +782,13 @@ referenceProgram = "condition"
 #     'mindemand' : [1, 1, 1]
 # }]
 
-demoApps = [{
-    'fid'       : 1,
-    'idx'       : [3, 6, 15, 16, 17],
-    'iglim'     : -1,
-    'applen'    : 19,
-    'mindemand' : [1, 1, 1, 1, 1]
-}]
+# demoApps = [{
+#     'fid'       : 1,
+#     'idx'       : [3, 6, 15, 16, 17],
+#     'iglim'     : -1,
+#     'applen'    : 19,
+#     'mindemand' : [1, 1, 1, 1, 1]
+# }]
 
 customInstructions = None
 if restrictedInstructionSet:
