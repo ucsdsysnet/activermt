@@ -25,3 +25,8 @@ bf_drivers*
 .*
 
 bf_drivers*
+
+apps/cache/clients/udpc/kv_hits_misses*.csv
+clients/dpdk-client/active_tx_stats*.csv
+clients/dpdk-client/cache_stats*.csv
+clients/dpdk-client/dpdk_ap4_stats*.csv

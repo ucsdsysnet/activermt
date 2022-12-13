@@ -116,6 +116,7 @@ class ActiveP4Controller:
         self.remoteDrainInit = set()
         self.remoteDrainInitiator = None
         self.mutex = threading.Lock()
+        self.digestMutex = threading.Lock()
         self.monitorThread = None
 
     def save(self):
@@ -642,6 +643,7 @@ class ActiveP4Controller:
                 print("Queueing FID %d for remapping ... " % tid)
                 self.remoteDrainInit.add(tid)
                 self.remoteDrainQueue[tid] = remaps
+                # TODO race condition with previous allocation remaps.
                 self.p4.Ingress.remap_check.add_with_remapped(fid=tid, flag_initiated=0, allocation_id=self.allocVersion[tid])
                 bfrt.complete_operations()
 
@@ -671,7 +673,9 @@ class ActiveP4Controller:
             igLim = digest['iglim']
             accessIdx = []
             minDemand = []
+            # self.digestMutex.acquire()
             if fid in self.active:
+                # TODO allocation modification requires computation of request hash.
                 continue
             if fid == 255:
                 th = threading.Thread(target=self.resetAllocation)
@@ -692,6 +696,7 @@ class ActiveP4Controller:
                 'accessIdx' : accessIdx,
                 'minDemand' : minDemand
             })
+            # self.digestMutex.release()
         return 0
 
     def onRemapAck(self, dev_id, pipe_id, directon, parser_id, session, msg):
@@ -700,9 +705,11 @@ class ActiveP4Controller:
             isRemap = (int(digest['flag_remapped']) == 1)
             isAck = (int(digest['flag_ack']) == 1)
             isInitiated = (int(digest['flag_initiated']) == 1)
+            # self.digestMutex.acquire()
             if not isRemap or (fid not in self.remoteDrainQueue and fid not in self.remoteDrainInit):
                 continue
             if isInitiated and fid in self.remoteDrainInit:
+                # TODO packet may be lost.
                 if self.DEBUG:
                     print("Drain initiated by FID", fid)
                 self.remoteDrainInit.remove(fid)
@@ -713,11 +720,14 @@ class ActiveP4Controller:
                     print("Drain complete by FID", fid)
                 if fid in self.remoteDrainInit:
                     self.remoteDrainInit.remove(fid)
+                    self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
+                    bfrt.complete_operations()
                 if fid in self.remoteDrainQueue:
                     remaps = self.remoteDrainQueue[fid]
                     if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
                         self.resumeAllocation(self.remoteDrainInitiator, remaps)
                     self.remoteDrainQueue.pop(fid)
+            # self.digestMutex.release()
         return 0
 
     def initController(self):
@@ -734,6 +744,7 @@ class ActiveP4Controller:
             self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
             while req['fid'] in self.queue:
                 pass
+            print("[DEBUG] allocation for fid %d removed from queue." % req['fid'])
 
     def listen(self):
         self.monitorThread = threading.Thread(target=self.monitor)

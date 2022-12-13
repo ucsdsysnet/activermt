@@ -33,7 +33,7 @@
 #include "./include/memory.h"
 #include "./include/active.h"
 
-// #define FREQITEM_COMP		1
+// #define STATS
 #define MEMMGMT_CLIENT		1
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
 #define MAX_SAMPLES_CACHE	100000
@@ -183,7 +183,9 @@ active_encap_filter(
 		if(eth->ether_type != htons(RTE_ETHER_TYPE_IPV4)) continue;
 		activep4_context_t* ctxt = get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt);
 		if(ctxt == NULL) continue;
+		#ifdef STATS
 		update_active_tx_stats(ctxt->status, &apps_ctxt->stats[ctxt->id]);
+		#endif
 		switch(ctxt->status) {
 			case ACTIVE_STATE_TRANSMITTING:
 				insert_active_program_headers(ctxt, pkts[i]);
@@ -838,11 +840,6 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	uint32_t cached_value = ntohl(ap4args->data[0]);
 	uint32_t key = ntohl(ap4args->data[1]);
 	uint32_t freq = ntohl(ap4args->data[3]);
-	#ifdef FREQITEM_COMP
-	int hh_addr = key & MAX_KEY;
-	cache_ctxt->frequency[hh_addr].key = key;
-	cache_ctxt->frequency[hh_addr].freq = freq;
-	#endif
 	// printf("[DEBUG] key %u frequency %u\n", key, freq);
 	if(cached_value != 0) {
 		cache_ctxt->rx_hits[cache_ctxt->num_samples]++;
@@ -853,6 +850,7 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	} else {
 		// printf("[RXHDL] miss IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
 	}
+	#ifdef STATS
 	cache_ctxt->rx_total[cache_ctxt->num_samples]++;
 	uint64_t now = rte_rdtsc_precise();
 	uint64_t elapsed_ms = (double)(now - cache_ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
@@ -861,13 +859,6 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 		cache_ctxt->last_ts = now;
 		cache_ctxt->ts[cache_ctxt->num_samples] = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		cache_ctxt->num_samples++;
-	}
-	#ifdef FREQITEM_COMP
-	uint64_t elapsed_sec = (double)(now - cache_ctxt->last_computed_freq) / rte_get_tsc_hz();
-	if(elapsed_sec >= HH_COMPUTE_ITVL_SEC) {
-		cache_ctxt->last_computed_freq = now;
-		// printf("[DEBUG] computing frequent items ... \n");
-		// TODO
 	}
 	#endif
 	#ifdef DEBUG
@@ -916,8 +907,6 @@ main(int argc, char** argv)
 		printf("Usage: %s <iface> <config_file>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-
-	// initialize_display();
 
 	is_running = 1;
 	signal(SIGINT, interrupt_handler);
@@ -1095,8 +1084,10 @@ main(int argc, char** argv)
 		ports[portid] = portid;
 		if(port_init(portid, mbuf_pool, &apps_ctxt) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
+		#ifdef STATS
 		rte_eal_remote_launch(lcore_stats, (void*)&ports[portid], lcore_id);
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+		#endif
 	}
 
 	rte_eal_remote_launch(lcore_control, (void*)&ctrl, lcore_id);
@@ -1108,9 +1099,6 @@ main(int argc, char** argv)
 	}
 	#endif
 
-	// rte_eal_remote_launch(lcore_display, NULL, lcore_id);
-	// lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
-
 	lcore_main();
 
 	for(int i = 0; i < apps_ctxt.num_apps_instances; i++) {
@@ -1120,7 +1108,6 @@ main(int argc, char** argv)
 	write_active_tx_stats(&apps_ctxt);
 
 	rte_eal_cleanup();
-	// endwin();
 
 	return 0;
 }
