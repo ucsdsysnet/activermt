@@ -165,12 +165,13 @@ void* tx_loop(void* argp) {
 
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
-        // keys[i*2] = rand() % MAX_KEYS;
+        // key = rand() % MAX_KEYS;
         key = MAX_KEYS + 1;
         while(key >= MAX_KEYS) {
             key = dist[rand() % num_keys];
         }
         keys[i*2] = key;
+        // printf("%d.\tKey = %u\n", i, key);
         msg[i].iov_base = &keys[i*2];
         msg[i].iov_len = 2 * sizeof(uint32_t);
     }

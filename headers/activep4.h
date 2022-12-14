@@ -254,7 +254,7 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     fclose(fp);
     ap4->num_accesses = i;
     ap4->iglim = iglim;
-    printf("Read program memory access pattern: %d stages (", ap4->num_accesses);
+    printf("[ACTIVEP4] Read program memory access pattern: %d stages (", ap4->num_accesses);
     for(i = 0; i < ap4->num_accesses; i++) {
         ap4->access_idx[i] = memidx[i];
         ap4->demand[i] = 1; // TODO read from config.
@@ -278,7 +278,9 @@ static inline int read_active_args(activep4_def_t* ap4, char* arg_file) {
         ap4->args[num_args].idx = argidx;
         ap4->args[num_args].didx = dataidx;
         strcpy(ap4->args[num_args].argname, argname);
+        #ifdef DEBUG
         printf("[ARG] %s %d %d\n", ap4->args[num_args].argname, ap4->args[num_args].idx,  ap4->args[num_args].didx);
+        #endif
         num_args++;
     }
     ap4->num_args = num_args;
@@ -475,7 +477,7 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         program->code[i] = ap4->code[i];
     }
 
-    printf("[INFO] program mutant:\n");
+    printf("[FID %d] program mutant:\n", ap4->fid);
     for(int i = 0; i < program->proglen; i++) {
         printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);
     }
