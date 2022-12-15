@@ -14,6 +14,7 @@
 #include <netinet/ip.h>
 
 #define STATS
+#define UNIQUE_KEYS     1
 #define MAX_APPS        1024
 #define BURST_SIZE      32
 #define MAX_KEYS        65536
@@ -75,6 +76,15 @@ static void on_shutdown(app_context_t* ctxts, int num_apps) {
         fclose(fp);
         printf("done.\n");
     }
+}
+
+static inline int compute_unique_keys(uint8_t* bloom) {
+    int num_distinct_keys = 0;
+    for(int i = 0; i < MAX_KEYS; i++) {
+        num_distinct_keys += bloom[i];
+    }
+    memset(bloom, 0, sizeof(uint8_t) * MAX_KEYS);
+    return num_distinct_keys;
 }
 
 void* rx_loop(void* argp) {
@@ -153,6 +163,8 @@ void* tx_loop(void* argp) {
     int* dist = ctxt->dist;
     int num_keys = ctxt->dist_size;
 
+    printf("[INFO] %d samples in distribution.\n", num_keys);
+
     struct mmsghdr mhdr[BURST_SIZE];
     struct iovec msg[MAX_KEYS];
     int retval;
@@ -160,7 +172,9 @@ void* tx_loop(void* argp) {
     fd_set wr_set;
     int ret, max_iter = 1000;
     uint32_t keys[2 * MAX_KEYS], key;
+    uint8_t bloom[MAX_KEYS];
 
+    memset(bloom, 0, MAX_KEYS * sizeof(uint8_t));
     memset(keys, 0, 2 * MAX_KEYS * sizeof(uint32_t));
 
     memset(&msg, 0, sizeof(msg));
@@ -169,20 +183,26 @@ void* tx_loop(void* argp) {
         key = MAX_KEYS + 1;
         while(key >= MAX_KEYS) {
             key = dist[rand() % num_keys];
+            if(UNIQUE_KEYS && bloom[key] == 1) key = MAX_KEYS + 1;
         }
         keys[i*2] = key;
+        bloom[key] = 1;
         // printf("%d.\tKey = %u\n", i, key);
         msg[i].iov_base = &keys[i*2];
         msg[i].iov_len = 2 * sizeof(uint32_t);
     }
 
-    #ifdef DEBUG
-    printf("[INFO] generated keys according to distribution.\n");
-    #endif
+    printf("[INFO] %d unique keys generated.\n", compute_unique_keys(bloom));
 
     int key_current = 0;
 
     printf("[INFO] TX thread for FID %d running ... \n", ctxt->fid);
+
+    #ifdef DEBUG
+    struct timespec ts_start, ts_now;
+    uint64_t elapsed_ns;
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) {perror("clock_gettime"); exit(1);}
+    #endif
 
     while(is_running) {
 
@@ -199,6 +219,9 @@ void* tx_loop(void* argp) {
         
         memset(&mhdr, 0, sizeof(mhdr));
         for(int i = 0; i < BURST_SIZE; i++) {
+            #ifdef DEBUG
+            bloom[keys[key_current*2]] = 1;
+            #endif
             mhdr[i].msg_hdr.msg_iov = &msg[key_current];
             mhdr[i].msg_hdr.msg_iovlen = 1;
             key_current = (key_current + 1) % MAX_KEYS;
@@ -218,6 +241,16 @@ void* tx_loop(void* argp) {
             pthread_mutex_unlock(&lock);
             #endif
         }
+
+        #ifdef DEBUG
+        if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) {perror("clock_gettime"); exit(1);}
+        elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+        if(elapsed_ns >= 1E9) {
+            int num_distinct_keys = compute_unique_keys(bloom);
+            printf("[DEBUG] %d keys sent.\n", num_distinct_keys);
+            memcpy(&ts_start, (char*)&ts_now, sizeof(struct timespec));
+        }
+        #endif
     }
 }
 

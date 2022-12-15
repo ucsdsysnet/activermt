@@ -296,28 +296,38 @@ class ActiveP4Controller:
         register = getattr(gress, 'heap_s%d' % memIdGress)
         print("Memory dump initiated ... ")
         data = []
-        register.operation_register_sync()
+        """register.operation_register_sync()
         for regId in range(memRange[0], memRange[1] + 1):
             item = register.get(REGISTER_INDEX=regId, from_hw=False)
             regId = item.key[b'$REGISTER_INDEX']
             regVal = item.data[b'Ingress.heap_s%d.f1' % memIdGress]
             data.append((regId, regVal))
             if self.erase:
-                register.add(REGISTER_INDEX=regId, f1=0)
-        """register.operation_register_sync()
+                register.add(REGISTER_INDEX=regId, f1=0)"""
+        register.operation_register_sync()
         regValues = register.dump(return_ents=True, from_hw=False)
         for item in regValues:
             regId = item.key[b'$REGISTER_INDEX']
             regVal = item.data[b'Ingress.heap_s%d.f1' % memIdGress]
             if regId >= memRange[0] and regId <= memRange[1]:
                 data.append((regId, regVal))
-        if self.erase:
+        """if self.erase:
             register.clear()
             for regId in range(memRange[0], memRange[1] + 1):
                 register.add(REGISTER_INDEX=regId, f1=0)"""
         print("Memory dump complete.")
         data.sort(key=lambda x: x[0])
         return data    
+
+    def getMemoryUsage(self, memId, memRange):
+        data = self.getMemoryDump(memId, memRange)
+        usage = 0
+        for d in data:
+            for p in d[1]:
+                if p > 0:
+                    usage += 1
+                    break
+        return (usage / len(data), usage, len(data))
 
     """def resetTrafficCounters(self):
         self.p4.Ingress.activep4_stats.clear()
@@ -680,6 +690,10 @@ class ActiveP4Controller:
             if fid == 255:
                 th = threading.Thread(target=self.resetAllocation)
                 th.start()
+                continue
+            if fid == 254:
+                usage = self.getMemoryUsage(2, (0, 65535))
+                print("Usage[2]:", usage)
                 continue
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]

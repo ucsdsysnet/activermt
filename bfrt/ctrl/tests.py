@@ -40,11 +40,18 @@ print("Index", regvals[0].key[b'$REGISTER_INDEX'])
 key = b'Ingress.heap_s%d.f1' % 0
 print("Value", regvals[0].data[key])"""
 
-entries = bfrt.active.pipe.Ingress.instruction_4.dump(return_ents=True)
+"""entries = bfrt.active.pipe.Ingress.instruction_4.dump(return_ents=True)
 for entry in entries:
     fid = entry.key.get(b'hdr.meta.fid')[0]
     opcode = entry.key.get(b'hdr.instr$%d.opcode' % 4)
     if fid == 1:
-        print(entry)
+        print(entry)"""
+
+bfrt.active.pipe.Ingress.heap_s2.operation_register_sync()
+regvals = bfrt.active.pipe.Ingress.heap_s2.dump(return_ents=True)
+stored = 0
+for obj in regvals:
+    value = obj.data[b'Ingress.heap_s2.f1']
+    print(value)
 
 bfrt.complete_operations()

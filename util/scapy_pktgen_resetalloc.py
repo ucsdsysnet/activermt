@@ -16,7 +16,7 @@ FLAGS_REQALLOC = 0x0010
 
 pkt = (
     Ether(dst="00:00:00:00:00:02", src='00:00:00:00:00:01')/
-    ActiveInitialHeader(fid=255, flags=FLAGS_REQALLOC)/
+    ActiveInitialHeader(fid=254, flags=FLAGS_REQALLOC)/
     ActiveMalloc()/
     IP(src="10.0.0.1", dst="10.0.0.1")/
     UDP(dport=6378)
