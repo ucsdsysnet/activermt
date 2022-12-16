@@ -1,7 +1,7 @@
 clear;
 clc;
 
-num_apps = 1;
+num_apps = 4;
 
 ts_min = -1;
 ts_max = -1;

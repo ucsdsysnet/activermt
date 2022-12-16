@@ -101,7 +101,7 @@ typedef struct {
 } activep4_malloc_t;
 
 typedef struct {
-    uint16_t    data[MAX_DATA];
+    uint32_t    data[MAX_DATA];
     uint8_t     valid[MAX_DATA];
     int         mem_start;
     int         mem_end;
@@ -480,6 +480,13 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
     printf("[FID %d] program mutant:\n", ap4->fid);
     for(int i = 0; i < program->proglen; i++) {
         printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);
+    }
+}
+
+static inline void clear_memory_regions(memory_t* mem) {
+    for(int i = 0; i < NUM_STAGES; i++) {
+        memset(&mem->sync_data[i].data, 0, MAX_DATA * sizeof(uint32_t));
+        memset(&mem->sync_data[i].valid, 0, MAX_DATA * sizeof(uint8_t));
     }
 }
 

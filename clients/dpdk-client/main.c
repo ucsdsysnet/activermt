@@ -35,6 +35,7 @@
 #include "./include/active.h"
 
 // #define STATS
+#define CLIENT
 #define HH_DETECTION
 #define MEMMGMT_CLIENT		1
 #define INSTR_SET_PATH		"opcode_action_mapping.csv"
@@ -682,6 +683,7 @@ lcore_control(void* arg) {
 					}
 					break;
 				case ACTIVE_STATE_REMAPPING:
+					#ifndef CLIENT
 					remapping_in_progress = 1;
 					memory_t* updated_region = &ctxt->membuf;
 					updated_region->fid = ctxt->allocation.fid;
@@ -709,6 +711,7 @@ lcore_control(void* arg) {
 					}
 					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->program->fid);
+					#endif
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
 				case ACTIVE_STATE_TRANSMITTING:
@@ -872,14 +875,14 @@ void memory_consume_cache(memory_t* mem, void* context) {}
 
 void memory_invalidate_cache(memory_t* mem, void* context) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
-	for(int i = 0; i < NUM_STAGES; i++)
-		memset(&mem->sync_data[i], 0, MAX_DATA);
+	clear_memory_regions(mem);
 }
 
 void memory_reset_cache(memory_t* mem, void* context) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
-	for(int i = 0; i < NUM_STAGES; i++)
-		memset(&mem->sync_data[i], 0, MAX_DATA);
+	#ifndef CLIENT
+	clear_memory_regions(mem);
+	#endif
 	#ifndef HH_DETECTION
 	int stage_id_key = -1, stage_id_value = -1;
 	for(int i = 0; i < NUM_STAGES; i++) {

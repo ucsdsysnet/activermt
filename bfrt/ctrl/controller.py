@@ -691,10 +691,10 @@ class ActiveP4Controller:
                 th = threading.Thread(target=self.resetAllocation)
                 th.start()
                 continue
-            if fid == 254:
+            """if fid == 254:
                 usage = self.getMemoryUsage(2, (0, 65535))
                 print("Usage[2]:", usage)
-                continue
+                continue"""
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]
                 demand = digest['dem_%d' % i]
@@ -791,13 +791,13 @@ referenceProgram = "condition"
 #     'mindemand' : [1, 1, 1, 1]
 # }]
 
-demoApps = [{
-    'fid'       : 1,
-    'idx'       : [2, 5],
-    'iglim'     : 7,
-    'applen'    : 10,
-    'mindemand' : [1, 1]
-}]
+# demoApps = [{
+#     'fid'       : 1,
+#     'idx'       : [2, 5],
+#     'iglim'     : 7,
+#     'applen'    : 10,
+#     'mindemand' : [1, 1]
+# }]
 
 # demoApps = [{
 #     'fid'       : 1,
@@ -814,6 +814,14 @@ demoApps = [{
 #     'applen'    : 19,
 #     'mindemand' : [1, 1, 1, 1, 1]
 # }]
+
+demoApps = [{
+    'fid'       : 1,
+    'idx'       : [2,5,11,14,24,25,26,27],
+    'iglim'     : 6,
+    'applen'    : 29,
+    'mindemand' : [1,1,1,1,1,1,1,1]
+}]
 
 customInstructions = None
 if restrictedInstructionSet:

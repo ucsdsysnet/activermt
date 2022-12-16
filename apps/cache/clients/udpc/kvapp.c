@@ -14,7 +14,7 @@
 #include <netinet/ip.h>
 
 #define STATS
-#define UNIQUE_KEYS     1
+#define UNIQUE_KEYS     0
 #define MAX_APPS        1024
 #define BURST_SIZE      32
 #define MAX_KEYS        65536
