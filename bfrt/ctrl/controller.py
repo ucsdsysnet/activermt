@@ -815,6 +815,7 @@ referenceProgram = "condition"
 #     'mindemand' : [1, 1, 1, 1, 1]
 # }]
 
+# accesses: 2 5 11 14 (_ 15 16 17)
 demoApps = [{
     'fid'       : 1,
     'idx'       : [2,5,11,14,24,25,26,27],

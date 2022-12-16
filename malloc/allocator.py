@@ -19,24 +19,33 @@ import numpy as np
 class ActiveFunction:
     def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False):
         assert len(accessIdx) == len(minDemand)
-        assert progLen <= 20
+        # assert progLen <= 20
+        self.debug = True
         self.num_stages = 20
         self.num_stage_ig = 10
+        self.num_stage_eg = self.num_stages - self.num_stage_ig
         self.fid = fid
         self.wt = weight
         self.igLim = igLim
         self.progLen = progLen
         self.minDemand = minDemand
+        # ensuring re-circulation cost does not increase.
+        self.maxProgLen = self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg)
         self.numAccesses = len(accessIdx)
         self.A = self.getDeltaMatrix(self.numAccesses)
         self.constrLB = np.copy(accessIdx)
-        self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
-        #self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
+        self.constrUB = self.constrLB + self.maxProgLen - self.progLen - 1
+        # self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
+        # self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
         if self.igLim >= 0:
             for i in range(0, self.numAccesses):
                 if self.constrLB[i] < self.igLim:
                     self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
         self.constrDelta = np.matmul(self.A, self.constrLB)
+        if self.debug:
+            print("[DEBUG] Maximum program length:", self.maxProgLen)
+            print("[DEBUG] Constraint (UB):")
+            print(self.constrUB)
         self.allocation = None
         self.enumeration = []
         self.enumTime = None
@@ -80,6 +89,15 @@ class ActiveFunction:
             current[pos] = current[pos] + 1
             for i in range(pos + 1, radix):
                 current[i] = current[i - 1] + self.constrDelta[i]
+        # prune enumeration.
+        pruned = []
+        for enum in self.enumeration:
+            q = np.greater(enum / self.num_stages, np.zeros(len(enum)))
+            m = (enum % self.num_stages) + self.num_stage_ig
+            x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
+            if len(np.unique(x)) == len(x):
+                pruned.append(enum)
+        self.enumeration = pruned
         tsEnumEnd = time.time()
         self.enumTime = tsEnumEnd - tsEnumStart
 

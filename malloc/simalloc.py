@@ -156,6 +156,12 @@ appCfg = {
         'iglim'     : -1,
         'applen'    : 20,
         'mindemand' : [1, 1, 1, 1, 1]
+    },
+    'cache_hh'  : {
+        'idx'       : [2,5,11,14,24,25,26],
+        'iglim'     : 6,
+        'applen'    : 28,
+        'mindemand' : [1,1,1,1,1,1,1]
     }
 }
 
@@ -269,13 +275,28 @@ if custom:
     print("[Custom Experiment]")
     expId = 0
 
-    sequence = generateSequence(appCfg, type='random')
+    appname = 'cache_hh'
+    cfg = appCfg[appname]
+    activeFunc = ActiveFunction(1, np.transpose(np.array(cfg['idx'], dtype=np.uint32)), cfg['iglim'], cfg['applen'], cfg['mindemand'], enumerate=True)
+    print("Enumeration size: ", activeFunc.getEnumerationSize())
+    enums = activeFunc.getEnumeration()
+    print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
 
-    results = runAnalysis(appCfg, Allocator.METRIC_SAT, False, False, numRepeats, w='random', debug=True, fixedSequence=sequence)
-    writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(False, False, Allocator.METRIC_SAT, type='random'))
+    # sequence = generateSequence(appCfg, appname='cache_hh')
+    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (cache_hh)", utilization)
+    # print(stats['allocated'])
+    # print(stats['appnames'])
+    # print(stats['allocmatrix'])
 
-    results = runAnalysis(appCfg, Allocator.METRIC_COST, True, True, numRepeats, w='random', debug=True, fixedSequence=sequence)
-    writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(True, True, Allocator.METRIC_COST, type='random'))
+    # sequence = generateSequence(appCfg, type='random')
+
+    # results = runAnalysis(appCfg, Allocator.METRIC_SAT, False, False, numRepeats, w='random', debug=True, fixedSequence=sequence)
+    # writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(False, False, Allocator.METRIC_SAT, type='random'))
+
+    # results = runAnalysis(appCfg, Allocator.METRIC_COST, True, True, numRepeats, w='random', debug=True, fixedSequence=sequence)
+    # writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(True, True, Allocator.METRIC_COST, type='random'))
 
     # activeFunc = ActiveFunction(1, np.transpose(np.array([4, 7, 9, 11], dtype=np.uint32)), 0, 14, [1, 1, 1, 1], enumerate=True)
     # enums = activeFunc.getEnumeration()
