@@ -33,7 +33,7 @@ class ActiveFunction:
         self.maxProgLen = self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg)
         self.numAccesses = len(accessIdx)
         self.A = self.getDeltaMatrix(self.numAccesses)
-        self.constrLB = np.copy(accessIdx)
+        self.constrLB = np.copy(accessIdx).astype('uint32')
         self.constrUB = self.constrLB + self.maxProgLen - self.progLen - 1
         # self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
         # self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
@@ -92,7 +92,8 @@ class ActiveFunction:
         # prune enumeration.
         pruned = []
         for enum in self.enumeration:
-            q = np.greater(enum / self.num_stages, np.zeros(len(enum)))
+            g = enum / self.num_stages
+            q = np.greater(g.astype('uint32'), np.zeros(len(enum)))
             m = (enum % self.num_stages) + self.num_stage_ig
             x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
             if len(np.unique(x)) == len(x):
@@ -110,7 +111,8 @@ class ActiveFunction:
         if transformed:
             transformed = []
             for enum in self.enumeration:
-                q = np.greater(enum / self.num_stages, np.zeros(len(enum)))
+                g = enum / self.num_stages
+                q = np.greater(g.astype('uint32'), np.zeros(len(enum)))
                 m = (enum % self.num_stages) + self.num_stage_ig
                 x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
                 if len(np.unique(x)) == len(x):
@@ -129,7 +131,7 @@ class Allocator:
 
     def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = 20
-        self.max_occupancy = 8
+        self.max_occupancy = 64
         self.WT_OVERFLOW = 1000
         self.metric = metric
         self.optimize = optimize

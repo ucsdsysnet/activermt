@@ -56,6 +56,7 @@ class ActiveP4Controller:
 
     REG_MAX = 0xFFFFF
     DEBUG = True
+    MEMSIZE = 65536
 
     def __init__(self, allocator=None, custom=None, basePath=""):
         if allocator is None:
@@ -66,12 +67,12 @@ class ActiveP4Controller:
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
-        self.block_size = 8192
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
         self.num_stages_total = self.num_stages_ingress + self.num_stages_egress
-        self.max_stage_sharing = 8
+        self.max_stage_sharing = self.allocator.max_occupancy
+        self.block_size = self.MEMSIZE / self.max_stage_sharing
         self.max_iter = 100
         self.recirculation_enabled = True
         self.base_path = basePath
@@ -630,12 +631,13 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("Elapsed (allocation) time", elapsedAllocation)
 
-        if cost > self.allocator.WT_OVERFLOW:
+        if cost is None or cost > self.allocator.WT_OVERFLOW:
             self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
             bfrt.complete_operations()
             self.queue.remove(fid)
             if self.DEBUG:
                 print("Allocation failed for FID", fid)
+            # TODO handle failed allocations.
             return 
 
         self.remoteDrainInitiator = fid
@@ -818,10 +820,10 @@ referenceProgram = "condition"
 # accesses: 2 5 11 14 (_ 15 16 17)
 demoApps = [{
     'fid'       : 1,
-    'idx'       : [2,5,11,14,24,25,26,27],
+    'idx'       : [2,5,11,14,24,25,26],
     'iglim'     : 6,
-    'applen'    : 29,
-    'mindemand' : [1,1,1,1,1,1,1,1]
+    'applen'    : 28,
+    'mindemand' : [1,1,1,1,1,1,1]
 }]
 
 customInstructions = None
