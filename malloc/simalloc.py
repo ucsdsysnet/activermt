@@ -158,10 +158,10 @@ appCfg = {
         'mindemand' : [1, 1, 1, 1, 1]
     },
     'cache_hh'  : {
-        'idx'       : [2,5,11,14,24,25,26],
+        'idx'       : [2, 5, 11, 14, 24, 25, 26],
         'iglim'     : 6,
         'applen'    : 28,
-        'mindemand' : [1,1,1,1,1,1,1]
+        'mindemand' : [1, 1, 1, 1, 1, 1, 1]
     }
 }
 
@@ -279,16 +279,16 @@ if custom:
     cfg = appCfg[appname]
     activeFunc = ActiveFunction(1, np.transpose(np.array(cfg['idx'], dtype=np.uint32)), cfg['iglim'], cfg['applen'], cfg['mindemand'], enumerate=True)
     print("Enumeration size: ", activeFunc.getEnumerationSize())
-    enums = activeFunc.getEnumeration()
-    print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
+    # enums = activeFunc.getEnumeration()
+    # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
 
-    # sequence = generateSequence(appCfg, appname='cache_hh')
-    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (cache_hh)", utilization)
-    # print(stats['allocated'])
-    # print(stats['appnames'])
-    # print(stats['allocmatrix'])
+    sequence = generateSequence(appCfg, appname='cache_hh')
+    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    print("Utilization (cache_hh)", utilization)
+    print(stats['allocated'])
+    print(stats['appnames'])
+    print(stats['allocmatrix'])
 
     # sequence = generateSequence(appCfg, type='random')
 

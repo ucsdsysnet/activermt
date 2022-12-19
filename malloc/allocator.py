@@ -20,7 +20,7 @@ class ActiveFunction:
     def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False):
         assert len(accessIdx) == len(minDemand)
         # assert progLen <= 20
-        self.debug = True
+        self.debug = False
         self.num_stages = 20
         self.num_stage_ig = 10
         self.num_stage_eg = self.num_stages - self.num_stage_ig
@@ -106,7 +106,16 @@ class ActiveFunction:
             return self.enumeration[idx]
         return None
 
-    def getEnumeration(self):
+    def getEnumeration(self, transformed=False):
+        if transformed:
+            transformed = []
+            for enum in self.enumeration:
+                q = np.greater(enum / self.num_stages, np.zeros(len(enum)))
+                m = (enum % self.num_stages) + self.num_stage_ig
+                x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
+                if len(np.unique(x)) == len(x):
+                    transformed.append(x)
+            return transformed
         return self.enumeration
 
 # allocator
@@ -336,7 +345,7 @@ class Allocator:
         optimal = None
         tsAllocStart = time.time()
         if online:
-            enumeration = activeFunc.getEnumeration()
+            enumeration = activeFunc.getEnumeration(transformed=True)
             for i in range(0, len(enumeration)):
                 memIdx = enumeration[i]
                 cost = self.getCost(memIdx, activeFunc)
