@@ -279,7 +279,7 @@ active_decap_filter(
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "\n");
 							// TODO
 							// ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
-							mutate_active_program(ctxt->program, &ctxt->allocation, 1);
+							mutate_active_program(ctxt->program, &ctxt->allocation, 1, ctxt->instr_set);
 							ctxt->status = ACTIVE_STATE_REMAPPING;
 							#ifdef DEBUG
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] state %d\n", ctxt->status);

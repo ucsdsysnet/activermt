@@ -1,7 +1,7 @@
 #ifndef ACTIVEP4_H
 #define ACTIVEP4_H
 
-//#define DEBUG
+// #define DEBUG
 
 #define TRUE            1
 #define FALSE           0
@@ -16,6 +16,7 @@
 #define AP4_INSTR_LEN   2
 #define AP4_DATA_LEN    4
 #define MAX_MEMACCESS   8
+#define NUM_STAGES_IG   10
 #define NUM_STAGES      20
 #define MAX_DATA        65536
 #define MAX_FIDX        256
@@ -30,6 +31,8 @@
 #define AP4FLAGMASK_FLAG_REQALLOC   0x0010
 #define AP4FLAGMASK_FLAG_GETALLOC   0x0020
 #define AP4FLAGMASK_FLAG_ALLOCATED  0x0008
+
+#define OPCODE_FLAG_MEMACCESS       0x0001
 
 #define ACTIVE_STATE_TRANSMITTING   0
 #define ACTIVE_STATE_ALLOCATING     1
@@ -46,6 +49,7 @@
 #include <malloc.h>
 #include <ctype.h>
 #include <errno.h>
+#include <assert.h>
 #include <arpa/inet.h>
 
 typedef struct {
@@ -139,9 +143,10 @@ typedef struct {
 } activep4_def_t;
 
 typedef struct {
-    char    mnemonic[MNEMONIC_MAXLEN];
-    char    action[MNEMONIC_MAXLEN];
-    int     options;
+    char        mnemonic[MNEMONIC_MAXLEN];
+    char        action[MNEMONIC_MAXLEN];
+    int         options;
+    uint16_t    flags;
 } opcode_action_map_t;
 
 typedef struct {
@@ -186,6 +191,11 @@ static inline int pnemonic_to_opcode(pnemonic_opcode_t* instr_set, char* pnemoni
     return -1;
 }
 
+static inline int is_memaccess(pnemonic_opcode_t* instr_set, int opcode) {
+    if(instr_set->map[opcode].flags & OPCODE_FLAG_MEMACCESS) return 1;
+    return 0;
+}
+
 static inline int read_opcode_action_map(char* filename, pnemonic_opcode_t* instr_set) {
     int i = 0, tokidx;
     char buf[BUFLEN];
@@ -203,6 +213,9 @@ static inline int read_opcode_action_map(char* filename, pnemonic_opcode_t* inst
             else if(tokidx == 1) strcpy(instr_set->map[i].action, tok);
             else instr_set->map[i].options = atoi(tok);
             tokidx++;
+        }
+        if(strncmp(instr_set->map[i].mnemonic, "MEM", 3) == 0) {
+            instr_set->map[i].flags |= OPCODE_FLAG_MEMACCESS;
         }
         i++;
     }
@@ -439,7 +452,13 @@ static inline void construct_nop_program(activep4_def_t* program, pnemonic_opcod
     add_instruction(program, instr_set, "EOF");
 }
 
-static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, int NOP_OPCODE) {
+static inline int get_memory_stage_id(int idx) {
+    if(idx < NUM_STAGES) return idx;
+    int num_stages_eg = NUM_STAGES - NUM_STAGES_IG;
+    return (idx - NUM_STAGES_IG) % num_stages_eg + NUM_STAGES_IG;
+}
+
+static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, int NOP_OPCODE, pnemonic_opcode_t* instr_set) {
     
     int access_idx_allocated[NUM_STAGES], i, j, block_start, block_end, offset;
 
@@ -457,8 +476,31 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
 
     active_mutant_t* program = &ap4->mutant;
 
-    program->proglen = ap4->proglen + access_idx_allocated[ap4->num_accesses - 1] - ap4->access_idx[ap4->num_accesses - 1];
-    memset(&program->code, 0, program->proglen * sizeof(activep4_instr));
+    #ifdef DEBUG
+    printf("[DEBUG] program length=%d, %d num accesses.\n", ap4->proglen, ap4->num_accesses);
+    #endif
+
+    // TODO program length may exceed number of stages.
+    int allocation_map[MAXPROGLEN], allocIdx = 0, increase = 0, stage_idx, delta;
+    memset(allocation_map, -1, MAXPROGLEN * sizeof(int));
+    for(i = 0; i < ap4->proglen; i++) {
+        if(allocIdx >= ap4->num_accesses) break;
+        if(is_memaccess(instr_set, ap4->code[i].opcode)) {
+            stage_idx = get_memory_stage_id(i);
+            #ifdef DEBUG
+            printf("[DEBUG] memaccess %d -> %d\n", i, access_idx_allocated[allocIdx]);
+            #endif
+            delta = access_idx_allocated[allocIdx] - stage_idx;
+            if(delta < 0) delta += (NUM_STAGES - NUM_STAGES_IG);
+            increase += delta;
+            allocation_map[i] = access_idx_allocated[allocIdx++]; // assumes ordered memory accesses.
+        }
+    }
+    program->proglen = ap4->proglen + increase;
+
+    assert(program->proglen <= MAXPROGLEN);
+
+    memset(&program->code, 0, MAXPROGLEN * sizeof(activep4_instr));
 
     for(i = 0; i < program->proglen; i++) program->code[i].opcode = NOP_OPCODE;
 
@@ -466,7 +508,8 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
     while(j > 0) {
         j--;
         block_start = ap4->access_idx[j];
-        offset = access_idx_allocated[j] - ap4->access_idx[j];
+        offset = access_idx_allocated[j] - get_memory_stage_id(ap4->access_idx[j]);
+        if(offset < 0) offset += (NUM_STAGES - NUM_STAGES_IG);
         for(i = block_end; i >= block_start; i--) {
             program->code[i + offset] = ap4->code[i];
         }
@@ -477,10 +520,12 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         program->code[i] = ap4->code[i];
     }
 
-    printf("[FID %d] program mutant:\n", ap4->fid);
+    #ifdef DEBUG
+    printf("[FID %d] program size increased by %d, mutant:\n", ap4->fid, increase);
     for(int i = 0; i < program->proglen; i++) {
         printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);
     }
+    #endif
 }
 
 static inline void clear_memory_regions(memory_t* mem) {

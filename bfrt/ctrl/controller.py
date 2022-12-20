@@ -621,6 +621,7 @@ class ActiveP4Controller:
 
         activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
 
+        # TODO preserve ordering of memory accesses to aid mutant generation.
         (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = self.allocator.computeAllocation(activeFunc)
         if memIdx is not None and cost < self.allocator.WT_OVERFLOW:
             (changes, remaps) = self.allocator.enqueueAllocation(overallAlloc, allocationMap)
