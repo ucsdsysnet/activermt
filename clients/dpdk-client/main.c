@@ -53,9 +53,6 @@ static void interrupt_handler(int sig) {
     is_running = 0;
 }
 
-/*static const char usage[] =
-	"%s EAL_ARGS -- [-t]\n";*/
-
 static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {
 	
 	char* bufptr = rte_pktmbuf_mtod(pkt, char*);
@@ -106,7 +103,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	Context is defined by an application source-destination port pair.
 	Created when application traffic is seen on the interface. 
 	Assigned an instance from a pool of FIDs.
-	TODO: control traffic should be started only when an app context is created. 
+	control traffic is started only when an app context is created. 
 */
 static inline activep4_context_t* get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt) {
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)bufptr;
@@ -830,9 +827,11 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	// struct rte_hash* hash = (struct rte_hash*)alloc->hash_function;
 	// uint32_t addr = (uint32_t)rte_hash_add_key(hash, key);
 	uint16_t addr = alloc->sync_data[stage_id_key].mem_start + (*key % memory_size);
+	uint32_t hh_threshold = 0;
 	// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Key %d addr %d\n", *key, addr);
+	ap4data->data[0] = htonl(addr);
 	ap4data->data[1] = htonl(*key);
-	ap4data->data[2] = htonl(addr);
+	ap4data->data[3] = htonl(hh_threshold);
 }
 
 void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void* context, void* pkt) {
