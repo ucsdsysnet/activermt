@@ -201,6 +201,28 @@ static inline activep4_context_t* get_app_context_from_packet(char* bufptr, acti
 	return ctxt;
 }
 
+static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, activep4_def_t* memsync_cache, int portid, struct rte_mempool *mempool) {
+	struct rte_mbuf* mbuf;
+	const int qid = 1;
+	int snapshotting_in_progress = 1;
+	while(snapshotting_in_progress) {
+		snapshotting_in_progress = 0;
+		for(int i = 0; i < NUM_STAGES; i++) {
+			if(!mem->valid_stages[i] || !ctxt->syncmap[i]) continue;
+			for(int j = mem->sync_data[i].mem_start; j <= mem->sync_data[i].mem_end; j++) {
+				if(mem->sync_data[i].valid[j]) continue;
+				snapshotting_in_progress = 1;
+				if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
+					construct_snapshot_packet(mbuf, portid, ctxt, i, j, memsync_cache, false);
+					rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+					// printf("[SNAPSHOT] stage %d index %d \n", i, j);
+				}
+			}
+		}
+	}
+	rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+}
+
 static uint16_t
 active_encap_filter(
 	uint16_t port_id __rte_unused, 
@@ -297,6 +319,7 @@ active_decap_filter(
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 						if(ctxt->allocation.version != seq) {
 							activep4_malloc_res_t* ap4malloc = (activep4_malloc_res_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+							ctxt->allocation.invalid = 0;
 							ctxt->allocation.version = seq;
 							ctxt->allocation.hash_function = NULL;
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] ALLOCATION (ver %d) ", fid, ctxt->allocation.version);
@@ -554,6 +577,8 @@ lcore_control(void* arg) {
 	uint64_t now, elapsed_us;
 	int snapshotting_in_progress = 0, remapping_in_progress = 0, invalidating_in_progress = 0;
 
+	char tmpbuf[100];
+
 	while(is_running) {
 		now = rte_rdtsc_precise();
 		for(int i = 0; i < ctrl->apps_ctxt->num_apps_instances; i++) {
@@ -599,35 +624,22 @@ lcore_control(void* arg) {
 					}
 					break;
 				case ACTIVE_STATE_SNAPSHOTTING:
-					snapshotting_in_progress = 1;
+					get_rw_stages_str(ctxt, tmpbuf);
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->program->fid, tmpbuf);
 					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
-					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting ... \n", ctxt->program->fid);
-					while(snapshotting_in_progress) {
-						snapshotting_in_progress = 0;
-						for(int i = 0; i < NUM_STAGES; i++) {
-							if(!ctxt->allocation.valid_stages[i]) continue;
-							for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
-								if(ctxt->allocation.sync_data[i].valid[j]) continue;
-								snapshotting_in_progress = 1;
-								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache, false);
-									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
-									// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[SNAPSHOT] stage %d index %d \n", i, j);
-								}
-							}
-						}
-					}
-					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+					sync_memory_region(&ctxt->allocation, ctxt, memsync_cache, ctrl->port_id, ctrl->mempool);
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
-					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete.\n", ctxt->program->fid);
-					invalidating_in_progress = 1;
+					uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns\n", ctxt->program->fid, snapshot_time_ns);
 					if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory ... \n", ctxt->program->fid);
+						get_rw_stages_str(ctxt, tmpbuf);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->program->fid, tmpbuf);
+						invalidating_in_progress = 1;
 						while(invalidating_in_progress) {
 							invalidating_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
-								if(!ctxt->allocation.valid_stages[i]) continue;
+								if(!ctxt->allocation.valid_stages[i] || !ctxt->syncmap[i]) continue;
 								for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
 									if(ctxt->allocation.sync_data[i].valid[j]) continue;
 									invalidating_in_progress = 1;
@@ -641,7 +653,10 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->program->fid);
 					}
-					ctxt->status = ACTIVE_STATE_REALLOCATING;
+					if(ctxt->allocation.invalid)
+						ctxt->status = ACTIVE_STATE_REALLOCATING;
+					else
+						ctxt->status = ACTIVE_STATE_REMAPPING;
 					break;
 				case ACTIVE_STATE_REMAPPING:
 					remapping_in_progress = 1;
@@ -653,7 +668,9 @@ lcore_control(void* arg) {
 						updated_region->sync_data[k].mem_end = ctxt->allocation.sync_data[k].mem_end;
 					}
 					if(reset_memory_region(updated_region, ctxt)) {
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting ... \n", ctxt->program->fid);
+						memcpy(ctxt->syncmap, updated_region->valid_stages, NUM_STAGES);
+						get_rw_stages_str(ctxt, tmpbuf);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->program->fid, tmpbuf);
 						while(remapping_in_progress) {
 							remapping_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
