@@ -267,6 +267,7 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     fclose(fp);
     ap4->num_accesses = i;
     ap4->iglim = iglim;
+    #ifdef DEBUG
     printf("[ACTIVEP4] Read program memory access pattern: %d stages (", ap4->num_accesses);
     for(i = 0; i < ap4->num_accesses; i++) {
         ap4->access_idx[i] = memidx[i];
@@ -274,6 +275,7 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
         printf("%d,", memidx[i]);
     }
     printf(") ingress limit %d\n", iglim);
+    #endif
 }
 
 static inline int read_active_args(activep4_def_t* ap4, char* arg_file) {
@@ -315,53 +317,6 @@ static inline void read_active_function(activep4_def_t* ap4, char* active_progra
     read_active_memaccess(ap4, memidx_path);
 }
 
-/*static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
-    activep4_ih* ap4ih = (activep4_ih*)buf;
-    ap4ih->SIG = htonl(ACTIVEP4SIG);
-    ap4ih->fid = htons(fid);
-    ap4ih->flags = htons(flags);
-    return sizeof(activep4_ih);
-}*/
-
-/*static inline int insert_active_program(char* buf, activep4_def_t* ap4, activep4_argval* args, int numargs) {
-    int offset = 0, i, j;
-    int ap4_buf_size = ap4->proglen * sizeof(activep4_instr);
-    char* bufptr = buf;
-    activep4_instr* code = ap4->code;
-    activep4_ih* ih;
-    activep4_instr* instr;
-    activep4_data_t* data;
-    int numinstr = ap4->proglen;
-    ih = (activep4_ih*)buf;
-    offset += insert_active_initial_header(buf, ap4->fid, 0);
-    bufptr += offset;
-    // insert arguments
-    if(ap4->args_mapped == 0) {
-        for(i = 0; i < ap4->num_args; i++) {
-            for(j = 0; j < numargs; j++) {
-                if(strcmp(args[j].argname, ap4->args[i].argname) == 0) {
-                    ap4->args[i].value_idx = j;
-                }
-            }
-        }
-        ap4->args_mapped = 1;
-    }
-    memset(bufptr, 0, sizeof(activep4_data_t));
-    data = (activep4_data_t*)bufptr;
-    for(i = 0; i < ap4->num_args; i++) {
-        data->data[ap4->args[i].didx] = htonl(args[ap4->args[i].value_idx].argval);
-    }
-    if(ap4->num_args > 0) {
-        bufptr += sizeof(activep4_data_t);
-        offset += sizeof(activep4_data_t);
-        ih->flags = htons(ntohs(ih->flags) | AP4FLAGMASK_OPT_ARGS);
-    }
-    // insert active program
-    memcpy(bufptr, (char*)ap4->code, ap4_buf_size);
-    offset += ap4_buf_size;
-    return offset;
-}*/
-
 static inline int get_active_eof(char* buf, int buflen) {
     if(buflen < sizeof(activep4_instr)) return 0;
     int eof = 0, remaining_bytes = buflen - sizeof(activep4_instr);
@@ -385,7 +340,7 @@ static inline void add_instruction(activep4_def_t* program, pnemonic_opcode_t* i
         program->code[program->proglen].flags = 0;
         program->code[program->proglen].opcode = opcode;
         program->proglen++;
-    } else printf("Instruction Unknown!");
+    } else printf("Instruction Unknown!\n");
 }
 
 static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {

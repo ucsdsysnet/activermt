@@ -33,6 +33,16 @@
 #define CTRL_PKT_HEARTBEAT	5
 
 typedef struct {
+	char				appname[100];
+	void                (*tx_handler)(char*, int, activep4_data_t*, memory_t*, void*);
+    void                (*rx_handler)(activep4_ih*, activep4_data_t*, void*, void*);
+    void                (*memory_consume)(memory_t*, void*);
+    void                (*memory_invalidate)(memory_t*, void*);
+    void                (*memory_reset)(memory_t*, void*);
+    void                (*shutdown)(int, void*);
+} active_handlers_t;
+
+typedef struct {
 	uint32_t	tx_active[MAX_TXSTAT_SAMPLES];
 	uint32_t	tx_total[MAX_TXSTAT_SAMPLES];
 	uint64_t	ts[MAX_TXSTAT_SAMPLES];
