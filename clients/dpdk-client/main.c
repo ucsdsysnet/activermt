@@ -1,7 +1,3 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2015 Intel Corporation
- */
-
 //#define DEBUG
 #define PDUMP_ENABLE
 
@@ -35,10 +31,7 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
-#define CLIENT
-#define HH_DETECTION
-#define MEMMGMT_CLIENT		1
-#define INSTR_SET_PATH		"opcode_action_mapping.csv"
+#define INSTR_SET_PATH		"../config/opcode_action_mapping.csv"
 #define MAX_SAMPLES_CACHE	100000
 #define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
@@ -101,7 +94,7 @@ void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap
 	ap4data->data[3] = htonl(hh_threshold);
 }
 
-void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void* context, void* pkt) {
+void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_data_t* ap4args, void* context, void* pkt) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 	inet_pkt_t* inet_pkt = (inet_pkt_t*)pkt;
 	if(inet_pkt->payload_length < PAYLOAD_MINLENGTH) return;
@@ -138,41 +131,11 @@ void active_rx_handler_cache(activep4_ih* ap4ih, activep4_data_t* ap4args, void*
 	#endif
 }
 
-void memory_consume_cache(memory_t* mem, void* context) {}
+int memory_consume_cache(memory_t* mem, void* context) { return 0; }
 
-void memory_invalidate_cache(memory_t* mem, void* context) {
-	cache_context_t* cache_ctxt = (cache_context_t*)context;
-	clear_memory_regions(mem);
-}
+int memory_invalidate_cache(memory_t* mem, void* context) { return 0; }
 
-void memory_reset_cache(memory_t* mem, void* context) {
-	cache_context_t* cache_ctxt = (cache_context_t*)context;
-	#ifndef CLIENT
-	clear_memory_regions(mem);
-	#endif
-	#ifndef HH_DETECTION
-	int stage_id_key = -1, stage_id_value = -1;
-	for(int i = 0; i < NUM_STAGES; i++) {
-		if(!mem->valid_stages[i]) continue;
-		if(stage_id_key < 0) stage_id_key = i;
-		else {
-			stage_id_value = i;
-			break;
-		}
-	}
-	if(mem->valid_stages[stage_id_key] && mem->valid_stages[stage_id_value]) {
-		uint32_t memsize_keys = mem->sync_data[stage_id_key].mem_end - mem->sync_data[stage_id_key].mem_start + 1;
-		uint32_t memsize_values = mem->sync_data[stage_id_value].mem_end - mem->sync_data[stage_id_value].mem_start + 1;
-		uint32_t memsize = (memsize_keys < memsize_values) ? memsize_keys : memsize_values;
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] remapping %d memory objects in stages (%d,%d) from base address %u.\n", memsize, stage_id_key, stage_id_value, mem->sync_data[stage_id_key].mem_start);
-		for(int i = 0; i < memsize; i++) {
-			uint16_t addr = (uint16_t)i + mem->sync_data[stage_id_key].mem_start;
-			mem->sync_data[stage_id_key].data[addr] = i;
-			mem->sync_data[stage_id_value].data[addr] = i;
-		}
-	}
-	#endif
-}
+int memory_reset_cache(memory_t* mem, void* context) { return 0; }
 
 int
 main(int argc, char** argv)
@@ -181,9 +144,6 @@ main(int argc, char** argv)
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Usage: %s <iface> <config_file>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-
-	is_running = 1;
-	signal(SIGINT, interrupt_handler);
 
 	char* dev = argv[1];
 	char* config_filename = argv[2];
