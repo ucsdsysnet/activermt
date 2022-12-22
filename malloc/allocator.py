@@ -92,10 +92,7 @@ class ActiveFunction:
         # prune enumeration.
         pruned = []
         for enum in self.enumeration:
-            g = enum / self.num_stages
-            q = np.greater(g.astype('uint32'), np.zeros(len(enum)))
-            m = (enum % self.num_stages) + self.num_stage_ig
-            x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
+            x = [ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in enum ]
             if len(np.unique(x)) == len(x):
                 pruned.append(enum)
         self.enumeration = pruned
@@ -111,10 +108,7 @@ class ActiveFunction:
         if transformed:
             transformed = []
             for enum in self.enumeration:
-                g = enum / self.num_stages
-                q = np.greater(g.astype('uint32'), np.zeros(len(enum)))
-                m = (enum % self.num_stages) + self.num_stage_ig
-                x = np.multiply(q, m) + np.multiply(np.logical_not(q), enum)
+                x = [ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in enum ]
                 if len(np.unique(x)) == len(x):
                     transformed.append(x)
             return transformed

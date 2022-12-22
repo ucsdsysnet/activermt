@@ -175,6 +175,7 @@ main(int argc, char** argv)
 		ctxt->shutdown = shutdown_cache;
 		ctxt->timer = timer_cache;
 		ctxt->active_heartbeat_enabled = false;
+		set_memory_demand(ctxt, 2);
 	}
 
 	#ifdef PDUMP_ENABLE

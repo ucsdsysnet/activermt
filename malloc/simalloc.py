@@ -158,10 +158,10 @@ appCfg = {
         'mindemand' : [1, 1, 1, 1, 1]
     },
     'cache_hh'  : {
-        'idx'       : [2, 5, 11, 14, 24, 25, 26],
+        'idx'       : [2, 5, 11, 14, 25, 26, 27],
         'iglim'     : 6,
-        'applen'    : 28,
-        'mindemand' : [1, 1, 1, 1, 1, 1, 1]
+        'applen'    : 29,
+        'mindemand' : [2, 2, 2, 2, 2, 2, 2]
     }
 }
 
@@ -262,6 +262,11 @@ def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w=
         print(result[6]['allocmatrix'])
     return results
 
+def print_allocation_matrix(allocation_matrix):
+    buf = "\n".join([ " ".join([ str(j) for j in i ]) for i in allocation_matrix ])
+    print("Allocation Matrix:")
+    print(buf)
+
 # METRICS: utilization, utility, cost, time
 # ANALYSIS: one app (of each type)
 # ANALYSIS: probabilistic sampling (uniform)
@@ -286,9 +291,7 @@ if custom:
     allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
     (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
     print("Utilization (cache_hh)", utilization)
-    print(stats['allocated'])
-    print(stats['appnames'])
-    print(stats['allocmatrix'])
+    # print_allocation_matrix(stats['allocmatrix'])
 
     # sequence = generateSequence(appCfg, type='random')
 
