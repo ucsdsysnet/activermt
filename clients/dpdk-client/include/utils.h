@@ -40,9 +40,6 @@ void read_activep4_config(char* config_filename, active_config_t* cfg) {
 					strcpy(cfg->appname[n], tok);
 					break;
 				case 3:
-					cfg->num_instances[n] = atoi(tok);
-					break;
-				case 4:
 					cfg->app_id[n] = atoi(tok);
 					break;
 				default:

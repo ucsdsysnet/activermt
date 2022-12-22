@@ -31,7 +31,7 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
-#define INSTR_SET_PATH		"../config/opcode_action_mapping.csv"
+#define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
 #define MAX_SAMPLES_CACHE	100000
 #define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
@@ -137,6 +137,8 @@ int memory_invalidate_cache(memory_t* mem, void* context) { return 0; }
 
 int memory_reset_cache(memory_t* mem, void* context) { return 0; }
 
+void timer_cache(void* arg) {}
+
 int
 main(int argc, char** argv)
 {
@@ -155,27 +157,25 @@ main(int argc, char** argv)
 	argc -= ret;
 	argv += ret;
 
-	cache_context_t* cache_ctxt = (cache_context_t*)rte_zmalloc(NULL, MAX_INSTANCES * sizeof(cache_context_t), 0);
-	if(cache_ctxt == NULL) {
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Unable to allocate memory for cache context!\n");
-		exit(EXIT_FAILURE);
-	}
+	active_client_init(config_filename, dev, INSTR_SET_PATH);
+
 	uint64_t ts_ref = rte_rdtsc_precise();
-	for(int i = 0; i < MAX_INSTANCES; i++) {
-		cache_ctxt[i].ts_ref = ts_ref;
+
+	activep4_context_t* ctxt;
+	int app_id;
+	ACTIVE_FOREACH_APP(app_id, ctxt) {
+		ctxt->app_context = rte_zmalloc(NULL, sizeof(cache_context_t), 0);
+		assert(ctxt->app_context != NULL);
+		((cache_context_t*)ctxt->app_context)->ts_ref = ts_ref;
+		ctxt->tx_handler = payload_parser_cache;
+		ctxt->rx_handler = active_rx_handler_cache;
+		ctxt->memory_consume = memory_consume_cache;
+		ctxt->memory_invalidate = memory_invalidate_cache;
+		ctxt->memory_reset = memory_reset_cache;
+		ctxt->shutdown = shutdown_cache;
+		ctxt->timer = timer_cache;
+		ctxt->active_heartbeat_enabled = false;
 	}
-
-	active_handlers_t handlers[MAX_APPS];
-
-	strcpy(handlers[0].appname, "cache_cms_hh");
-	handlers[0].tx_handler = payload_parser_cache;
-	handlers[0].rx_handler = active_rx_handler_cache;
-	handlers[0].memory_consume = memory_consume_cache;
-	handlers[0].memory_invalidate = memory_invalidate_cache;
-	handlers[0].memory_reset = memory_reset_cache;
-	handlers[0].shutdown = shutdown_cache;
-
-	active_client_init(config_filename, dev, INSTR_SET_PATH, handlers, cache_ctxt);
 
 	#ifdef PDUMP_ENABLE
 	if(rte_pdump_init() < 0) {

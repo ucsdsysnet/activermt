@@ -28,9 +28,13 @@
 
 #include "../../../headers/activep4.h"
 
+#define ACTIVE_FOREACH_APP(app_id, ctxt) for(app_id = 0, ctxt = &ap4_ctxt[app_id]; app_id < cfg.num_apps; app_id++, ctxt = &ap4_ctxt[app_id])
+
 static pnemonic_opcode_t instr_set;
 static active_apps_t apps_ctxt;
+static activep4_context_t* ap4_ctxt;
 static active_control_t ctrl;
+static active_config_t cfg;
 static struct rte_eth_dev_tx_buffer* buffer;
 static uint64_t drop_counter;
 static int is_running;
@@ -104,7 +108,7 @@ static inline void update_active_tx_stats(int status, active_app_stats_t* stats)
 
 static inline void write_active_tx_stats(active_apps_t* apps) {
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] writing active TX stats ... \n");
-	for(int i = 0; i < apps->num_apps_instances; i++) {
+	for(int i = 0; i < apps->num_apps; i++) {
 		if(apps->stats[i].num_samples == 0) continue;
 		char filename[50];
 		sprintf(filename, "active_tx_stats_%d.csv", apps->ctxt[i].program->fid);
@@ -162,42 +166,25 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	pkt->data_len += ap4hlen;
 }
 
-/*
-	Context is defined by an application source-destination port pair.
-	Created when application traffic is seen on the interface. 
-	Assigned an instance from a pool of FIDs.
-	control traffic is started only when an app context is created. 
-*/
 static inline activep4_context_t* get_app_context_from_packet(char* bufptr, active_apps_t* apps_ctxt) {
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)bufptr;
-	uint32_t app_id = 0, instance_id = 0;
+	uint32_t app_id = 0;
 	activep4_context_t* ctxt = NULL;
 	if(iph->next_proto_id == IPPROTO_UDP) {
 		struct rte_udp_hdr* udph = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
 		app_id = ntohs(udph->dst_port);
-		instance_id = (app_id << 16) | ntohs(udph->src_port);
 	} else if(iph->next_proto_id == IPPROTO_TCP) {
 		struct rte_tcp_hdr* tcph = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
 		app_id = ntohs(tcph->dst_port);
-		instance_id = (app_id << 16) | ntohs(tcph->src_port);
 	} else return NULL;
-	int empty_slot = -1;
-	for(int j = 0; j < apps_ctxt->num_apps_instances; j++) {
+	for(int j = 0; j < apps_ctxt->num_apps; j++) {
 		if(apps_ctxt->app_id[j] == app_id) {
-			if(apps_ctxt->instance_id[j] == instance_id) {
-				ctxt = &apps_ctxt->ctxt[j];
-				ctxt->id = j;
-			} else if(apps_ctxt->instance_id[j] == 0 && empty_slot < 0) empty_slot = j;
+			ctxt = &apps_ctxt->ctxt[j];
+			assert(ctxt != NULL);
+			ctxt->id = j;
+			ctxt->is_active = true;
 		}
 	}
-	if(ctxt == NULL && empty_slot >= 0) {
-		apps_ctxt->instance_id[empty_slot] = instance_id;
-		ctxt = &apps_ctxt->ctxt[empty_slot];
-		ctxt->id = empty_slot;
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] Created application context for FID %d with instance ID %d.\n", ctxt->program->fid, instance_id);
-		assert(ctxt != NULL);
-	}
-	ctxt->is_active = true;
 	return ctxt;
 }
 
@@ -239,7 +226,7 @@ active_encap_filter(
 		struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 		if(eth->ether_type != htons(RTE_ETHER_TYPE_IPV4)) continue;
 		activep4_context_t* ctxt = get_app_context_from_packet(bufptr + sizeof(struct rte_ether_hdr), apps_ctxt);
-		if(ctxt == NULL) continue;
+		if(ctxt == NULL || !ctxt->active_tx_enabled) continue;
 		#ifdef STATS
 		update_active_tx_stats(ctxt->status, &apps_ctxt->stats[ctxt->id]);
 		#endif
@@ -299,7 +286,7 @@ active_decap_filter(
 			}
 			// Get active app context.
 			activep4_context_t* ctxt = NULL;
-			for(int i = 0; i < apps_ctxt->num_apps_instances; i++) {
+			for(int i = 0; i < apps_ctxt->num_apps; i++) {
 				if(apps_ctxt->ctxt[i].program->fid == fid) ctxt = &apps_ctxt->ctxt[i];
 			}
 			if(ctxt == NULL) {
@@ -540,11 +527,11 @@ lcore_main(void)
 			uint16_t nb_tx = 0;
 
 			#ifdef DEBUG
-			rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[PORT %d][RX] %d pkts.\n", port, nb_rx);
+			/*rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[PORT %d][RX] %d pkts.\n", port, nb_rx);
 			for(int i = 0; i < nb_rx; i++) {
 				char* pkt = rte_pktmbuf_mtod(bufs[i], char*);
 				print_pktinfo(pkt, bufs[i]->pkt_len);
-			}
+			}*/
 			#endif
 
 			nb_tx = rte_eth_tx_burst(port^1, qid, bufs, nb_rx);
@@ -581,7 +568,7 @@ lcore_control(void* arg) {
 
 	while(is_running) {
 		now = rte_rdtsc_precise();
-		for(int i = 0; i < ctrl->apps_ctxt->num_apps_instances; i++) {
+		for(int i = 0; i < ctrl->apps_ctxt->num_apps; i++) {
 			activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[i];
 			elapsed_us = (double)(now - ctxt->ctrl_ts_lastsent) * 1E6 / rte_get_tsc_hz();
 			if(!ctxt->is_active) continue;
@@ -692,14 +679,20 @@ lcore_control(void* arg) {
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
 				case ACTIVE_STATE_TRANSMITTING:
-					if(elapsed_us < CTRL_HEARTBEAT_ITVL) continue;
-					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
-						construct_heartbeat_packet(mbuf, ctrl->port_id, ctxt);
-						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
-						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						ctxt->ctrl_ts_lastsent = now;
-					} else {
-						rte_exit(EXIT_FAILURE, "Unable to allocate buffer for control packet.");
+					if(ctxt->active_heartbeat_enabled && elapsed_us >= CTRL_HEARTBEAT_ITVL) {
+						if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
+							construct_heartbeat_packet(mbuf, ctrl->port_id, ctxt);
+							rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+							rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+							ctxt->ctrl_ts_lastsent = now;
+						} else {
+							rte_exit(EXIT_FAILURE, "Unable to allocate buffer for control packet.");
+						}
+					}
+					elapsed_us = (double)(now - ctxt->ctrl_timer_lasttick) * 1E6 / rte_get_tsc_hz();
+					if(ctxt->active_timer_enabled && elapsed_us >= ctxt->timer_interval_us) {
+						if(ctxt->timer != NULL) ctxt->timer((void*)ctxt);
+						ctxt->ctrl_timer_lasttick = now;
 					}
 					break;
 				default:
@@ -711,7 +704,7 @@ lcore_control(void* arg) {
 	return 0;
 }
 
-void active_client_init(char* config_filename, char* dev, char* instr_set_path, active_handlers_t* app_handlers, void* app_context) {
+void active_client_init(char* config_filename, char* dev, char* instr_set_path) {
 
 	is_running = 1;
 	signal(SIGINT, interrupt_handler);
@@ -725,7 +718,6 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path, 
 	}
 
     // Read application configurations.
-    active_config_t cfg;
 	memset(&cfg, 0, sizeof(active_config_t));
 	read_activep4_config(config_filename, &cfg);
 	if(cfg.num_apps > MAX_APPS) cfg.num_apps = MAX_APPS;
@@ -744,11 +736,11 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path, 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Unable to allocate memory for active function!\n");
 		exit(EXIT_FAILURE);
 	}
-	activep4_context_t* ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(activep4_context_t), 0);
+	ap4_ctxt = (activep4_context_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(activep4_context_t), 0);
 	if(ap4_ctxt == NULL) {
 		rte_exit(EXIT_FAILURE, "Unable to allocate memory for active context!\n");
 	}
-	active_app_stats_t* app_stats = (active_app_stats_t*)rte_zmalloc(NULL, MAX_APPS * MAX_INSTANCES * sizeof(active_app_stats_t), 0);
+	active_app_stats_t* app_stats = (active_app_stats_t*)rte_zmalloc(NULL, MAX_APPS * sizeof(active_app_stats_t), 0);
 	if(app_stats == NULL) {
 		rte_exit(EXIT_FAILURE, "Unable to allocate memory for active stats!\n");
 	}
@@ -756,51 +748,36 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path, 
 
     uint64_t ts_ref = rte_rdtsc_precise();
 
-    int inst_id = 0;
 	for(int i = 0; i < cfg.num_apps; i++) {
+
 		char* active_dir = cfg.appdir[i];
 		char* active_program_name = cfg.appname[i];
 		int fid = cfg.fid[i];
+
 		read_opcode_action_map(instr_set_path, &instr_set);
 		read_active_function(&active_function[i], active_dir, active_program_name);
-		active_handlers_t* handlers = NULL;
-		for(int j = 0; j < cfg.num_apps; j++) {
-			if(strcmp(cfg.appname[i], app_handlers[j].appname) == 0)
-				handlers = &app_handlers[j];
-		}
-		assert(handlers != NULL);
-		assert(handlers->tx_handler != NULL);
-		assert(handlers->rx_handler != NULL);
-		assert(handlers->memory_consume != NULL);
-		assert(handlers->memory_invalidate != NULL);
-		assert(handlers->memory_reset != NULL);
-		assert(handlers->shutdown != NULL);
-		for(int j = 0; j < cfg.num_instances[i]; j++) {
-			app_stats[inst_id].ts_ref = ts_ref;
-			ap4_ctxt[inst_id].instr_set = &instr_set;
-			ap4_ctxt[inst_id].program = (activep4_def_t*) rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
-			assert(ap4_ctxt[inst_id].program != NULL);
-			rte_memcpy(ap4_ctxt[inst_id].program, &active_function[i], sizeof(activep4_def_t));
-			ap4_ctxt[inst_id].program->fid = fid + j;
-			ap4_ctxt[inst_id].is_active = false;
-			ap4_ctxt[inst_id].status = ACTIVE_STATE_INITIALIZING;
-			ap4_ctxt[inst_id].ipv4_srcaddr = ipv4_ifaceaddr;
-			ap4_ctxt[inst_id].app_context = app_context;
-			ap4_ctxt[inst_id].tx_handler = handlers->tx_handler;
-			ap4_ctxt[inst_id].rx_handler = handlers->rx_handler;
-			ap4_ctxt[inst_id].memory_consume = handlers->memory_consume;
-			ap4_ctxt[inst_id].memory_invalidate = handlers->memory_invalidate;
-			ap4_ctxt[inst_id].memory_reset = handlers->memory_reset;
-			ap4_ctxt[inst_id].shutdown = handlers->shutdown;
-			apps_ctxt.app_id[inst_id] = cfg.app_id[i];
-			rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized for %s instance %d.\n", active_program_name, j);
-			inst_id++;
-		}
+
+		app_stats[i].ts_ref = ts_ref;
+		ap4_ctxt[i].instr_set = &instr_set;
+		ap4_ctxt[i].program = (activep4_def_t*) rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+		assert(ap4_ctxt[i].program != NULL);
+		rte_memcpy(ap4_ctxt[i].program, &active_function[i], sizeof(activep4_def_t));
+		ap4_ctxt[i].program->fid = fid;
+		ap4_ctxt[i].active_tx_enabled = true;
+		ap4_ctxt[i].active_heartbeat_enabled = true;
+		ap4_ctxt[i].active_timer_enabled = false;
+		ap4_ctxt[i].timer_interval_us = DEFAULT_TI_US;
+		ap4_ctxt[i].is_active = false;
+		ap4_ctxt[i].is_elastic = true;
+		ap4_ctxt[i].status = ACTIVE_STATE_INITIALIZING;
+		ap4_ctxt[i].ipv4_srcaddr = ipv4_ifaceaddr;
+		apps_ctxt.app_id[i] = cfg.app_id[i];
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for %s FID %d.\n", active_program_name, fid);
 	}
 
     apps_ctxt.ctxt = ap4_ctxt;
 	apps_ctxt.stats = app_stats;
-	apps_ctxt.num_apps_instances = inst_id;
+	apps_ctxt.num_apps = cfg.num_apps;
 
     struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
@@ -869,7 +846,7 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path, 
 
 void active_client_shutdown() {
 
-    for(int i = 0; i < apps_ctxt.num_apps_instances; i++) {
+    for(int i = 0; i < apps_ctxt.num_apps; i++) {
 		apps_ctxt.ctxt[i].shutdown(i, apps_ctxt.ctxt[i].app_context);
 	}
 

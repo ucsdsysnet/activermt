@@ -21,6 +21,7 @@
 #define MAX_DATA        65536
 #define MAX_FIDX        256
 #define FID_RST         255
+#define DEFAULT_TI_US   1000000
 
 #define AP4FLAGMASK_OPT_ARGS        0x8000
 #define AP4FLAGMASK_FLAG_EOE        0x0100
@@ -156,14 +157,18 @@ typedef struct {
 
 typedef struct {
     int                 id;
+    uint8_t             active_tx_enabled;
+    uint8_t             active_heartbeat_enabled;
     uint8_t             is_active;
     uint8_t             status;
+    uint8_t             active_timer_enabled;
     uint64_t            ctrl_ts_lastsent;
     uint64_t            ctrl_timer_lasttick;
     pnemonic_opcode_t*  instr_set;   
     activep4_def_t*     program;
     memory_t            allocation;
     memory_t            membuf;
+    uint8_t             is_elastic;
     uint8_t             syncmap[NUM_STAGES];
     activep4_data_t     data;
     uint32_t            ipv4_srcaddr;
@@ -205,10 +210,7 @@ static inline int read_opcode_action_map(char* filename, pnemonic_opcode_t* inst
     char buf[BUFLEN];
     const char* tok;
     FILE* fp = fopen(filename, "r");
-    if(fp == NULL) {
-        perror("fopen");
-        return errno;
-    }
+    assert(fp != NULL);
     while(fgets(buf, BUFLEN, fp) != NULL) {
         tokidx = 0;
         for(tok = strtok(buf, ",\n"); tok && *tok; tok = strtok(NULL, ",\n")) {
@@ -230,6 +232,7 @@ static inline int read_opcode_action_map(char* filename, pnemonic_opcode_t* inst
 
 static inline int read_active_program(activep4_def_t* ap4, char* prog_file) {
     FILE* fp = fopen(prog_file, "rb");
+    assert(fp != NULL);
     activep4_instr* code = ap4->code;
     fseek(fp, 0, SEEK_END);
     int ap4_size = ftell(fp);
@@ -257,6 +260,7 @@ static inline int read_active_program(activep4_def_t* ap4, char* prog_file) {
 
 static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file) {
     FILE* fp = fopen(memidx_file, "rb");
+    assert(fp != NULL);
     char buf[50];
     const char* tok;
     int memidx[NUM_STAGES], i, iglim = -1;
@@ -271,17 +275,24 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     fclose(fp);
     ap4->num_accesses = i;
     ap4->iglim = iglim;
+    #ifdef DEBUG
     printf("[ACTIVEP4] Read program memory access pattern: %d stages (", ap4->num_accesses);
+    #endif
     for(i = 0; i < ap4->num_accesses; i++) {
         ap4->access_idx[i] = memidx[i];
-        ap4->demand[i] = 1; // TODO read from config.
+        ap4->demand[i] = 1; // default (elastic).
+        #ifdef DEBUG
         printf("%d,", memidx[i]);
+        #endif
     }
+    #ifdef DEBUG
     printf(") ingress limit %d\n", iglim);
+    #endif
 }
 
 static inline int read_active_args(activep4_def_t* ap4, char* arg_file) {
     FILE* fp = fopen(arg_file, "r");
+    assert(fp != NULL);
     char buf[50];
     const char* tok;
     char argname[50];
@@ -319,53 +330,6 @@ static inline void read_active_function(activep4_def_t* ap4, char* active_progra
     read_active_memaccess(ap4, memidx_path);
 }
 
-/*static inline int insert_active_initial_header(char* buf, uint16_t fid, uint16_t flags) {
-    activep4_ih* ap4ih = (activep4_ih*)buf;
-    ap4ih->SIG = htonl(ACTIVEP4SIG);
-    ap4ih->fid = htons(fid);
-    ap4ih->flags = htons(flags);
-    return sizeof(activep4_ih);
-}*/
-
-/*static inline int insert_active_program(char* buf, activep4_def_t* ap4, activep4_argval* args, int numargs) {
-    int offset = 0, i, j;
-    int ap4_buf_size = ap4->proglen * sizeof(activep4_instr);
-    char* bufptr = buf;
-    activep4_instr* code = ap4->code;
-    activep4_ih* ih;
-    activep4_instr* instr;
-    activep4_data_t* data;
-    int numinstr = ap4->proglen;
-    ih = (activep4_ih*)buf;
-    offset += insert_active_initial_header(buf, ap4->fid, 0);
-    bufptr += offset;
-    // insert arguments
-    if(ap4->args_mapped == 0) {
-        for(i = 0; i < ap4->num_args; i++) {
-            for(j = 0; j < numargs; j++) {
-                if(strcmp(args[j].argname, ap4->args[i].argname) == 0) {
-                    ap4->args[i].value_idx = j;
-                }
-            }
-        }
-        ap4->args_mapped = 1;
-    }
-    memset(bufptr, 0, sizeof(activep4_data_t));
-    data = (activep4_data_t*)bufptr;
-    for(i = 0; i < ap4->num_args; i++) {
-        data->data[ap4->args[i].didx] = htonl(args[ap4->args[i].value_idx].argval);
-    }
-    if(ap4->num_args > 0) {
-        bufptr += sizeof(activep4_data_t);
-        offset += sizeof(activep4_data_t);
-        ih->flags = htons(ntohs(ih->flags) | AP4FLAGMASK_OPT_ARGS);
-    }
-    // insert active program
-    memcpy(bufptr, (char*)ap4->code, ap4_buf_size);
-    offset += ap4_buf_size;
-    return offset;
-}*/
-
 static inline int get_active_eof(char* buf, int buflen) {
     if(buflen < sizeof(activep4_instr)) return 0;
     int eof = 0, remaining_bytes = buflen - sizeof(activep4_instr);
@@ -385,11 +349,10 @@ static inline int is_activep4(char* buf) {
 
 static inline void add_instruction(activep4_def_t* program, pnemonic_opcode_t* instr_set, char* instr) {
     int opcode = pnemonic_to_opcode(instr_set, instr);
-    if(opcode >= 0) {
-        program->code[program->proglen].flags = 0;
-        program->code[program->proglen].opcode = opcode;
-        program->proglen++;
-    } else printf("Instruction Unknown!");
+    assert(opcode >= 0);
+    program->code[program->proglen].flags = 0;
+    program->code[program->proglen].opcode = opcode;
+    program->proglen++;
 }
 
 static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
@@ -464,19 +427,16 @@ static inline int get_memory_stage_id(int idx) {
 
 static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, int NOP_OPCODE, pnemonic_opcode_t* instr_set) {
     
-    int access_idx_allocated[NUM_STAGES], i, j, block_start, block_end, offset;
+    int access_idx_allocated[NUM_STAGES], block_start, block_end, offset;
 
     memset(&access_idx_allocated, 0, NUM_STAGES * sizeof(int));
 
-    j = 0;
-    for(i = 0; i < NUM_STAGES; i++) {
+    int j = 0;
+    for(int i = 0; i < NUM_STAGES; i++) {
         if(memcfg->valid_stages[i] == 1) access_idx_allocated[j++] = i;
     }
 
-    if(j != ap4->num_accesses) {
-        printf("[ERROR] Invalid number of stages allocated!\n");
-        return;
-    }
+    assert(j == ap4->num_accesses);
 
     active_mutant_t* program = &ap4->mutant;
 
@@ -484,10 +444,9 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
     printf("[DEBUG] program length=%d, %d num accesses.\n", ap4->proglen, ap4->num_accesses);
     #endif
 
-    // TODO program length may exceed number of stages.
     int allocation_map[MAXPROGLEN], allocIdx = 0, increase = 0, stage_idx, delta;
     memset(allocation_map, -1, MAXPROGLEN * sizeof(int));
-    for(i = 0; i < ap4->proglen; i++) {
+    for(int i = 0; i < ap4->proglen; i++) {
         if(allocIdx >= ap4->num_accesses) break;
         if(is_memaccess(instr_set, ap4->code[i].opcode)) {
             stage_idx = get_memory_stage_id(i);
@@ -506,7 +465,7 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
 
     memset(&program->code, 0, MAXPROGLEN * sizeof(activep4_instr));
 
-    for(i = 0; i < program->proglen; i++) program->code[i].opcode = NOP_OPCODE;
+    for(int i = 0; i < program->proglen; i++) program->code[i].opcode = NOP_OPCODE;
 
     block_end = ap4->proglen - 1;
     while(j > 0) {
@@ -514,13 +473,13 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         block_start = ap4->access_idx[j];
         offset = access_idx_allocated[j] - get_memory_stage_id(ap4->access_idx[j]);
         if(offset < 0) offset += (NUM_STAGES - NUM_STAGES_IG);
-        for(i = block_end; i >= block_start; i--) {
+        for(int i = block_end; i >= block_start; i--) {
             program->code[i + offset] = ap4->code[i];
         }
         block_end = block_start - 1;
     }
 
-    for(i = 0; i < ap4->access_idx[0]; i++) {
+    for(int i = 0; i < ap4->access_idx[0]; i++) {
         program->code[i] = ap4->code[i];
     }
 
@@ -537,6 +496,13 @@ static inline void clear_memory_regions(memory_t* mem) {
         memset(&mem->sync_data[i].data, 0, MAX_DATA * sizeof(uint32_t));
         memset(&mem->sync_data[i].valid, 0, MAX_DATA * sizeof(uint8_t));
     }
+}
+
+static inline void set_memory_demand(activep4_context_t* ctxt, int demand) {
+    if(demand > 1) ctxt->is_elastic = 0;
+    else ctxt->is_elastic = 1;
+    for(int i = 0; i < ctxt->program->num_accesses; i++)
+        ctxt->program->demand[i] = demand;
 }
 
 #endif

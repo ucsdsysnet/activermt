@@ -18,8 +18,7 @@
 #define DELAY_SEC			1000000
 #define CTRL_SEND_INTVL_US	100
 #define CTRL_HEARTBEAT_ITVL	1000
-#define MAX_APPS			16
-#define MAX_INSTANCES		16
+#define MAX_APPS			1024
 #define MAX_STATS_SAMPLES	1000
 #define MAX_TXSTAT_SAMPLES	1000000
 #define STATS_ITVL_MS		1
@@ -33,16 +32,6 @@
 #define CTRL_PKT_HEARTBEAT	5
 
 typedef struct {
-	char				appname[100];
-	void                (*tx_handler)(char*, int, activep4_data_t*, memory_t*, void*);
-    void                (*rx_handler)(void*, activep4_ih*, activep4_data_t*, void*, void*);
-    int                 (*memory_consume)(memory_t*, void*);
-    int                 (*memory_invalidate)(memory_t*, void*);
-    int                 (*memory_reset)(memory_t*, void*);
-    void                (*shutdown)(int, void*);
-} active_handlers_t;
-
-typedef struct {
 	uint32_t	tx_active[MAX_TXSTAT_SAMPLES];
 	uint32_t	tx_total[MAX_TXSTAT_SAMPLES];
 	uint64_t	ts[MAX_TXSTAT_SAMPLES];
@@ -52,11 +41,10 @@ typedef struct {
 } active_app_stats_t;
 
 typedef struct {
-	int					num_apps_instances;
+	int					num_apps;
 	activep4_context_t*	ctxt;
 	active_app_stats_t*	stats;
 	uint32_t			app_id[MAX_APPS];
-	uint32_t			instance_id[MAX_APPS];
 } active_apps_t;
 
 typedef struct {
@@ -68,7 +56,6 @@ typedef struct {
 typedef struct {
 	int			num_apps;
 	int			app_id[MAX_APPS];
-	int			num_instances[MAX_APPS];
 	char		appname[MAX_APPS][50];
 	char		appdir[MAX_APPS][50];
 	int			fid[MAX_APPS];
