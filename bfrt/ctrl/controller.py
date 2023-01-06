@@ -88,6 +88,7 @@ class ActiveP4Controller:
                 action = m[1]
                 conditional = ((m[2] == '1') if len(m) == 3 else None)
                 meminstr = pnemonic.startswith('MEM')
+                vaddrinstr = pnemonic.startswith('ADDR_')
                 if self.customInstructionSet is not None and opcode not in self.customInstructionSet:
                     continue
                 self.opcode_action[pnemonic] = {
@@ -95,6 +96,7 @@ class ActiveP4Controller:
                     'action'    : action,
                     'condition' : conditional,
                     'memory'    : meminstr,
+                    'vaddr'     : vaddrinstr,
                     'args'      : None
                 }
                 if meminstr:
@@ -390,6 +392,29 @@ class ActiveP4Controller:
                 # print("Installing entry for:", pnemonic, "opcode", act['opcode'])
                 self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
 
+    def installVirtualAddressEntries(self, fid, allocationBlocks):
+        for pnemonic in self.opcode_action:
+            act = self.opcode_action[pnemonic]
+            if act['vaddr']:
+                for i in range(0, self.num_stages_total):
+                    gress = self.p4.Ingress if i < self.num_stages_ingress else self.p4.Egress
+                    stageId = i if i < self.num_stages_ingress else i - self.num_stages_ingress
+                    if i in allocationBlocks:
+                        allocation = allocationBlocks[i]
+                        (memStart, memEnd) = self.getMemoryRange(allocation)
+                        addr_mask = memEnd - memStart
+                        instr_table = getattr(gress, 'instruction_%d' % stageId)
+                        add_method = getattr(instr_table, 'add_with_%s' % act['action'])
+                        add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(stageId))
+                        if 'mask' in act['action']:
+                            add_method(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX, addr_mask=addr_mask)
+                        else:
+                            add_method(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX, offset=memStart)
+                        add_method_rejoin(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                        # if self.DEBUG:
+                            # print("[DEBUG] Installed virtual address entries for FID %d stage %d" % (fid, stageId))
+                        
+
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
         print("Resuming allocation for FID %d ... " % fid)
@@ -500,6 +525,7 @@ class ActiveP4Controller:
             else:
                 allocationTableGroups[2, stageIdGress] = memStart
                 allocationTableGroups[3, stageIdGress] = memEnd
+        self.installVirtualAddressEntries(fid, allocation)
 
         # install allocation table entries.
         validity = np.sum(allocationTableGroups, axis=0)

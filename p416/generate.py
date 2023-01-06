@@ -68,7 +68,8 @@ class ActiveP4Generator:
         with open(self.paths['data-actions']) as f:
             template = f.read()
             rw_templates = template.split("}\n\n")
-            rw_templates[0] += "}"
+            for i in range(0, len(rw_templates) - 1):
+                rw_templates[i] += "}"
             for i in range(0, len(self.registers)):
                 reg = self.registers[i]
                 for j in range(0, self.num_data):
@@ -76,6 +77,10 @@ class ActiveP4Generator:
                     p4code.append(rw_templates[0].replace('<reg>', reg).replace('<data>', data).replace('<data-id>', str(j)))
                     if reg not in self.readonly:
                         p4code.append(rw_templates[1].replace('<reg>', reg).replace('<data>', data).replace('<data-id>', str(j)))
+            if len(rw_templates) > 2:
+                for j in range(0, self.num_data):
+                    data = "data_%d" % j
+                    p4code.append(rw_templates[2].replace('<data>', data).replace('<data-id>', str(j)))
             f.close()
         p4code = "\r\n".join(p4code)
         actions = self.getActionDefinitions(p4code.splitlines())

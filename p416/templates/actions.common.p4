@@ -98,3 +98,19 @@ action swap_mbr_mbr2() {
 action max_mbr_mbr2() {
     hdr.meta.mbr = (hdr.meta.mbr >= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
 }
+
+/*action addr_mask_apply() {
+    hdr.meta.mar = hdr.meta.mar & hdr.meta.paddr_mask;
+}*/
+
+/*action addr_offset_apply() {
+    hdr.meta.mar = hdr.meta.mar + hdr.meta.paddr_offset;
+}*/
+
+action addr_mask_apply(bit<32> addr_mask) {
+    hdr.meta.mar = hdr.meta.mar & addr_mask;
+}
+
+action addr_offset_apply(bit<32> offset) {
+    hdr.meta.mar = hdr.meta.mar + offset;
+}

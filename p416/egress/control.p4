@@ -1372,6 +1372,22 @@ action swap_mbr_mbr2() {
 action max_mbr_mbr2() {
     hdr.meta.mbr = (hdr.meta.mbr >= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
 }
+
+/*action addr_mask_apply() {
+    hdr.meta.mar = hdr.meta.mar & hdr.meta.paddr_mask;
+}*/
+
+/*action addr_offset_apply() {
+    hdr.meta.mar = hdr.meta.mar + hdr.meta.paddr_offset;
+}*/
+
+action addr_mask_apply(bit<32> addr_mask) {
+    hdr.meta.mar = hdr.meta.mar & addr_mask;
+}
+
+action addr_offset_apply(bit<32> offset) {
+    hdr.meta.mar = hdr.meta.mar + offset;
+}
 action mar_load_d0() {
     hdr.meta.mar = hdr.data.data_0;
 }
@@ -1420,6 +1436,22 @@ action mbr2_load_d2() {
 action mbr2_load_d3() {
     hdr.meta.mbr2 = hdr.data.data_3;
 }
+/*action addrmap_load_d0() {
+    hdr.meta.paddr_mask = hdr.data.data_0;
+    hdr.meta.paddr_offset = hdr.data.data_0 >> 16;
+}*/
+/*action addrmap_load_d1() {
+    hdr.meta.paddr_mask = hdr.data.data_1;
+    hdr.meta.paddr_offset = hdr.data.data_1 >> 16;
+}*/
+/*action addrmap_load_d2() {
+    hdr.meta.paddr_mask = hdr.data.data_2;
+    hdr.meta.paddr_offset = hdr.data.data_2 >> 16;
+}*/
+/*action addrmap_load_d3() {
+    hdr.meta.paddr_mask = hdr.data.data_3;
+    hdr.meta.paddr_offset = hdr.data.data_3 >> 16;
+}*/
 action jump_s0() {
     hdr.meta.disabled = 1;
 }
@@ -1458,7 +1490,6 @@ action memory_increment_s0() {
 
 action memory_write_zero_s0() {
     hdr.meta.mbr = heap_conditional_rw_zero_s0.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s0() {
@@ -1524,7 +1555,6 @@ action memory_increment_s1() {
 
 action memory_write_zero_s1() {
     hdr.meta.mbr = heap_conditional_rw_zero_s1.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s1() {
@@ -1590,7 +1620,6 @@ action memory_increment_s2() {
 
 action memory_write_zero_s2() {
     hdr.meta.mbr = heap_conditional_rw_zero_s2.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s2() {
@@ -1656,7 +1685,6 @@ action memory_increment_s3() {
 
 action memory_write_zero_s3() {
     hdr.meta.mbr = heap_conditional_rw_zero_s3.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s3() {
@@ -1722,7 +1750,6 @@ action memory_increment_s4() {
 
 action memory_write_zero_s4() {
     hdr.meta.mbr = heap_conditional_rw_zero_s4.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s4() {
@@ -1788,7 +1815,6 @@ action memory_increment_s5() {
 
 action memory_write_zero_s5() {
     hdr.meta.mbr = heap_conditional_rw_zero_s5.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s5() {
@@ -1854,7 +1880,6 @@ action memory_increment_s6() {
 
 action memory_write_zero_s6() {
     hdr.meta.mbr = heap_conditional_rw_zero_s6.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s6() {
@@ -1920,7 +1945,6 @@ action memory_increment_s7() {
 
 action memory_write_zero_s7() {
     hdr.meta.mbr = heap_conditional_rw_zero_s7.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s7() {
@@ -1986,7 +2010,6 @@ action memory_increment_s8() {
 
 action memory_write_zero_s8() {
     hdr.meta.mbr = heap_conditional_rw_zero_s8.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s8() {
@@ -2052,7 +2075,6 @@ action memory_increment_s9() {
 
 action memory_write_zero_s9() {
     hdr.meta.mbr = heap_conditional_rw_zero_s9.execute(hdr.meta.mar);
-    // hdr.meta.mbr = (hdr.meta.mbr == hdr.meta.mbr2);
 }
 
 action memory_minread_s9() {
@@ -2128,6 +2150,8 @@ table instruction_0 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2201,6 +2225,8 @@ table instruction_1 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2274,6 +2300,8 @@ table instruction_2 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2347,6 +2375,8 @@ table instruction_3 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2420,6 +2450,8 @@ table instruction_4 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2493,6 +2525,8 @@ table instruction_5 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2566,6 +2600,8 @@ table instruction_6 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2639,6 +2675,8 @@ table instruction_7 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2712,6 +2750,8 @@ table instruction_8 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
@@ -2785,6 +2825,8 @@ table instruction_9 {
 		mbr_subtract_mbr2;
 		swap_mbr_mbr2;
 		max_mbr_mbr2;
+		addr_mask_apply;
+		addr_offset_apply;
 		mar_load_d0;
 		mar_load_d1;
 		mar_load_d2;
