@@ -54,6 +54,7 @@ class ActiveProgram:
             if program[i][0] in self.IG_ONLY:
                 self.iglim = i if i > self.iglim else self.iglim
         program.reverse()
+        memIdx = None
         for i in range(0, len(program)):
             opcode = program[i][0]
             if '_LOAD_' in opcode:
@@ -61,6 +62,11 @@ class ActiveProgram:
                 didx = int(data_reg)
                 if didx not in self.data_idx:
                     self.data_idx.append(didx)
+            if 'MEM' in opcode:
+                memIdx = len(program) - i - 1
+            elif 'ADDR' in opcode and memIdx is not None:
+                opcode = "%s_%d" % (opcode, memIdx)
+            program[i][0] = opcode
         for i in range(0, len(program)):
             opcode = program[i][0]
             param_1 = program[i][1] if len(program[i]) > 1 else None

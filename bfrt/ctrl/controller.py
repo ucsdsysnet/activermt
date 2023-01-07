@@ -1,4 +1,5 @@
 import os
+import re
 import math
 import sys
 import time
@@ -88,7 +89,7 @@ class ActiveP4Controller:
                 action = m[1]
                 conditional = ((m[2] == '1') if len(m) == 3 else None)
                 meminstr = pnemonic.startswith('MEM')
-                vaddrinstr = pnemonic.startswith('ADDR_')
+                vaddrinstr = pnemonic.startswith('ADDR_') and action != 'NULL'
                 if self.customInstructionSet is not None and opcode not in self.customInstructionSet:
                     continue
                 self.opcode_action[pnemonic] = {
@@ -241,7 +242,7 @@ class ActiveP4Controller:
             numEntries = 0
             for a in self.opcode_action:
                 act = self.opcode_action[a]
-                if act['action'] == 'NULL' or act['memory']: 
+                if act['action'] == 'NULL' or act['memory'] or act['vaddr']: 
                     continue
                 self.installInstructionTableEntry(0, act, gress, i)
                 numEntries = numEntries + 1
@@ -393,14 +394,15 @@ class ActiveP4Controller:
                 self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
 
     def installVirtualAddressEntries(self, fid, allocationBlocks):
-        for pnemonic in self.opcode_action:
-            act = self.opcode_action[pnemonic]
-            if act['vaddr']:
-                for i in range(0, self.num_stages_total):
-                    gress = self.p4.Ingress if i < self.num_stages_ingress else self.p4.Egress
-                    stageId = i if i < self.num_stages_ingress else i - self.num_stages_ingress
-                    if i in allocationBlocks:
-                        allocation = allocationBlocks[i]
+        for i in range(0, self.num_stages_total):
+            gress = self.p4.Ingress if i < self.num_stages_ingress else self.p4.Egress
+            stageId = i if i < self.num_stages_ingress else i - self.num_stages_ingress
+            for pnemonic in self.opcode_action:
+                act = self.opcode_action[pnemonic]
+                if act['vaddr']:
+                    memIdx = int(re.findall(r'[0-9]+', pnemonic)[0])
+                    if memIdx in allocationBlocks:
+                        allocation = allocationBlocks[memIdx]
                         (memStart, memEnd) = self.getMemoryRange(allocation)
                         addr_mask = memEnd - memStart
                         instr_table = getattr(gress, 'instruction_%d' % stageId)
@@ -411,8 +413,8 @@ class ActiveP4Controller:
                         else:
                             add_method(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX, offset=memStart)
                         add_method_rejoin(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
-                        # if self.DEBUG:
-                            # print("[DEBUG] Installed virtual address entries for FID %d stage %d" % (fid, stageId))
+                        if self.DEBUG:
+                            print("[DEBUG] Installed virtual address entries for FID %d stage %d pnemonic %s" % (fid, stageId, pnemonic))
                         
 
     def resumeAllocation(self, fid, remaps):
@@ -845,12 +847,20 @@ referenceProgram = "condition"
 # }]
 
 # accesses: 2 5 11 14 (_ 15 16 17)
+# demoApps = [{
+#     'fid'       : 1,
+#     'idx'       : [2,5,11,14,24,25,26],
+#     'iglim'     : 6,
+#     'applen'    : 28,
+#     'mindemand' : [1,1,1,1,1,1,1]
+# }]
+
 demoApps = [{
     'fid'       : 1,
-    'idx'       : [2,5,11,14,24,25,26],
-    'iglim'     : 6,
-    'applen'    : 28,
-    'mindemand' : [1,1,1,1,1,1,1]
+    'idx'       : [6, 11, 15],
+    'iglim'     : -1,
+    'applen'    : 19,
+    'mindemand' : [1, 1, 1]
 }]
 
 customInstructions = None

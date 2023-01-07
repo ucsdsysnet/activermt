@@ -183,8 +183,8 @@ header bridged_metadata_h {
     bit<1>      carry;
     bit<1>      remap;
     bit<16>     fid;
-    bit<32>     paddr_mask;
-    bit<32>     paddr_offset;
+    // bit<32>     paddr_mask;
+    // bit<32>     paddr_offset;
 }
 
 header resubmit_header_t {

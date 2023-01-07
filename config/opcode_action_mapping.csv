@@ -96,6 +96,8 @@ ADDR_MASK_18,addr_mask_apply
 ADDR_OFFSET_18,addr_offset_apply
 ADDR_MASK_19,addr_mask_apply
 ADDR_OFFSET_19,addr_offset_apply
+ADDR_MASK,NULL
+ADDR_OFFSET,NULL
 MBR_LOAD,NULL
 MBR2_LOAD,NULL
 MAR_LOAD,NULL
