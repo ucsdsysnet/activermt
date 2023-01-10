@@ -416,7 +416,6 @@ class ActiveP4Controller:
                         if self.DEBUG:
                             print("[DEBUG] Installed virtual address entries for FID %d stage %d pnemonic %s" % (fid, stageId, pnemonic))
                         
-
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
         print("Resuming allocation for FID %d ... " % fid)

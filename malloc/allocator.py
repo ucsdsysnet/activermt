@@ -122,10 +122,11 @@ class Allocator:
     METRIC_UTILITY = 1
     METRIC_UTILIZATION = 2
     METRIC_SAT = 3
+    ALLOCATION_GRANULARITY = 256
 
     def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = 20
-        self.max_occupancy = 64
+        self.max_occupancy = self.ALLOCATION_GRANULARITY
         self.WT_OVERFLOW = 1000
         self.metric = metric
         self.optimize = optimize

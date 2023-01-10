@@ -13,7 +13,7 @@ def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocT
 dbg_changes = {}
 dbg_allocmatrix = {}
 dbg_allocmap = {}"""
-def simAllocation(expId, appCfg, allocator, sequence, departures=False, departureFID='random', departureProb=0.0, online=True, debug=False):
+def simAllocation(expId, appCfg, allocator, sequence, departures=False, departureFID='random', departureProb=0.0, online=True, debug=False, outputDir=None):
     # global dbg_seq, dbg_changes, dbg_allocmatrix, dbg_allocmap
     iter = 0
     sumCost = 0
@@ -29,8 +29,10 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         print("Attempting allocation for sequence:", sequence)
     i = 0
     numDepartures = 0
+    mutants = {}
     seqlen = len(sequence)
     while i < seqlen:
+        appname = sequence[i]
         if debug:
             print("")
             print("Iteration", iter, "App", appname)
@@ -43,7 +45,6 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
             allocator.deallocate(depfid)
             allocated.remove(depfid)
             numDepartures += 1
-        appname = sequence[i]
         i += 1
         if appname in failed:
             continue
@@ -62,6 +63,10 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
             sys.exit(1)
         dbg_seq[i] = np.copy(allocation)"""
         if allocation is not None and cost < allocator.WT_OVERFLOW:
+            if appname not in mutants:
+                mutants[appname] = set()
+            allocKey = ",".join([str(x) for x in allocation])
+            mutants[appname].add(allocKey)
             (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
             """if i in dbg_changes:
                 prev_fids = set(dbg_changes[i].keys())
@@ -101,7 +106,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         elapsedSec = tsEnd - tsBegin
         #logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
         if debug:
-            print("Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
+            print("Iter", i, "Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
     stats = {
         'enumsizes'     : enumerationSizes,
         'alloctime'     : allocationTime,
@@ -111,9 +116,21 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         'allocmatrix'   : allocator.allocationMatrix,
         'allocated'     : allocated,
         'appnames'      : allocated_appnames
-    }
+    }       
     if iter == 0:
         return (0, 0, 0, 0)
+    # write stats.
+    statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames']
+    if outputDir is not None:
+        statdir = os.path.join(os.getcwd(), "stats")
+        if not os.path.exists(statdir):
+            os.makedirs(statdir)
+        with open(os.path.join(statdir, "exp_%d.csv" % expId), "w") as f:
+            outdata = []
+            for stat in statkeys:
+                outdata.append(",".join([str(x) for x in stats[stat]]))
+            f.write("\n".join(outdata))
+            f.close()
     avgTime = sumTime / iter
     utility = allocator.getOverallUtility()
     utilization = allocator.getUtilization()
@@ -129,7 +146,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         """print("Allocation Times:", allocationTime)
         print("Costs:", costs)
         print("Enumeration sizes:", enumerationSizes)"""
-    return (sumCost, utilization, utility, avgTime, iter, numDepartures, stats)
+    return (sumCost, utilization, utility, avgTime, iter, numDepartures, stats, mutants)
 
 def simCompareAllocation(expId, appCfg, allocator, sequence):
     simAllocation(expId, appCfg, allocator, sequence, online=True)
@@ -138,25 +155,15 @@ def simCompareAllocation(expId, appCfg, allocator, sequence):
 
 # analyses
 
+active_base_dir = '../apps'
+
+paths_active_config = {
+    'cache'     : '../apps/cache/active/cacheread',
+    'cheetahlb' : '../apps/cheetahlb/active/cheetahlb-syn',
+    'cms'       : '../apps/cms/active/cms_short'
+}
+
 appCfg = {
-    'cache'     : {
-        'idx'       : [3, 6, 9],
-        'iglim'     : 8,
-        'applen'    : 12,
-        'mindemand' : [1, 1, 1]
-    },
-    'cheetahlb' : {
-        'idx'       : [1, 8, 10],
-        'iglim'     : -1,
-        'applen'    : 18,
-        'mindemand' : [4, 4, 4]
-    },
-    'cms'       : {
-        'idx'       : [3, 6, 8, 10, 18],
-        'iglim'     : -1,
-        'applen'    : 20,
-        'mindemand' : [1, 1, 1, 1, 1]
-    },
     'cache_hh'  : {
         'idx'       : [2, 5, 11, 14, 25, 26, 27],
         'iglim'     : 6,
@@ -166,6 +173,25 @@ appCfg = {
 }
 
 apps = [ 'cache', 'cheetahlb', 'cms' ]
+
+for app in apps:
+    if app not in paths_active_config:
+        continue
+    if app not in appCfg:
+        appCfg[app] = {}
+    with open('%s.memidx.csv' % paths_active_config[app]) as f:
+        data = f.read().splitlines()
+        memidx = [ int(x) for x in data[0].split(",") ]
+        iglim = int(data[1])
+        appCfg[app]['idx'] = memidx
+        appCfg[app]['iglim'] = iglim
+        appCfg[app]['mindemand'] = [1] * len(memidx)
+        f.close()
+    with open('%s.ap4' % paths_active_config[app]) as f:
+        data = f.read().strip().splitlines()
+        appCfg[app]['applen'] = len(data)
+        f.close()
+    print("Read app config for %s." % app)
 
 appSeqLen = 10
 isOnline = True
@@ -223,12 +249,12 @@ departures = False
 departureProb = 0.5
 departureType = 'random'
 
-def getParamString(optimize, minimize, metric, appname='cache', type='fixed'):
+def getParamString(optimize, minimize, metric, appname='cache', type='fixed', granularity=16):
     metrics = ['relocations', 'utility', 'utilization', 'sat']
     param_seq = appname if type == 'fixed' else 'random'
     param_fit = 'ff' if not optimize else ('bf' if minimize else 'wf')
     param_costmetric = metrics[metric]
-    return "%s_%s_%s" % (param_seq, param_fit, param_costmetric)
+    return "%s_%s_%s_%d" % (param_seq, param_fit, param_costmetric, granularity)
 
 def writeResults(results, filename):
     with open(filename, 'w') as f:
@@ -247,19 +273,19 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
         i += 1
     return sequence
 
-def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None):
+def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None, seqLen=256):
     results = []
     for k in range(0, numRepeats):
         if fixedSequence is None:
-            sequence = generateSequence(appCfg, appname=appname) if w != 'random' else generateSequence(appCfg, type='random')
+            sequence = generateSequence(appCfg, appname=appname, appSeqLen=seqLen) if w != 'random' else generateSequence(appCfg, type='random')
         else:
             sequence = fixedSequence
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
-        result = simAllocation(expId, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb)
+        result = simAllocation(k, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb, debug=False, outputDir=True)
         results.append(result[:6])
-    if debug:
-        print(result[6]['allocmatrix'])
+    # if debug:
+    #     print(result[6]['allocmatrix'])
     return results
 
 def print_allocation_matrix(allocation_matrix):
@@ -280,18 +306,18 @@ if custom:
     print("[Custom Experiment]")
     expId = 0
 
-    appname = 'cache_hh'
-    cfg = appCfg[appname]
-    activeFunc = ActiveFunction(1, np.transpose(np.array(cfg['idx'], dtype=np.uint32)), cfg['iglim'], cfg['applen'], cfg['mindemand'], enumerate=True)
-    print("Enumeration size: ", activeFunc.getEnumerationSize())
-    # enums = activeFunc.getEnumeration()
-    # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
+    # appname = 'cache_hh'
+    # cfg = appCfg[appname]
+    # activeFunc = ActiveFunction(1, np.transpose(np.array(cfg['idx'], dtype=np.uint32)), cfg['iglim'], cfg['applen'], cfg['mindemand'], enumerate=True)
+    # print("Enumeration size: ", activeFunc.getEnumerationSize())
+    # # enums = activeFunc.getEnumeration()
+    # # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
 
-    sequence = generateSequence(appCfg, appname='cache_hh')
-    allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    print("Utilization (cache_hh)", utilization)
-    # print_allocation_matrix(stats['allocmatrix'])
+    # sequence = generateSequence(appCfg, appname='cache_hh')
+    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Utilization (cache_hh)", utilization)
+    # # print_allocation_matrix(stats['allocmatrix'])
 
     # sequence = generateSequence(appCfg, type='random')
 
@@ -305,13 +331,19 @@ if custom:
     # enums = activeFunc.getEnumeration()
     # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
     
-    # sequence = generateSequence(appCfg, appname='cache')
+    # appname = 'cache'
+    # sequence = generateSequence(appCfg, appname=appname, appSeqLen=32)
     # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (cache)", utilization)
-    # print(stats['allocated'])
+    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats, mutants) = simAllocation(expId, appCfg, allocator, sequence)
+    # print("Results (Cache):")
+    # print("Mutants", len(mutants[appname]))
+    # print("Utilization", utilization)
+    # print("Allocated", len(stats['allocated']))
+    # print("Average compute time (ms)", avgTime * 1000)
+    # print("Median compute time (ms)", np.median(stats['alloctime']) * 1000)
     # print(stats['appnames'])
-    # print(stats['allocmatrix'])
+    # alloc_disp = "\n".join([",".join([str(x) for x in y]) for y in stats['allocmatrix']])
+    # print(alloc_disp)
 
     # print("")
 
@@ -340,6 +372,18 @@ if custom:
     # print(stats['allocated'])
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
+
+    numApps = 256
+    type = 'fixed'
+    appname = 'cache'
+    optimize = True
+    minimize = True
+    metric = Allocator.METRIC_COST
+    granularity = Allocator.ALLOCATION_GRANULARITY
+    paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type, granularity=granularity)
+    print("running analysis with params:", paramStr)
+    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps)
+    writeResults(results, "allocation_%s.csv" % paramStr)
 else:
     param_fit = [(True, True), (True, False)]
     param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
