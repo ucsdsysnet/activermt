@@ -30,7 +30,9 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
     i = 0
     numDepartures = 0
     mutants = {}
+    stageIds = []
     seqlen = len(sequence)
+    allocatedBlocks = []
     while i < seqlen:
         appname = sequence[i]
         if debug:
@@ -67,6 +69,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
                 mutants[appname] = set()
             allocKey = ",".join([str(x) for x in allocation])
             mutants[appname].add(allocKey)
+            stageIds.append(allocKey)
             (changes, remaps) = allocator.enqueueAllocation(overallAlloc, allocationMap)
             """if i in dbg_changes:
                 prev_fids = set(dbg_changes[i].keys())
@@ -89,6 +92,11 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
                 numChanges += len(changes[tid])
                 #numChanges += allocator.computeNumChanges()
             allocator.applyQueuedAllocation()
+            blocks = allocator.getAllocationBlocks(fid)
+            numBlocks = 0
+            for sid in blocks:
+                numBlocks += len(blocks[sid])
+            allocatedBlocks.append(numBlocks)
             sumCost += numChanges
             sumTime += allocTime
             costs[iter] = numChanges
@@ -115,22 +123,25 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         'datalen'       : iter,
         'allocmatrix'   : allocator.allocationMatrix,
         'allocated'     : allocated,
-        'appnames'      : allocated_appnames
+        'appnames'      : allocated_appnames,
+        'stages'        : stageIds,
+        'numblocks'     : allocatedBlocks
     }       
     if iter == 0:
         return (0, 0, 0, 0)
     # write stats.
-    statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames']
+
+    statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames', 'stages', 'numblocks']
     if outputDir is not None:
-        statdir = os.path.join(os.getcwd(), "stats")
+        statdir = os.path.join(os.getcwd(), "stats", str(expId))
         if not os.path.exists(statdir):
             os.makedirs(statdir)
-        with open(os.path.join(statdir, "exp_%d.csv" % expId), "w") as f:
-            outdata = []
-            for stat in statkeys:
-                outdata.append(",".join([str(x) for x in stats[stat]]))
-            f.write("\n".join(outdata))
-            f.close()
+        for stat in statkeys:
+            with open(os.path.join(statdir, "%s.csv" % stat), "w") as f:
+                outdata = []
+                outdata.append("\n".join([str(x) for x in stats[stat]]))
+                f.write("\n".join(outdata))
+                f.close()
     avgTime = sumTime / iter
     utility = allocator.getOverallUtility()
     utilization = allocator.getUtilization()
