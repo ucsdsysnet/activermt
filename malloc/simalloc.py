@@ -33,6 +33,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
     stageIds = []
     seqlen = len(sequence)
     allocatedBlocks = []
+    allocMatrices = []
     while i < seqlen:
         appname = sequence[i]
         if debug:
@@ -97,6 +98,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
             for sid in blocks:
                 numBlocks += len(blocks[sid])
             allocatedBlocks.append(numBlocks)
+            allocMatrices.append(copy.deepcopy(allocator.allocationMatrix))
             sumCost += numChanges
             sumTime += allocTime
             costs[iter] = numChanges
@@ -141,6 +143,13 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
                 outdata = []
                 outdata.append("\n".join([str(x) for x in stats[stat]]))
                 f.write("\n".join(outdata))
+                f.close()
+        allocmatdir = os.path.join(statdir, "allocations")
+        if not os.path.exists(allocmatdir):
+            os.makedirs(allocmatdir)
+        for i in range(0, len(allocMatrices)):
+            with open(os.path.join(allocmatdir, "allocmatrix_%d.csv" % i), "w") as f:
+                f.write("\n".join([ ",".join([ str(x) for x in y ]) for y in allocMatrices[i] ]))
                 f.close()
     avgTime = sumTime / iter
     utility = allocator.getOverallUtility()
@@ -384,7 +393,7 @@ if custom:
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
 
-    numApps = 256
+    numApps = 128
     type = 'fixed'
     appname = 'cache'
     optimize = True

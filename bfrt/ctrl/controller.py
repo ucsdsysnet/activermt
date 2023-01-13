@@ -56,7 +56,7 @@ class ActiveP4Controller:
     global IPAddress
     global ap4alloc
 
-    REG_MAX = 0xFFFFF
+    REG_MAX = 0xFFFF
     DEBUG = True
     MEMSIZE = 65536
 
@@ -81,6 +81,7 @@ class ActiveP4Controller:
         logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
         self.customInstructionSet = custom
         self.opcode_action = {}
+        self.opcode_pnemonic = {}
         self.opcodes_memaccess = []
         self.opcodes_vaddr = []
         with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
@@ -90,6 +91,7 @@ class ActiveP4Controller:
                 pnemonic = m[0]
                 action = m[1]
                 conditional = ((m[2] == '1') if len(m) == 3 else None)
+                self.opcode_pnemonic[opcode] = pnemonic
                 meminstr = pnemonic.startswith('MEM')
                 vaddrinstr = pnemonic.startswith('ADDR_') and action != 'NULL'
                 if self.customInstructionSet is not None and opcode not in self.customInstructionSet:
@@ -229,20 +231,43 @@ class ActiveP4Controller:
                 allocationEntries[fid].append(entry)
         return allocationEntries
 
-    def removeMemoryAccessEntries(self, stageId, gressId, fid, vaddrInstructions=False):
-        print("Removing entries for ", gressId, stageId)
+    def removeMemoryAccessEntries(self, stageId, gressId, fid):
+        print("Removing memaccess entries for ", gressId, stageId)
         entries = self.instrTableEntryParams[gressId][stageId]
         remaining = []
+        numRemovedMemaccess = 0
         for entry in entries:
             opcode = entry['opcode']
             validFID = (fid >= entry['fid_start'] and fid <= entry['fid_end'])
-            if validFID and (opcode in self.opcodes_memaccess or (vaddrInstructions and opcode in self.opcodes_vaddr)):
+            if validFID and (opcode in self.opcodes_memaccess):
                 gress = self.p4.Ingress if gressId == 'Ingress' else self.p4.Egress
                 instr_table = getattr(gress, 'instruction_%d' % stageId)
                 instr_table.delete(fid_start=entry['fid_start'], fid_end=entry['fid_end'], opcode=opcode, complete=entry['complete'], disabled=entry['disabled'], mbr=entry['mbr'], mbr_p_length=entry['mbr_pfx'], mar_19_0__start=entry['marStart'], mar_19_0__end=entry['marEnd'])
+                numRemovedMemaccess += 1
             else:
                 remaining.append(entry)
+        print("Entries removed", "memaccess", numRemovedMemaccess)
         self.instrTableEntryParams[gressId][stageId] = remaining
+
+    def removeVaddrEntries(self, fid):
+        numRemovedVaddr = 0
+        for stageId in range(0, self.num_stages_total):
+            gressId = 'Ingress' if stageId < self.num_stages_ingress else 'Egress'
+            stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
+            entries = self.instrTableEntryParams[gressId][stageIdGress]
+            remaining = []
+            for entry in entries:
+                opcode = entry['opcode']
+                validFID = (fid >= entry['fid_start'] and fid <= entry['fid_end'])
+                if validFID and (opcode in self.opcodes_vaddr):
+                    gress = self.p4.Ingress if gressId == 'Ingress' else self.p4.Egress
+                    instr_table = getattr(gress, 'instruction_%d' % stageIdGress)
+                    instr_table.delete(fid_start=entry['fid_start'], fid_end=entry['fid_end'], opcode=opcode, complete=entry['complete'], disabled=entry['disabled'], mbr=entry['mbr'], mbr_p_length=entry['mbr_pfx'], mar_19_0__start=entry['marStart'], mar_19_0__end=entry['marEnd'])
+                    numRemovedVaddr += 1
+                else:
+                    remaining.append(entry)
+            self.instrTableEntryParams[gressId][stageIdGress] = remaining
+        print("Entries removed", "vaddr", numRemovedVaddr)
 
     def removeInstructionEntries(self, entries):
         for entry in entries:
@@ -555,7 +580,7 @@ class ActiveP4Controller:
                                 'marStart'  : 0,
                                 'marEnd'    : self.REG_MAX
                             })
-                        add_method_rejoin(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                        add_method_rejoin(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX)
                         self.addInstructionTableParams(gress, stageId, {
                             'fid_start' : fid,
                             'fid_end'   : fid,
@@ -564,11 +589,12 @@ class ActiveP4Controller:
                             'disabled'  : 1,
                             'mbr'       : 0,
                             'mbr_pfx'   : 0,
-                            'marStart'  : memStart,
+                            'marStart'  : 0,
                             'marEnd'    : self.REG_MAX
                         })
                         # if self.DEBUG:
                         #     print("[DEBUG] Installed virtual address entries for FID %d stage %d pnemonic %s" % (fid, stageId, pnemonic))
+                        pass
                         
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
@@ -624,6 +650,7 @@ class ActiveP4Controller:
 
         # update memory access entries for remapped apps.
         bfrt.batch_begin()
+        vaddrAllocationMap = {}
         for stageId in remappedStages:
             gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
             gressId = 'Ingress' if stageId < self.num_stages_ingress else 'Egress'
@@ -634,12 +661,18 @@ class ActiveP4Controller:
             # print("FID", fid, "stage", stageId, "memaccess fetch (ms)", ts_elapsed)
             for remap in remappedStages[stageId]:
                 tid = remap[0]
+                if tid not in vaddrAllocationMap:
+                    vaddrAllocationMap[tid] = {}
+                vaddrAllocationMap[tid][stageId] = remap[3]
                 # if tid in accessTEntries:
                 #     for entry in accessTEntries[tid]:
                 #         entry.remove()
-                self.removeMemoryAccessEntries(stageIdGress, gressId, tid, vaddrInstructions=True)
+                self.removeMemoryAccessEntries(stageIdGress, gressId, tid)
                 self.installMemoryAccessEntries(gress, stageIdGress, tid, remap[3])
-                # TODO self.installVirtualAddressEntries(fid, allocation)
+        for tid in vaddrAllocationMap:
+            print("Installing", vaddrAllocationMap[tid])
+            self.removeVaddrEntries(tid)
+            self.installVirtualAddressEntries(tid, vaddrAllocationMap[tid])
         bfrt.batch_end()
         elapsed_ms_t2 = (time.time() - ts_then) * 1E3
         ts_then = time.time()
@@ -790,19 +823,21 @@ class ActiveP4Controller:
 
         print("Deallocating ", fid, " ... ")
 
+        self.removeVaddrEntries(fid)
+
         for stageId in range(0, self.num_stages_egress):
             # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
             # if fid in entries:
             #     for entry in entries[fid]:
             #         entry.remove()
-            self.removeMemoryAccessEntries(stageId, 'Egress', fid, vaddrInstructions=True)
+            self.removeMemoryAccessEntries(stageId, 'Egress', fid)
 
         for stageId in range(0, self.num_stages_ingress):
             # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
             # if fid in entries:
             #     for entry in entries[fid]:
             #         entry.remove()
-            self.removeMemoryAccessEntries(stageId, 'Ingress', fid, vaddrInstructions=True)
+            self.removeMemoryAccessEntries(stageId, 'Ingress', fid)
             allocs = self.fetchAllocationTableEntries(stageId)
             if fid in allocs:
                 for entry in allocs[fid]:
