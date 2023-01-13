@@ -156,6 +156,15 @@ typedef struct {
 } pnemonic_opcode_t;
 
 typedef struct {
+    uint8_t     allocation_is_active;
+    uint8_t     memwrite_is_active;
+    uint64_t    allocation_request_start_ts;
+    uint64_t    allocation_request_stop_ts;
+    uint64_t    mem_write_start_ts;
+    uint64_t    mem_write_stop_ts;
+} active_telemetry_t;
+
+typedef struct {
     int                 id;
     uint8_t             active_tx_enabled;
     uint8_t             active_heartbeat_enabled;
@@ -164,6 +173,7 @@ typedef struct {
     uint8_t             active_timer_enabled;
     uint64_t            ctrl_ts_lastsent;
     uint64_t            ctrl_timer_lasttick;
+    active_telemetry_t  telemetry;
     pnemonic_opcode_t*  instr_set;   
     activep4_def_t*     program;
     memory_t            allocation;

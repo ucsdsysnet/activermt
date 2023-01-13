@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
         struct sockaddr_in addr;
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = inet_addr(ipv4_dstaddr);
-        addr.sin_port = htons(DPORT);
+        addr.sin_port = htons(DPORT + i);
         if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
             perror("connect()");
             exit(EXIT_FAILURE);

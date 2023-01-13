@@ -19,6 +19,7 @@ if os.path.exists(os.path.join(SDE_PATH, 'controller.json')):
     with open(os.path.join(SDE_PATH, 'controller.json')) as f:
         config = json.loads(f.read())
         f.close()
+        print("Read controller configuration from file.")
 
 basePath = os.getcwd()
 refPath = basePath
@@ -81,6 +82,7 @@ class ActiveP4Controller:
         self.customInstructionSet = custom
         self.opcode_action = {}
         self.opcodes_memaccess = []
+        self.opcodes_vaddr = []
         with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
             mapping = f.read().strip().splitlines()
             for opcode in range(0, len(mapping)):
@@ -102,6 +104,8 @@ class ActiveP4Controller:
                 }
                 if meminstr:
                     self.opcodes_memaccess.append(opcode)
+                if vaddrinstr:
+                    self.opcodes_vaddr.append(opcode)
             f.close()
         if self.customInstructionSet is not None:
             print("Using restricted instruction set.")
@@ -110,8 +114,14 @@ class ActiveP4Controller:
         self.dst_port_mapping = {}
         self.ports = []
         # modified at runtime.
+        self.instrTableEntryParams = {
+            'Ingress'   : {},
+            'Egress'    : {}
+        }
         self.allocVersion = {}
         self.queue = []
+        self.allocTiming = {}
+        self.remapTiming = {}
         self.allocationRequests = queue.Queue()
         self.active = []
         self.coredumps = {}
@@ -150,6 +160,14 @@ class ActiveP4Controller:
                     if verbose:
                         print('Done')
 
+    def printAllocation(self, allocation):
+        alloc_str = ""
+        for stageId in allocation:
+            blockStart = allocation[stageId][0]
+            blockEnd = allocation[stageId][-1]
+            alloc_str += "(%d: %d-%d) " % (stageId, blockStart, blockEnd)
+        print("allocation :: %s" % alloc_str)
+
     def installForwardingTableEntries(self, config='ptf'):
         vport_dst_mapping = {}
         port_to_mac = {}
@@ -185,7 +203,7 @@ class ActiveP4Controller:
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
 
-    def fetchMemoryAccessEntries(self, stageId, gress):
+    def fetchMemoryAccessEntries(self, stageId, gress, vaddrInstructions=True):
         instr_table = getattr(gress, 'instruction_%d' % stageId)
         entries = instr_table.dump(return_ents=True)
         memaccessEntries = {}
@@ -193,7 +211,7 @@ class ActiveP4Controller:
             for entry in entries:
                 fid = entry.key.get(b'hdr.meta.fid')[0]
                 opcode = entry.key.get(b'hdr.instr$%d.opcode' % stageId)
-                if opcode in self.opcodes_memaccess:
+                if opcode in self.opcodes_memaccess or (vaddrInstructions and opcode in self.opcodes_vaddr):
                     if fid not in memaccessEntries:
                         memaccessEntries[fid] = []
                     memaccessEntries[fid].append(entry)
@@ -211,10 +229,36 @@ class ActiveP4Controller:
                 allocationEntries[fid].append(entry)
         return allocationEntries
 
+    def removeMemoryAccessEntries(self, stageId, gressId, fid, vaddrInstructions=False):
+        print("Removing entries for ", gressId, stageId)
+        entries = self.instrTableEntryParams[gressId][stageId]
+        remaining = []
+        for entry in entries:
+            opcode = entry['opcode']
+            validFID = (fid >= entry['fid_start'] and fid <= entry['fid_end'])
+            if validFID and (opcode in self.opcodes_memaccess or (vaddrInstructions and opcode in self.opcodes_vaddr)):
+                gress = self.p4.Ingress if gressId == 'Ingress' else self.p4.Egress
+                instr_table = getattr(gress, 'instruction_%d' % stageId)
+                instr_table.delete(fid_start=entry['fid_start'], fid_end=entry['fid_end'], opcode=opcode, complete=entry['complete'], disabled=entry['disabled'], mbr=entry['mbr'], mbr_p_length=entry['mbr_pfx'], mar_19_0__start=entry['marStart'], mar_19_0__end=entry['marEnd'])
+            else:
+                remaining.append(entry)
+        self.instrTableEntryParams[gressId][stageId] = remaining
+
     def removeInstructionEntries(self, entries):
         for entry in entries:
             entry.remove()
         bfrt.complete_operations()
+
+    def addInstructionTableParams(self, gress, stageId, params):
+        gressId = None
+        if gress == self.p4.Ingress:
+            gressId = 'Ingress'
+        elif gress == self.p4.Egress:
+            gressId = 'Egress'
+        assert(gressId is not None)
+        if stageId not in self.instrTableEntryParams[gressId]:
+            self.instrTableEntryParams[gressId][stageId] = []
+        self.instrTableEntryParams[gressId][stageId].append(params)
 
     def installInstructionTableEntry(self, fid, act, gress, stageId, memStart=0, memEnd=REG_MAX):
         instr_table = getattr(gress, 'instruction_%d' % stageId)
@@ -226,15 +270,92 @@ class ActiveP4Controller:
         if act['condition'] is not None:
             if act['condition']:
                 add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                self.addInstructionTableParams(gress, stageId, {
+                    'fid_start' : fid_start,
+                    'fid_end'   : fid_end,
+                    'opcode'    : act['opcode'],
+                    'complete'  : 0,
+                    'disabled'  : 0,
+                    'mbr'       : 0,
+                    'mbr_pfx'   : 32,
+                    'marStart'  : memStart,
+                    'marEnd'    : self.REG_MAX
+                })
                 add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+                self.addInstructionTableParams(gress, stageId, {
+                    'fid_start' : fid_start,
+                    'fid_end'   : fid_end,
+                    'opcode'    : act['opcode'],
+                    'complete'  : 0,
+                    'disabled'  : 0,
+                    'mbr'       : 0,
+                    'mbr_pfx'   : 0,
+                    'marStart'  : memStart,
+                    'marEnd'    : memEnd
+                })
             else:
                 add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+                self.addInstructionTableParams(gress, stageId, {
+                    'fid_start' : fid_start,
+                    'fid_end'   : fid_end,
+                    'opcode'    : act['opcode'],
+                    'complete'  : 0,
+                    'disabled'  : 0,
+                    'mbr'       : 0,
+                    'mbr_pfx'   : 32,
+                    'marStart'  : memStart,
+                    'marEnd'    : memEnd
+                })
                 add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                self.addInstructionTableParams(gress, stageId, {
+                    'fid_start' : fid_start,
+                    'fid_end'   : fid_end,
+                    'opcode'    : act['opcode'],
+                    'complete'  : 0,
+                    'disabled'  : 0,
+                    'mbr'       : 0,
+                    'mbr_pfx'   : 0,
+                    'marStart'  : memStart,
+                    'marEnd'    : self.REG_MAX
+                })
         else:
             if act['opcode'] == 0:
                 add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=1, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+                self.addInstructionTableParams(gress, stageId, {
+                    'fid_start' : fid_start,
+                    'fid_end'   : fid_end,
+                    'opcode'    : act['opcode'],
+                    'complete'  : 1,
+                    'disabled'  : 0,
+                    'mbr'       : 0,
+                    'mbr_pfx'   : 0,
+                    'marStart'  : memStart,
+                    'marEnd'    : memEnd
+                })
             add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
+            self.addInstructionTableParams(gress, stageId, {
+                'fid_start' : fid_start,
+                'fid_end'   : fid_end,
+                'opcode'    : act['opcode'],
+                'complete'  : 0,
+                'disabled'  : 0,
+                'mbr'       : 0,
+                'mbr_pfx'   : 0,
+                'marStart'  : memStart,
+                'marEnd'    : memEnd
+            })
         add_method_rejoin(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+        self.addInstructionTableParams(gress, stageId, {
+            'fid_start' : fid_start,
+            'fid_end'   : fid_end,
+            'opcode'    : act['opcode'],
+            'complete'  : 0,
+            'disabled'  : 1,
+            'mbr'       : 0,
+            'mbr_pfx'   : 0,
+            'marStart'  : memStart,
+            'marEnd'    : self.REG_MAX
+        })
         #instr_table.dump(table=True)
 
     def installInstructionTableEntriesGress(self, gress, num_stages, offset=0):
@@ -410,11 +531,44 @@ class ActiveP4Controller:
                         add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(stageId))
                         if 'mask' in act['action']:
                             add_method(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX, addr_mask=addr_mask)
+                            self.addInstructionTableParams(gress, stageId, {
+                                'fid_start' : fid,
+                                'fid_end'   : fid,
+                                'opcode'    : act['opcode'],
+                                'complete'  : 0,
+                                'disabled'  : 0,
+                                'mbr'       : 0,
+                                'mbr_pfx'   : 0,
+                                'marStart'  : 0,
+                                'marEnd'    : self.REG_MAX
+                            })
                         else:
                             add_method(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=0, mar_19_0__end=self.REG_MAX, offset=memStart)
+                            self.addInstructionTableParams(gress, stageId, {
+                                'fid_start' : fid,
+                                'fid_end'   : fid,
+                                'opcode'    : act['opcode'],
+                                'complete'  : 0,
+                                'disabled'  : 0,
+                                'mbr'       : 0,
+                                'mbr_pfx'   : 0,
+                                'marStart'  : 0,
+                                'marEnd'    : self.REG_MAX
+                            })
                         add_method_rejoin(fid_start=fid, fid_end=fid, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
-                        if self.DEBUG:
-                            print("[DEBUG] Installed virtual address entries for FID %d stage %d pnemonic %s" % (fid, stageId, pnemonic))
+                        self.addInstructionTableParams(gress, stageId, {
+                            'fid_start' : fid,
+                            'fid_end'   : fid,
+                            'opcode'    : act['opcode'],
+                            'complete'  : 0,
+                            'disabled'  : 1,
+                            'mbr'       : 0,
+                            'mbr_pfx'   : 0,
+                            'marStart'  : memStart,
+                            'marEnd'    : self.REG_MAX
+                        })
+                        # if self.DEBUG:
+                        #     print("[DEBUG] Installed virtual address entries for FID %d stage %d pnemonic %s" % (fid, stageId, pnemonic))
                         
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
@@ -423,24 +577,40 @@ class ActiveP4Controller:
         if self.remoteDrainInitiator is None:
             self.mutex.release()
             return
+        timing_start = time.time()
+        ts_then = time.time()
         self.allocator.applyQueuedAllocation()
+        elapsed_ms_t1 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
         self.updateAllocation(fid, self.allocator.getAllocationBlocks(fid), remaps)
+        elapsed_ms_t2 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
         self.addQuotas(fid, recirculate=True)
+        elapsed_ms_t3 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
         if fid not in self.allocVersion:
             self.allocVersion[fid] = 0
         self.allocVersion[fid] += 1
         self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
         self.p4.Ingress.allocation.add_with_allocated(fid=fid, flag_reqalloc=2, allocation_id=self.allocVersion[fid])
         bfrt.complete_operations()
+        elapsed_ms_t4 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
         self.active.append(fid)
         self.queue.remove(fid)
+        elapsed_ts_overall_ms = (time.time() - self.allocTiming[fid]['start']) * 1E3
+        self.allocTiming.pop(fid)
         self.remoteDrainInitiator = None
         self.save()
+        timing_elapsed_ms = (time.time() - timing_start) * 1E3
+        timings = "%f + %f + %f + %f = %f" % (elapsed_ms_t1, elapsed_ms_t2, elapsed_ms_t3, elapsed_ms_t4, timing_elapsed_ms)
+        print("FID", fid, "resumeAllocation() (ms)", timings)
         self.mutex.release()
-        print("Allocation complete for FID", fid, "version", self.allocVersion[fid])
+        print("Allocation complete for FID", fid, "version", self.allocVersion[fid], "elapsed (ms)", elapsed_ts_overall_ms)
 
     def updateAllocation(self, fid, allocation, remaps):
 
+        ts_then = time.time()
         # build data structure for remapping.
         remappedStages = {}
         for tid in remaps:
@@ -449,18 +619,30 @@ class ActiveP4Controller:
                 if stageId not in remappedStages:
                     remappedStages[stageId] = []
                 remappedStages[stageId].append((tid, remap[2], remap[1], remap[3]))
+        elapsed_ms_t1 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         # update memory access entries for remapped apps.
+        bfrt.batch_begin()
         for stageId in remappedStages:
             gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
+            gressId = 'Ingress' if stageId < self.num_stages_ingress else 'Egress'
             stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
-            accessTEntries = self.fetchMemoryAccessEntries(stageIdGress, gress)
+            # ts_start = time.time()
+            # accessTEntries = self.fetchMemoryAccessEntries(stageIdGress, gress)
+            # ts_elapsed = (time.time() - ts_start) * 1E3
+            # print("FID", fid, "stage", stageId, "memaccess fetch (ms)", ts_elapsed)
             for remap in remappedStages[stageId]:
                 tid = remap[0]
-                if tid in accessTEntries:
-                    for entry in accessTEntries[tid]:
-                        entry.remove()
+                # if tid in accessTEntries:
+                #     for entry in accessTEntries[tid]:
+                #         entry.remove()
+                self.removeMemoryAccessEntries(stageIdGress, gressId, tid, vaddrInstructions=True)
                 self.installMemoryAccessEntries(gress, stageIdGress, tid, remap[3])
+                # TODO self.installVirtualAddressEntries(fid, allocation)
+        bfrt.batch_end()
+        elapsed_ms_t2 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         # build data structures for allocation tables and items to purge.
         allocRemapTable = {}
@@ -484,6 +666,8 @@ class ActiveP4Controller:
                     allocRemapTable[tid][tstageIdGress][0] = tAllocation
                 else:
                     allocRemapTable[tid][tstageIdGress][1] = tAllocation
+        elapsed_ms_t3 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         # purge stale allocation table entries.
         for stageIdGress in staleAllocs:
@@ -496,7 +680,9 @@ class ActiveP4Controller:
                         entry.remove()
                 if stageIdGress not in allocRemapTable[tid]:
                     allocTableActionSpecDefault(fid=tid, flag_allocated=1)
-        
+        elapsed_ms_t4 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
+
         # install remapped allocation table entries.
         for tid in allocRemapTable:
             for stageId in allocRemapTable[tid]:
@@ -505,17 +691,23 @@ class ActiveP4Controller:
                 allocTable = getattr(bfrt.active.pipe.Ingress, 'allocation_%d' % stageId)
                 allocTableActionSpec = getattr(allocTable, 'add_with_get_allocation_s%d' % stageId)
                 allocTableActionSpec(fid=tid, flag_allocated=1, offset_ig=memStartIg, size_ig=memEndIg, offset_eg=memStartEg, size_eg=memEndEg)
+        elapsed_ms_t5 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         # update allocation version for remapped instances.
         for tid in remaps:
             self.allocVersion[tid] += 1
             self.p4.Ingress.allocation.delete(fid=tid, flag_reqalloc=2)
             self.p4.Ingress.allocation.add_with_allocated(fid=tid, flag_reqalloc=2, allocation_id=self.allocVersion[tid])
-                
+        elapsed_ms_t6 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
+
         # build data structure for allocation table entries.
-        print("allocation ::", allocation)
+        self.printAllocation(allocation)
         allocationTableGroups = np.zeros((4, self.num_stages_ingress))
+        bfrt.batch_begin()
         for stageId in allocation:
+            ts_start = time.time()
             gress = self.p4.Ingress if stageId < self.num_stages_ingress else self.p4.Egress
             stageIdGress = stageId if stageId < self.num_stages_ingress else stageId - self.num_stages_ingress
             self.installMemoryAccessEntries(gress, stageIdGress, fid, allocation[stageId])
@@ -526,7 +718,12 @@ class ActiveP4Controller:
             else:
                 allocationTableGroups[2, stageIdGress] = memStart
                 allocationTableGroups[3, stageIdGress] = memEnd
+            ts_elapsed = (time.time() - ts_start) * 1E3
+            print("FID", fid, "update stage", stageId, "elapsed (ms)", ts_elapsed)
         self.installVirtualAddressEntries(fid, allocation)
+        bfrt.batch_end()
+        elapsed_ms_t7 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         # install allocation table entries.
         validity = np.sum(allocationTableGroups, axis=0)
@@ -542,8 +739,14 @@ class ActiveP4Controller:
                 allocTableActionSpec(fid=fid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
             else:
                 allocTableActionSpecDefault(fid=fid, flag_allocated=1)
+        elapsed_ms_t8 = (time.time() - ts_then) * 1E3
+        ts_then = time.time()
 
         bfrt.complete_operations()
+        elapsed_ms_t9 = (time.time() - ts_then) * 1E3
+        
+        timing_elapsed_ms = "%f + %f + %f + %f + %f + %f + %f + %f + %f" % (elapsed_ms_t1, elapsed_ms_t2, elapsed_ms_t3, elapsed_ms_t4, elapsed_ms_t5, elapsed_ms_t6, elapsed_ms_t7, elapsed_ms_t8, elapsed_ms_t9)
+        print("FID", fid, "updateAllocation() (ms)", timing_elapsed_ms)
 
     """def allocatorRandomized(self, constr):
 
@@ -588,16 +791,18 @@ class ActiveP4Controller:
         print("Deallocating ", fid, " ... ")
 
         for stageId in range(0, self.num_stages_egress):
-            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
-            if fid in entries:
-                for entry in entries[fid]:
-                    entry.remove()
+            # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
+            # if fid in entries:
+            #     for entry in entries[fid]:
+            #         entry.remove()
+            self.removeMemoryAccessEntries(stageId, 'Egress', fid, vaddrInstructions=True)
 
         for stageId in range(0, self.num_stages_ingress):
-            entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
-            if fid in entries:
-                for entry in entries[fid]:
-                    entry.remove()
+            # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
+            # if fid in entries:
+            #     for entry in entries[fid]:
+            #         entry.remove()
+            self.removeMemoryAccessEntries(stageId, 'Ingress', fid, vaddrInstructions=True)
             allocs = self.fetchAllocationTableEntries(stageId)
             if fid in allocs:
                 for entry in allocs[fid]:
@@ -628,6 +833,10 @@ class ActiveP4Controller:
         tsOverallStart = time.time()
 
         self.queue.append(fid)
+        self.allocTiming[fid] = {
+            'start' : tsOverallStart,
+            'stop'  : None
+        }
 
         if self.DEBUG:
             print("Attempting allocation for FID", fid)
@@ -685,6 +894,10 @@ class ActiveP4Controller:
                 self.remoteDrainQueue[tid] = remaps
                 # TODO race condition with previous allocation remaps.
                 self.p4.Ingress.remap_check.add_with_remapped(fid=tid, flag_initiated=0, allocation_id=self.allocVersion[tid])
+                self.remapTiming[tid] = {
+                    'start' : time.time(),
+                    'stop'  : None
+                }
                 bfrt.complete_operations()
 
         tsOverallStop = time.time()
@@ -757,11 +970,16 @@ class ActiveP4Controller:
                 if self.DEBUG:
                     print("Drain initiated by FID", fid)
                 self.remoteDrainInit.remove(fid)
+                remap_elapsed_ms = (time.time() - self.remapTiming[fid]['start']) * 1E3
+                print("FID", fid, "remap ack time (ms)", remap_elapsed_ms)
                 self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
                 bfrt.complete_operations()
             if isAck and fid in self.remoteDrainQueue:
                 if self.DEBUG:
                     print("Drain complete by FID", fid)
+                remap_elapsed_ms = (time.time() - self.remapTiming[fid]['start']) * 1E3
+                print("FID", fid, "remap time (ms)", remap_elapsed_ms)
+                self.remapTiming.pop(fid)
                 if fid in self.remoteDrainInit:
                     self.remoteDrainInit.remove(fid)
                     self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
@@ -787,6 +1005,7 @@ class ActiveP4Controller:
             req = self.allocationRequests.get()
             self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
             while req['fid'] in self.queue:
+                time.sleep(0.001)
                 pass
             print("[DEBUG] allocation for fid %d removed from queue." % req['fid'])
 
@@ -813,54 +1032,6 @@ testMode = True
 debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [2, 5, 13, 16],
-#     'iglim'     : 7,
-#     'applen'    : 19,
-#     'mindemand' : [1, 1, 1, 1]
-# }]
-
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [2, 5],
-#     'iglim'     : 7,
-#     'applen'    : 10,
-#     'mindemand' : [1, 1]
-# }]
-
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [2, 3, 4],
-#     'iglim'     : -1,
-#     'applen'    : 6,
-#     'mindemand' : [1, 1, 1]
-# }]
-
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [3, 6, 15, 16, 17],
-#     'iglim'     : -1,
-#     'applen'    : 19,
-#     'mindemand' : [1, 1, 1, 1, 1]
-# }]
-
-# accesses: 2 5 11 14 (_ 15 16 17)
-# demoApps = [{
-#     'fid'       : 1,
-#     'idx'       : [2,5,11,14,24,25,26],
-#     'iglim'     : 6,
-#     'applen'    : 28,
-#     'mindemand' : [1,1,1,1,1,1,1]
-# }]
-
-demoApps = [{
-    'fid'       : 1,
-    'idx'       : [6, 11, 15],
-    'iglim'     : -1,
-    'applen'    : 19,
-    'mindemand' : [1, 1, 1]
-}]
 
 customInstructions = None
 if restrictedInstructionSet:
@@ -881,10 +1052,39 @@ if testMode:
         #bfrt.active.pipe.Ingress.heap_s4.add(REGISTER_INDEX=i, f1=i)
         #bfrt.active.pipe.Ingress.heap_s9.add(REGISTER_INDEX=i, f1=3)
         pass
-    for app in demoApps:
-        controller.allocate(app['fid'], app['applen'], app['iglim'], app['idx'], app['mindemand'])
-        pass
-    
+
+apps = []
+currentFID = 1
+for app in config['APPS']:
+    applen = 0
+    memidx = []
+    iglim = -1
+    with open("%s/%s.ap4" % (app['PATH'], app['NAME'])) as f:
+        applen = len(f.read().strip().splitlines())
+        f.close()
+    with open("%s/%s.memidx.csv" % (app['PATH'], app['NAME'])) as f:
+        rows = f.read().splitlines()
+        memidx = [ int(x) for x in rows[0].split(",")]
+        iglim = int(rows[1])
+        f.close()
+    apps.append({
+        'fid'       : currentFID,
+        'idx'       : memidx,
+        'iglim'     : iglim,
+        'applen'    : applen,
+        'mindemand' : [1] * len(memidx),
+        'instances' : app['INSTANCES']
+    })
+    currentFID += app['INSTANCES']
+
+for app in apps:
+    for i in range(0, app['instances']):
+        controller.allocate(app['fid'] + i, app['applen'], app['iglim'], app['idx'], app['mindemand'])
+
+# for gressId in controller.instrTableEntryParams:
+#     print("[%s]" % gressId)
+#     print(controller.instrTableEntryParams[gressId].keys())
+
 controller.initController()
 controller.listen()
 

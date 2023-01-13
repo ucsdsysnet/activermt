@@ -210,6 +210,13 @@ static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, a
 	rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 }
 
+static inline void telemetry_allocation_start(activep4_context_t* ctxt) {
+	if(ctxt->telemetry.allocation_is_active == 0) {
+		ctxt->telemetry.allocation_request_start_ts = rte_rdtsc_precise();
+		ctxt->telemetry.allocation_is_active = 1;
+	}
+}
+
 static uint16_t
 active_encap_filter(
 	uint16_t port_id __rte_unused, 
@@ -305,6 +312,7 @@ active_decap_filter(
 				case ACTIVE_STATE_ALLOCATING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 						if(ctxt->allocation.version != seq) {
+							ctxt->telemetry.allocation_request_stop_ts = rte_rdtsc_precise();
 							activep4_malloc_res_t* ap4malloc = (activep4_malloc_res_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 							ctxt->allocation.invalid = 0;
 							ctxt->allocation.version = seq;
@@ -322,7 +330,11 @@ active_decap_filter(
 							// TODO
 							// ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
 							mutate_active_program(ctxt->program, &ctxt->allocation, 1, ctxt->instr_set);
+							ctxt->telemetry.allocation_is_active = 0;
 							ctxt->status = ACTIVE_STATE_REMAPPING;
+							uint64_t allocation_elapsed_ns 
+								= (double)(ctxt->telemetry.allocation_request_stop_ts - ctxt->telemetry.allocation_request_start_ts) * 1E9 / rte_get_tsc_hz();
+							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] allocation time %ld ns\n", allocation_elapsed_ns);
 							#ifdef DEBUG
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] state %d\n", ctxt->status);
 							#endif
@@ -360,6 +372,7 @@ active_decap_filter(
 								ctxt->allocation.sync_data[i].valid[j] = 0;
 							}
 						}
+						rte_memcpy(ctxt->syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
 						ctxt->allocation.invalid = 1;
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 					}
@@ -580,6 +593,7 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
+						telemetry_allocation_start(ctxt);
 					}
 					#ifdef DEBUG
 					//rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Initializing ... \n");
@@ -593,6 +607,7 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
+						telemetry_allocation_start(ctxt);
 					}
 					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 						construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, 0, 0, NULL, true);
@@ -608,6 +623,7 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
+						telemetry_allocation_start(ctxt);
 					}
 					break;
 				case ACTIVE_STATE_SNAPSHOTTING:
@@ -639,6 +655,8 @@ lcore_control(void* arg) {
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->program->fid);
+					} else {
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->program->fid);
 					}
 					if(ctxt->allocation.invalid)
 						ctxt->status = ACTIVE_STATE_REALLOCATING;
@@ -675,6 +693,8 @@ lcore_control(void* arg) {
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->program->fid);
+					} else {
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping reset ...\n", ctxt->program->fid);
 					}
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
