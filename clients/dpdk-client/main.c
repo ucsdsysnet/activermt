@@ -174,7 +174,7 @@ main(int argc, char** argv)
 		ctxt->memory_reset = memory_reset_cache;
 		ctxt->shutdown = shutdown_cache;
 		ctxt->timer = timer_cache;
-		ctxt->active_heartbeat_enabled = false;
+		ctxt->active_heartbeat_enabled = true;
 		// set_memory_demand(ctxt, 2);
 	}
 

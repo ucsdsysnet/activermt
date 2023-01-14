@@ -156,6 +156,7 @@ typedef struct {
 } pnemonic_opcode_t;
 
 typedef struct {
+    uint8_t     is_initializing;
     uint8_t     allocation_is_active;
     uint8_t     memwrite_is_active;
     uint64_t    allocation_request_start_ts;

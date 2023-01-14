@@ -334,7 +334,11 @@ active_decap_filter(
 							ctxt->status = ACTIVE_STATE_REMAPPING;
 							uint64_t allocation_elapsed_ns 
 								= (double)(ctxt->telemetry.allocation_request_stop_ts - ctxt->telemetry.allocation_request_start_ts) * 1E9 / rte_get_tsc_hz();
-							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] allocation time %ld ns\n", allocation_elapsed_ns);
+							if(ctxt->telemetry.is_initializing == 1)
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] allocation time %ld ns\n", fid, allocation_elapsed_ns);
+							else
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] reallocation time %ld ns\n", fid, allocation_elapsed_ns);
+							ctxt->telemetry.is_initializing = 0;
 							#ifdef DEBUG
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] state %d\n", ctxt->status);
 							#endif
@@ -375,6 +379,7 @@ active_decap_filter(
 						rte_memcpy(ctxt->syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
 						ctxt->allocation.invalid = 1;
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] remap initiated.\n", fid);
 					}
 					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED)) {
 						inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset);
@@ -588,6 +593,7 @@ lcore_control(void* arg) {
 			switch(ctxt->status) {
 				case ACTIVE_STATE_INITIALIZING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					ctxt->telemetry.is_initializing = 1;
 					if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 						construct_reqalloc_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
