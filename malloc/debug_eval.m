@@ -4,7 +4,7 @@ clc;
 NUM_STAGES = 20;
 PARAM_GRANULARITY = 256;
 PARAM_NUMAPPS = 128;
-PARAM_EXPID = 0;
+PARAM_EXPID = 1;
 
 data_alloctime = readtable(sprintf( ...
     'stats_g%d_n%d/%d/alloctime.csv', ...

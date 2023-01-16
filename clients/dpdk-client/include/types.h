@@ -41,10 +41,20 @@ typedef struct {
 } active_app_stats_t;
 
 typedef struct {
-	int					num_apps;
-	activep4_context_t*	ctxt;
-	active_app_stats_t*	stats;
-	uint32_t			app_id[MAX_APPS];
+	int			snapshotting_in_progress;
+	int			remapping_in_progress;
+	int			invalidating_in_progress;
+	int			current_stage;
+	int			current_index;
+	uint32_t	counter;
+} active_control_state_t;
+
+typedef struct {
+	int						num_apps;
+	activep4_context_t*		ctxt;
+	active_control_state_t	ctrl_status[MAX_APPS];	
+	active_app_stats_t*		stats;
+	uint32_t				app_id[MAX_APPS];
 } active_apps_t;
 
 typedef struct {

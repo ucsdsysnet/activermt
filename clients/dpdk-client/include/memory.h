@@ -31,4 +31,27 @@ static inline int reset_memory_region(memory_t* region, activep4_context_t* ctxt
     return 0;
 }
 
+static inline int get_next_valid_stage(activep4_context_t* ctxt, active_control_state_t* ctrlstat) {
+    for(int i = ctrlstat->current_stage; i < NUM_STAGES; i++) {
+        if(ctxt->allocation.valid_stages[i] && ctxt->syncmap[i]) {
+            ctrlstat->current_stage = i;
+            return i;
+        }
+    }
+    return -1;
+}
+
+static inline int get_next_valid_index(activep4_context_t* ctxt, active_control_state_t* ctrlstat) {
+    if(ctrlstat->current_stage < 0) return -1;
+    if(ctrlstat->current_index < ctxt->allocation.sync_data[ctrlstat->current_stage].mem_start)
+        ctrlstat->current_index = ctxt->allocation.sync_data[ctrlstat->current_stage].mem_start;
+    for(int i = ctrlstat->current_index; i <= ctxt->allocation.sync_data[ctrlstat->current_stage].mem_end; i++) {
+        if(!ctxt->allocation.sync_data[ctrlstat->current_stage].valid[i]) {
+            ctrlstat->current_index = i;
+            return i;
+        }
+    }
+    return -1;
+}
+
 #endif

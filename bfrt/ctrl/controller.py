@@ -1026,11 +1026,13 @@ class ActiveP4Controller:
                     self.remoteDrainInit.remove(fid)
                     self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
                     bfrt.complete_operations()
+                self.digestMutex.acquire()
                 if fid in self.remoteDrainQueue:
                     remaps = self.remoteDrainQueue[fid]
                     if len(self.remoteDrainQueue) == 1 and self.remoteDrainInitiator is not None:
                         self.resumeAllocation(self.remoteDrainInitiator, remaps)
                     self.remoteDrainQueue.pop(fid)
+                self.digestMutex.release()
             # self.digestMutex.release()
         return 0
 
