@@ -123,6 +123,8 @@ class Allocator:
     METRIC_UTILIZATION = 2
     METRIC_SAT = 3
     ALLOCATION_GRANULARITY = 256
+    ALLOCATION_TYPE_DEFAULT = 0
+    ALLOCATION_TYPE_MAXMINFAIR = 1
 
     def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = 20
@@ -131,6 +133,7 @@ class Allocator:
         self.metric = metric
         self.optimize = optimize
         self.minimize = minimize
+        self.allocation_type = self.ALLOCATION_TYPE_MAXMINFAIR
         self.DEBUG = debug
         self.reset()
 
@@ -447,6 +450,7 @@ class Allocator:
             # assuming ordered in increasing FID value.
             dominantFID = None
             sumBlocks = 0
+            numElastic = 0
             remaining = self.max_occupancy
             # if apps have same weight, a random one is chosen as dominant.
             # random.shuffle(apps)
@@ -455,6 +459,7 @@ class Allocator:
                 fid = app[0]
                 # only elastic apps can dominate.
                 if app[2] == 1 and app[1] >= maxWt:
+                    numElastic += 1
                     wtSum += app[1]
                     maxWt = app[1]
                     dominantFID = app[0]
@@ -464,26 +469,43 @@ class Allocator:
                     remaining -= numBlocks[fid]
             # allocate number of blocks for elastic apps.
             elasticBlocks = remaining
-            for app in apps:
-                fid = app[0]
-                wt = app[1]
-                minDemand = app[2]
-                if minDemand > 1:
-                    continue
-                if remaining <= 0:
-                    print("Apps:", apps)
+            if self.allocation_type == self.ALLOCATION_TYPE_MAXMINFAIR:
+                # max-min fairness.
+                assert(elasticBlocks >= numElastic)
+                while remaining > 0:
+                    for app in apps:
+                        fid = app[0]
+                        # wt = app[1]
+                        minDemand = app[2]
+                        if minDemand > 1:
+                            continue
+                        if fid not in numBlocks:
+                            numBlocks[fid] = 0
+                        if remaining > 0:
+                            numBlocks[fid] += 1
+                            remaining -= 1
+            else:
+                # default allocation.
+                for app in apps:
+                    fid = app[0]
+                    wt = app[1]
+                    minDemand = app[2]
+                    if minDemand > 1:
+                        continue
+                    if remaining <= 0:
+                        print("Apps:", apps)
+                        print("Assigned blocks", numBlocks)
+                        sys.exit("Error[0]: out of memory!")
+                    # in increasing order of weights (to avoid starvation of apps).
+                    numBlocks[fid] = int(min(max(math.floor(wt * elasticBlocks / wtSum), minDemand), remaining))
+                    sumBlocks += numBlocks[fid]
+                    remaining -= numBlocks[fid]
+                if remaining < 0:
                     print("Assigned blocks", numBlocks)
-                    sys.exit("Error[0]: out of memory!")
-                # in increasing order of weights (to avoid starvation of apps).
-                numBlocks[fid] = int(min(max(math.floor(wt * elasticBlocks / wtSum), minDemand), remaining))
-                sumBlocks += numBlocks[fid]
-                remaining -= numBlocks[fid]
-            if remaining < 0:
-                print("Assigned blocks", numBlocks)
-                sys.exit("Error: out of memory!")
-            # assign remaining to one with max weight or newest app (maximize utilization).
-            if dominantFID is not None:
-                numBlocks[dominantFID] += remaining
+                    sys.exit("Error: out of memory!")
+                # assign remaining to one with max weight or newest app (maximize utilization).
+                if dominantFID is not None:
+                    numBlocks[dominantFID] += remaining
             # retain previously allocated blocks for inelastic apps by pinning them in order of arrival.
             apps.sort(key=lambda x: x[0] if x[2] > 1 else self.WT_OVERFLOW)
             # update the allocation matrix.
