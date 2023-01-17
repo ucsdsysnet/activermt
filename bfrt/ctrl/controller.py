@@ -1005,12 +1005,14 @@ class ActiveP4Controller:
                 usage = self.getMemoryUsage(2, (0, 65535))
                 print("Usage[2]:", usage)
                 continue"""
+            isAllocationRequest = False
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]
                 demand = digest['dem_%d' % i]
                 if demand > 0:
                     accessIdx.append(memIdx)
                     minDemand.append(demand)
+                    isAllocationRequest = True
                 else:
                     break
             self.allocationRequests.put({
@@ -1018,7 +1020,8 @@ class ActiveP4Controller:
                 'progLen'   : progLen,
                 'igLim'     : igLim,
                 'accessIdx' : accessIdx,
-                'minDemand' : minDemand
+                'minDemand' : minDemand,
+                'allocate'  : isAllocationRequest
             })
             self.enqueued.add(fid)
             logging.info("[FID %d] enqueued allocation, queue: %s", fid, str(self.allocationRequests.queue))
@@ -1078,7 +1081,10 @@ class ActiveP4Controller:
         print("Starting monitor ... ")
         while self.watchdog:
             req = self.allocationRequests.get()
-            self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
+            if req['allocate']:
+                self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
+            else:
+                self.deallocate(req['fid'])
             while req['fid'] in self.queue:
                 now = time.time()
                 if now >= (self.remoteDrainStartTs + self.REALLOCATION_TIMEOUT_SEC):
