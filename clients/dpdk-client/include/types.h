@@ -64,6 +64,11 @@ typedef struct {
 } active_control_t;
 
 typedef struct {
+	active_control_t*		ctrl;
+	int						app_id;
+} active_control_app_t;
+
+typedef struct {
 	int			num_apps;
 	int			app_id[MAX_APPS];
 	char		appname[MAX_APPS][50];

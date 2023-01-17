@@ -1,6 +1,8 @@
 #ifndef ACTIVE_H
 #define ACTIVE_H
 
+// #define DEBUG
+
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
@@ -25,6 +27,7 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	ap4ih->fid = htons(ctxt->program->fid);
 	ap4ih->seq = 0;
 	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	memset(mreq, 0, sizeof(activep4_malloc_req_t));
 	mreq->proglen = htons((uint16_t)ctxt->program->proglen);
 	mreq->iglim = (uint8_t)ctxt->program->iglim;
 	#ifdef DEBUG

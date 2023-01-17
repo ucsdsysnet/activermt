@@ -28,7 +28,10 @@
 
 #include "../../../headers/activep4.h"
 
-#define CTRL_PARALLEL
+// #define CTRL_PARALLEL
+// #define CTRL_MULTICORE
+
+#define MAX_TX_BUFS 1024
 #define ACTIVE_FOREACH_APP(app_id, ctxt) for(app_id = 0, ctxt = &ap4_ctxt[app_id]; app_id < cfg.num_apps; app_id++, ctxt = &ap4_ctxt[app_id])
 
 static pnemonic_opcode_t instr_set;
@@ -36,7 +39,11 @@ static active_apps_t apps_ctxt;
 static activep4_context_t* ap4_ctxt;
 static active_control_t ctrl;
 static active_config_t cfg;
+#ifdef CTRL_MULTICORE
+static struct rte_eth_dev_tx_buffer* tx_buffers[MAX_TX_BUFS];
+#else
 static struct rte_eth_dev_tx_buffer* buffer;
+#endif
 static uint64_t drop_counter;
 static int is_running;
 static void interrupt_handler(int sig) {
@@ -189,7 +196,7 @@ static inline activep4_context_t* get_app_context_from_packet(char* bufptr, acti
 	return ctxt;
 }
 
-static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, activep4_def_t* memsync_cache, int portid, struct rte_mempool *mempool) {
+/*static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, activep4_def_t* memsync_cache, int portid, struct rte_mempool *mempool) {
 	struct rte_mbuf* mbuf;
 	const int qid = 1;
 	int snapshotting_in_progress = 1;
@@ -209,7 +216,7 @@ static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, a
 		}
 	}
 	rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-}
+}*/
 
 static inline void telemetry_allocation_start(activep4_context_t* ctxt) {
 	if(ctxt->telemetry.allocation_is_active == 0) {
@@ -407,8 +414,8 @@ active_decap_filter(
 			pkts[k]->pkt_len -= offset;
 			pkts[k]->data_len -= offset;
 		} else {
-			rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] Unknown packet: ");
-			print_pktinfo(bufptr, pkts[k]->pkt_len);
+			// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] Unknown packet: ");
+			// print_pktinfo(bufptr, pkts[k]->pkt_len);
 		}
 		
 		// TODO update application state.
@@ -440,8 +447,15 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool, active_apps_t* apps_ctxt
 		return retval;
 	}
 
-	const uint16_t rx_rings = (dev_info.max_rx_queues > 3) ? 4 : 1;
-	const uint16_t tx_rings = (dev_info.max_tx_queues > 3) ? 4 : 1;
+	printf("Device %d supports %d TX queues.\n", port, dev_info.max_tx_queues);
+
+	// const uint16_t rx_rings = (dev_info.max_rx_queues > 3) ? 4 : 1;
+	const uint16_t rx_rings = 1;
+	#ifdef CTRL_MULTICORE
+	const uint16_t tx_rings = (dev_info.max_tx_queues > apps_ctxt->num_apps) ? apps_ctxt->num_apps + 1 : 1;
+	#else
+	const uint16_t tx_rings = (dev_info.max_tx_queues > 1) ? 2 : 1;
+	#endif
 
 	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
@@ -568,11 +582,26 @@ lcore_control(void* arg) {
 
 	unsigned lcore_id = rte_lcore_id();
 
-	const int qid = 1;
-
+	#ifdef CTRL_MULTICORE
+	active_control_app_t* ctrlapp = (active_control_app_t*)arg;
+	active_control_t* ctrl = (active_control_t*)ctrlapp->ctrl;
+	activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[ctrlapp->app_id];
+	#else
 	active_control_t* ctrl = (active_control_t*)arg;
+	#endif
 
+	#ifdef CTRL_MULTICORE
+	struct rte_eth_dev_tx_buffer* buffer = tx_buffers[ctrlapp->app_id];
+	const int qid = ctrlapp->app_id + 1;
+	#else
+	const int qid = 1;
+	#endif
+
+	#ifdef CTRL_MULTICORE
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting controller for port %d on lcore %u app %d ... \n", PORT_PETH, lcore_id, ctrlapp->app_id);
+	#else
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting controller for port %d on lcore %u ... \n", ctrl->port_id, lcore_id);
+	#endif
 
 	struct rte_mbuf* mbuf;
 
@@ -587,9 +616,11 @@ lcore_control(void* arg) {
 
 	while(is_running) {
 		now = rte_rdtsc_precise();
+		#ifndef CTRL_MULTICORE
 		for(int i = 0; i < ctrl->apps_ctxt->num_apps; i++) {
 			activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[i];
 			active_control_state_t* ctrlstat = &ctrl->apps_ctxt->ctrl_status[i];
+		#endif
 			elapsed_us = (double)(now - ctxt->ctrl_ts_lastsent) * 1E6 / rte_get_tsc_hz();
 			if(!ctxt->is_active) continue;
 			switch(ctxt->status) {
@@ -726,8 +757,12 @@ lcore_control(void* arg) {
 						ctrlstat->snapshotting_in_progress = 1;
 					}
 					#else
+					get_rw_stages_str(ctxt, tmpbuf);
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->program->fid, tmpbuf);
+					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
 					// sync_memory_region(&ctxt->allocation, ctxt, memsync_cache, ctrl->port_id, ctrl->mempool);
 					snapshotting_in_progress = 1;
+					int num_sent = 0;
 					while(snapshotting_in_progress) {
 						snapshotting_in_progress = 0;
 						for(int i = 0; i < NUM_STAGES; i++) {
@@ -738,6 +773,7 @@ lcore_control(void* arg) {
 								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 									construct_snapshot_packet(mbuf, ctrl->port_id, ctxt, i, j, memsync_cache, false);
 									rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+									num_sent++;
 									// printf("[SNAPSHOT] stage %d index %d \n", i, j);
 								}
 							}
@@ -747,7 +783,7 @@ lcore_control(void* arg) {
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
 					uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
-					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns\n", ctxt->program->fid, snapshot_time_ns);
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns w/ %d packets\n", ctxt->program->fid, snapshot_time_ns, num_sent);
 					if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
 						get_rw_stages_str(ctxt, tmpbuf);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->program->fid, tmpbuf);
@@ -832,7 +868,9 @@ lcore_control(void* arg) {
 				default:
 					break;
 			}
+		#ifndef CTRL_MULTICORE
 		}
+		#endif
 	}
 
 	return 0;
@@ -927,13 +965,25 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	buffer = rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
+	#ifdef CTRL_MULTICORE
+	for(int i = 0; i < cfg.num_apps; i++) {
+		tx_buffers[i] = (struct rte_eth_dev_tx_buffer*)rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
+		if(tx_buffers[i] == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot allocate TX buffer for control thread.");
+		if(rte_eth_tx_buffer_init(tx_buffers[i], BURST_SIZE) != 0)
+			rte_exit(EXIT_FAILURE, "Cannot initialize TX buffer for control thread.");
+		if(rte_eth_tx_buffer_set_err_callback(tx_buffers[i], rte_eth_tx_buffer_count_callback, &drop_counter) < 0)
+			rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for control thread.");
+	}
+	#else
+	buffer = (struct rte_eth_dev_tx_buffer*)rte_zmalloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
 	if(buffer == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot allocate TX buffer for control thread.");
 	if(rte_eth_tx_buffer_init(buffer, BURST_SIZE) != 0)
 		rte_exit(EXIT_FAILURE, "Cannot initialize TX buffer for control thread.");
 	if(rte_eth_tx_buffer_set_err_callback(buffer, rte_eth_tx_buffer_count_callback, &drop_counter) < 0)
 		rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for control thread.");
+	#endif
 
 	memset(&ctrl, 0, sizeof(active_control_t));
 	ctrl.apps_ctxt = &apps_ctxt;
@@ -974,8 +1024,20 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 		#endif
 	}
 
+	#ifdef CTRL_MULTICORE
+	active_control_app_t ctrlapp[MAX_APPS];
+	for(int i = 0; i < cfg.num_apps; i++) {
+		ctrlapp[i].app_id = i;
+		ctrlapp[i].ctrl = &ctrl;
+	}
+	for(int i = 0; i < cfg.num_apps; i++) {
+		rte_eal_remote_launch(lcore_control, (void*)&ctrlapp[i], lcore_id);
+		lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+	}
+	#else
 	rte_eal_remote_launch(lcore_control, (void*)&ctrl, lcore_id);
 	lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+	#endif
 }
 
 void active_client_shutdown() {

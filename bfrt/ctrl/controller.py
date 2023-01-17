@@ -70,6 +70,7 @@ class ActiveP4Controller:
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
+        self.vaddr_support = True
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
@@ -79,7 +80,7 @@ class ActiveP4Controller:
         self.max_iter = 100
         self.recirculation_enabled = True
         self.base_path = basePath
-        logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), format='%(asctime)s - %(message)s', level=logging.INFO)
+        logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
         self.customInstructionSet = custom
         self.opcode_action = {}
         self.opcode_pnemonic = {}
@@ -125,6 +126,7 @@ class ActiveP4Controller:
         self.queue = []
         self.allocTiming = {}
         self.remapTiming = {}
+        self.enqueued = set()
         self.allocationRequests = queue.Queue()
         self.active = []
         self.coredumps = {}
@@ -544,6 +546,8 @@ class ActiveP4Controller:
                 self.installInstructionTableEntry(fid, act, gress, stageIdGress, memStart=memStart, memEnd=memEnd)
 
     def installVirtualAddressEntries(self, fid, allocationBlocks):
+        if not self.vaddr_support:
+            return
         for i in range(0, self.num_stages_total):
             gress = self.p4.Ingress if i < self.num_stages_ingress else self.p4.Egress
             stageId = i if i < self.num_stages_ingress else i - self.num_stages_ingress
@@ -602,7 +606,9 @@ class ActiveP4Controller:
                         
     def resumeAllocation(self, fid, remaps):
         self.mutex.acquire()
-        print("Resuming allocation for FID %d ... " % fid)
+        logging.info("[FID %d] allocation resume", fid)
+        if self.DEBUG:
+            print("Resuming allocation for FID %d ... " % fid)
         # print("Remaps ::", remaps)
         if self.remoteDrainInitiator is None:
             self.mutex.release()
@@ -634,9 +640,12 @@ class ActiveP4Controller:
         self.save()
         timing_elapsed_ms = (time.time() - timing_start) * 1E3
         timings = "%f + %f + %f + %f = %f" % (elapsed_ms_t1, elapsed_ms_t2, elapsed_ms_t3, elapsed_ms_t4, timing_elapsed_ms)
-        print("FID", fid, "resumeAllocation() (ms)", timings)
+        if self.DEBUG:
+            print("FID", fid, "resumeAllocation() (ms)", timings)
         self.mutex.release()
-        print("Allocation complete for FID", fid, "version", self.allocVersion[fid], "elapsed (ms)", elapsed_ts_overall_ms)
+        logging.info("[FID %d] allocation complete, version %d, elapsed time %.3f ms", fid, self.allocVersion[fid], elapsed_ts_overall_ms)
+        if self.DEBUG:
+            print("Allocation complete for FID", fid, "version", self.allocVersion[fid], "elapsed (ms)", elapsed_ts_overall_ms)
 
     def updateAllocation(self, fid, allocation, remaps):
 
@@ -783,7 +792,8 @@ class ActiveP4Controller:
         elapsed_ms_t9 = (time.time() - ts_then) * 1E3
         
         timing_elapsed_ms = "%f + %f + %f + %f + %f + %f + %f + %f + %f" % (elapsed_ms_t1, elapsed_ms_t2, elapsed_ms_t3, elapsed_ms_t4, elapsed_ms_t5, elapsed_ms_t6, elapsed_ms_t7, elapsed_ms_t8, elapsed_ms_t9)
-        print("FID", fid, "updateAllocation() (ms)", timing_elapsed_ms)
+        if self.DEBUG:
+            print("FID", fid, "updateAllocation() (ms)", timing_elapsed_ms)
 
     """def allocatorRandomized(self, constr):
 
@@ -825,7 +835,10 @@ class ActiveP4Controller:
 
     def deallocate(self, fid):
 
-        print("Deallocating ", fid, " ... ")
+        logging.info("[FID %d] deallocating ...", fid)
+
+        if self.DEBUG:
+            print("Deallocating ", fid, " ... ")
 
         self.removeVaddrEntries(fid)
 
@@ -859,9 +872,11 @@ class ActiveP4Controller:
 
         self.allocator.deallocate(fid)
 
-        print("Deallocated ", fid)
+        logging.info("[FID %d] deallocated", fid)
+        if self.DEBUG:
+            print("Deallocated ", fid)
 
-    def allocate(self, fid, progLen, igLim, accessIdx, minDemand):
+    def allocate(self, fid, progLen, igLim, accessIdx, minDemand, ignorePeers=False):
 
         if fid in self.queue or fid in self.active:
             return
@@ -876,6 +891,8 @@ class ActiveP4Controller:
             'start' : tsOverallStart,
             'stop'  : None
         }
+
+        logging.info("[FID %d] allocation init: len %d, iglim %d, accesses %s, demand %s", fid, progLen, igLim, str(accessIdx), str(minDemand))
 
         if self.DEBUG:
             print("Attempting allocation for FID", fid)
@@ -908,6 +925,7 @@ class ActiveP4Controller:
             print("Elapsed (allocation) time", elapsedAllocation)
 
         if cost is None or cost > self.allocator.WT_OVERFLOW:
+            logging.info("[FID %d] allocation failed due to cost %s", fid, str(cost))
             self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
             bfrt.complete_operations()
             self.queue.remove(fid)
@@ -916,12 +934,16 @@ class ActiveP4Controller:
             # TODO handle failed allocations.
             return 
 
+        logging.info("[FID %d] allocation: %s", fid, str(memIdx))
+
         self.remoteDrainInitiator = fid
-        if not changes:
+        if not changes or ignorePeers:
+            logging.info("[FID %d] reallocations not required", fid)
             if self.DEBUG:
                 print("No changes detected. Applying allocation ... ")
             self.resumeAllocation(fid, remaps)
         else:
+            logging.info("[FID %d] reallocations: %s", fid, str(list(remaps.keys())))
             self.remoteDrainStartTs = time.time()
             self.remaps = remaps
             if self.DEBUG:
@@ -930,7 +952,9 @@ class ActiveP4Controller:
                 th = threading.Thread(target=self.coredump, args=(remaps, fid, self.resumeAllocation,))
                 th.start()
             for tid in remaps:
-                print("Queueing FID %d for reallocation ... " % tid)
+                logging.info("[FID %d] queuing FID %d for reallocation ...", fid, tid)
+                if self.DEBUG:
+                    print("Queueing FID %d for reallocation ... " % tid)
                 self.remoteDrainInit.add(tid)
                 self.remoteDrainQueue[tid] = remaps
                 # TODO race condition with previous allocation remaps.
@@ -950,7 +974,8 @@ class ActiveP4Controller:
 
     def resetAllocation(self):
         self.mutex.acquire()
-        print("Initiating allocation reset ... ")
+        if self.DEBUG:
+            print("Initiating allocation reset ... ")
         completed = []
         for fid in self.active:
             self.deallocate(fid)
@@ -969,7 +994,7 @@ class ActiveP4Controller:
             accessIdx = []
             minDemand = []
             # self.digestMutex.acquire()
-            if fid in self.active:
+            if fid in self.active or fid in self.enqueued:
                 # TODO allocation modification requires computation of request hash.
                 continue
             if fid == 255:
@@ -995,6 +1020,8 @@ class ActiveP4Controller:
                 'accessIdx' : accessIdx,
                 'minDemand' : minDemand
             })
+            self.enqueued.add(fid)
+            logging.info("[FID %d] enqueued allocation, queue: %s", fid, str(self.allocationRequests.queue))
             # self.digestMutex.release()
         return 0
 
@@ -1013,14 +1040,18 @@ class ActiveP4Controller:
                     print("Drain initiated by FID", fid)
                 self.remoteDrainInit.remove(fid)
                 remap_elapsed_ms = (time.time() - self.remapTiming[fid]['start']) * 1E3
-                print("FID", fid, "remap ack time (ms)", remap_elapsed_ms)
+                logging.info("[FID %d] reallocation ack, elapsed time %.3f ms", fid, remap_elapsed_ms)
+                if self.DEBUG:
+                    print("FID", fid, "remap ack time (ms)", remap_elapsed_ms)
                 self.p4.Ingress.remap_check.delete(fid=fid, flag_initiated=0)
                 bfrt.complete_operations()
             if isAck and fid in self.remoteDrainQueue:
                 if self.DEBUG:
                     print("Drain complete by FID", fid)
                 remap_elapsed_ms = (time.time() - self.remapTiming[fid]['start']) * 1E3
-                print("FID", fid, "remap time (ms)", remap_elapsed_ms)
+                logging.info("[FID %d] snapshot complete, elapsed time %.3f ms", fid, remap_elapsed_ms)
+                if self.DEBUG:
+                    print("FID", fid, "remap time (ms)", remap_elapsed_ms)
                 self.remapTiming.pop(fid)
                 if fid in self.remoteDrainInit:
                     self.remoteDrainInit.remove(fid)
@@ -1051,7 +1082,10 @@ class ActiveP4Controller:
             while req['fid'] in self.queue:
                 now = time.time()
                 if now >= (self.remoteDrainStartTs + self.REALLOCATION_TIMEOUT_SEC):
-                    print("FID", req['fid'], "reallocation timeout")
+                    logging.info("[FID %d] reallocation timeout", req['fid'])
+                    if self.DEBUG:
+                        print("FID", req['fid'], "reallocation timeout")
+                    # self.digestMutex.acquire()
                     for tid in self.remaps:
                         if tid in self.remoteDrainQueue:
                             self.remoteDrainQueue.pop(tid)
@@ -1059,10 +1093,15 @@ class ActiveP4Controller:
                             self.p4.Ingress.remap_check.delete(fid=tid, flag_initiated=0)
                             self.remoteDrainInit.remove(tid)
                         bfrt.complete_operations()
+                    # self.digestMutex.release()
                     self.resumeAllocation(self.remoteDrainInitiator, self.remaps)
                     break
                 time.sleep(0.001)
-            print("[DEBUG] allocation for fid %d removed from queue." % req['fid'])
+            if req['fid'] in self.enqueued:
+                self.enqueued.remove(req['fid'])
+            logging.info("[FID %d] allocation dequeued", req['fid'])
+            if self.DEBUG:
+                print("[DEBUG] allocation for fid %d removed from queue." % req['fid'])
 
     def listen(self):
         self.monitorThread = threading.Thread(target=self.monitor)
@@ -1102,11 +1141,7 @@ controller.setMirrorSessions()
 controller.installInstructionTableEntries()
 
 if testMode:
-    num_indices = 65536
-    for i in range(0, num_indices):
-        #bfrt.active.pipe.Ingress.heap_s4.add(REGISTER_INDEX=i, f1=i)
-        #bfrt.active.pipe.Ingress.heap_s9.add(REGISTER_INDEX=i, f1=3)
-        pass
+    pass
 
 apps = []
 currentFID = 1
@@ -1134,7 +1169,7 @@ for app in config['APPS']:
 
 for app in apps:
     for i in range(0, app['instances']):
-        controller.allocate(app['fid'] + i, app['applen'], app['iglim'], app['idx'], app['mindemand'])
+        controller.allocate(app['fid'] + i, app['applen'], app['iglim'], app['idx'], app['mindemand'], ignorePeers=True)
 
 # for gressId in controller.instrTableEntryParams:
 #     print("[%s]" % gressId)
