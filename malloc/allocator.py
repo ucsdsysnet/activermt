@@ -239,6 +239,22 @@ class Allocator:
                 return -1
         return cost
 
+    # Best-fit will maximize this cost; worst-fit will minimize.
+    def getCostFit(self, memIdx, activeFunc):
+        cost = 0
+        numAccesses = len(memIdx)
+        for i in range(0, numAccesses):
+            idx = memIdx[i]
+            occupied = 0
+            for fid in self.allocationMap[idx]:
+                # determine amount of slack space available.
+                cost += self.getMinDemand(fid, idx)
+                occupied += self.getMinDemand(fid, idx)
+            occupied += activeFunc.minDemand[i]
+            if occupied > self.max_occupancy:
+                return -1
+        return cost
+
     # utility = normalized sum of fraction of max demand satisfied at each stage.
     # eg. utility=1 implies that the application got what it asked for.
     # assumes (actual) utility function is strictly increasing (wrt. memory).
@@ -283,7 +299,8 @@ class Allocator:
     def getCost(self, memIdx, activeFunc):
         cost = 0
         if self.metric == self.METRIC_COST:
-            cost = self.getCostMoving(memIdx, activeFunc)
+            # cost = self.getCostMoving(memIdx, activeFunc)
+            cost = self.getCostFit(memIdx, activeFunc)
         elif self.metric == self.METRIC_UTILITY:
             cost = self.getUtility(memIdx, activeFunc)
         elif self.metric == self.METRIC_UTILIZATION:
@@ -469,43 +486,44 @@ class Allocator:
                     remaining -= numBlocks[fid]
             # allocate number of blocks for elastic apps.
             elasticBlocks = remaining
-            if self.allocation_type == self.ALLOCATION_TYPE_MAXMINFAIR:
-                # max-min fairness.
-                assert(elasticBlocks >= numElastic)
-                while remaining > 0:
+            if numElastic > 0:
+                if self.allocation_type == self.ALLOCATION_TYPE_MAXMINFAIR:
+                    # max-min fairness.
+                    assert(elasticBlocks >= numElastic)
+                    while remaining > 0:
+                        for app in apps:
+                            fid = app[0]
+                            # wt = app[1]
+                            minDemand = app[2]
+                            if minDemand > 1:
+                                continue
+                            if fid not in numBlocks:
+                                numBlocks[fid] = 0
+                            if remaining > 0:
+                                numBlocks[fid] += 1
+                                remaining -= 1
+                else:
+                    # default allocation.
                     for app in apps:
                         fid = app[0]
-                        # wt = app[1]
+                        wt = app[1]
                         minDemand = app[2]
                         if minDemand > 1:
                             continue
-                        if fid not in numBlocks:
-                            numBlocks[fid] = 0
-                        if remaining > 0:
-                            numBlocks[fid] += 1
-                            remaining -= 1
-            else:
-                # default allocation.
-                for app in apps:
-                    fid = app[0]
-                    wt = app[1]
-                    minDemand = app[2]
-                    if minDemand > 1:
-                        continue
-                    if remaining <= 0:
-                        print("Apps:", apps)
+                        if remaining <= 0:
+                            print("Apps:", apps)
+                            print("Assigned blocks", numBlocks)
+                            sys.exit("Error[0]: out of memory!")
+                        # in increasing order of weights (to avoid starvation of apps).
+                        numBlocks[fid] = int(min(max(math.floor(wt * elasticBlocks / wtSum), minDemand), remaining))
+                        sumBlocks += numBlocks[fid]
+                        remaining -= numBlocks[fid]
+                    if remaining < 0:
                         print("Assigned blocks", numBlocks)
-                        sys.exit("Error[0]: out of memory!")
-                    # in increasing order of weights (to avoid starvation of apps).
-                    numBlocks[fid] = int(min(max(math.floor(wt * elasticBlocks / wtSum), minDemand), remaining))
-                    sumBlocks += numBlocks[fid]
-                    remaining -= numBlocks[fid]
-                if remaining < 0:
-                    print("Assigned blocks", numBlocks)
-                    sys.exit("Error: out of memory!")
-                # assign remaining to one with max weight or newest app (maximize utilization).
-                if dominantFID is not None:
-                    numBlocks[dominantFID] += remaining
+                        sys.exit("Error: out of memory!")
+                    # assign remaining to one with max weight or newest app (maximize utilization).
+                    if dominantFID is not None:
+                        numBlocks[dominantFID] += remaining
             # retain previously allocated blocks for inelastic apps by pinning them in order of arrival.
             apps.sort(key=lambda x: x[0] if x[2] > 1 else self.WT_OVERFLOW)
             # update the allocation matrix.

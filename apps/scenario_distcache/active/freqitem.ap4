@@ -20,5 +20,4 @@ COPY_MBR2_MBR
 MAR_LOAD_DATA_2 // write key to direct index computed at source.
 MEM_WRITE_CONDZERO
 MEM_WRITE_CONDZERO
-MEM_WRITE_CONDZERO
 RETURN

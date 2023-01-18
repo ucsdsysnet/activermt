@@ -49,17 +49,37 @@ data_stageidx = readtable(sprintf( ...
     PARAM_EXPID ...
 ));
 
-key_stageidx = data_stageidx{ : , 1} * 10 + data_stageidx{ : , 2};
+for i = 1:size(data_stageidx, 1)
+    for j = 1:size(data_stageidx, 2)
+        if isnan(data_stageidx{i,j})
+            data_stageidx{i,j} = -1;
+        end
+    end
+end
+
+stageidx = unique(data_stageidx, 'rows');
+
+% key_stageidx = data_stageidx{ : , 1} * 10 + data_stageidx{ : , 2};
+key_stageidx = zeros(1, size(data_stageidx, 1));
+for i = 1:length(key_stageidx)
+    for j = 1:size(stageidx, 1)
+        if sum(data_stageidx{i, : } ~= stageidx{j, : }) == 0
+            key_stageidx(i) = j;
+        end
+    end
+end
 
 cost_current = zeros(1, NUM_STAGES);
 cost_series = zeros(NUM_STAGES, PARAM_NUMAPPS);
 for i = 1:size(data_stageidx, 1)
-    idx_0 = data_stageidx{i, 1};
-    idx_1 = data_stageidx{i, 2};
-    cost_current(idx_0 + 1) = cost_current(idx_0 + 1) + 1;
-    cost_current(idx_1 + 1) = cost_current(idx_1 + 1) + 1;
+    for j = 1:size(data_stageidx, 2)
+        idx = data_stageidx{i, j};
+        if idx < 0
+            continue;
+        end
+        cost_current(idx + 1) = cost_current(idx + 1) + 1;
+    end
     for j = 1:NUM_STAGES
-        cost_series(j, i) = cost_current(j);
         cost_series(j, i) = cost_current(j);
     end
 end
@@ -99,8 +119,10 @@ grid on;
 
 subplot(2, 2, 3);
 plot(key_stageidx, '-o');
+yticks(1:size(stageidx, 1));
+yticklabels(cellstr(num2str(table2array(stageidx))));
 xlabel('App #');
-ylabel('Allocation Key');
+ylabel('Allocation');
 set(gca, 'FontSize', 16);
 grid on;
 
@@ -126,9 +148,11 @@ saveas(gcf, sprintf( ...
     PARAM_EXPID ...
 ));
 
-allocated_proportions = zeros(PARAM_NUMAPPS, PARAM_NUMAPPS);
-fairness = zeros(1, PARAM_NUMAPPS);
-for i = 1:PARAM_NUMAPPS
+num_apps_actual = size(data_numblocks, 1);
+
+allocated_proportions = zeros(num_apps_actual, num_apps_actual);
+fairness = zeros(1, num_apps_actual);
+for i = 1:num_apps_actual
     data_allocmat = readtable(sprintf( ...
         'stats_g%d_n%d/%d/allocations/allocmatrix_%d.csv', ...
         PARAM_GRANULARITY, ...

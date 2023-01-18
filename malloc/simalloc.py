@@ -114,7 +114,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
                 print("Allocation failed for", appname, "Seq", iter)
         tsEnd = time.time()
         elapsedSec = tsEnd - tsBegin
-        #logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
+        # logAllocation(expId, appname, iter + 1, allocation, cost, elapsedSec, allocTime, activeFunc.getEnumerationTime(), utilization, online)
         if debug:
             print("Iter", i, "Cost", cost, "TIME_SECS", elapsedSec, "Enum Size", activeFunc.getEnumerationSize())
     stats = {
@@ -180,19 +180,21 @@ active_base_dir = '../apps'
 paths_active_config = {
     'cache'     : '../apps/cache/active/cacheread',
     'cheetahlb' : '../apps/cheetahlb/active/cheetahlb-syn',
-    'cms'       : '../apps/cms/active/cms_short'
+    'cms'       : '../apps/cms/active/cms_short',
+    'freqitem'  : '../apps/scenario_distcache/active/freqitem'
 }
 
-appCfg = {
-    'cache_hh'  : {
-        'idx'       : [2, 5, 11, 14, 25, 26, 27],
-        'iglim'     : 6,
-        'applen'    : 29,
-        'mindemand' : [2, 2, 2, 2, 2, 2, 2]
-    }
-}
+appCfg = {}
 
-apps = [ 'cache', 'cheetahlb', 'cms' ]
+# apps = [ 'cache', 'cheetahlb', 'cms', 'freqitem' ]
+apps = [ 'cache', 'freqitem' ]
+
+demands = {
+    'cache'     : 1,
+    'cheetahlb' : 2,
+    'cms'       : 2,
+    'freqitem'  : 8
+}
 
 for app in apps:
     if app not in paths_active_config:
@@ -205,7 +207,7 @@ for app in apps:
         iglim = int(data[1])
         appCfg[app]['idx'] = memidx
         appCfg[app]['iglim'] = iglim
-        appCfg[app]['mindemand'] = [1] * len(memidx)
+        appCfg[app]['mindemand'] = [demands[app]] * len(memidx)
         f.close()
     with open('%s.ap4' % paths_active_config[app]) as f:
         data = f.read().strip().splitlines()
@@ -394,8 +396,8 @@ if custom:
     # print(stats['allocmatrix'])
 
     numApps = 128
-    type = 'fixed'
-    appname = 'cache'
+    type = 'random'
+    appname = 'freqitem'
     optimize = True
     minimize = True
     metric = Allocator.METRIC_COST
