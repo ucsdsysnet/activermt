@@ -643,7 +643,7 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("FID", fid, "resumeAllocation() (ms)", timings)
         self.mutex.release()
-        logging.info("[FID %d] allocation complete, version %d, elapsed time %.3f ms", fid, self.allocVersion[fid], elapsed_ts_overall_ms)
+        logging.info("[FID %d] allocation complete, version %d, elapsed time %.3f ms, allocation %s", fid, self.allocVersion[fid], elapsed_ts_overall_ms, str(self.allocator.getAllocationBlocksRange(fid)))
         if self.DEBUG:
             print("Allocation complete for FID", fid, "version", self.allocVersion[fid], "elapsed (ms)", elapsed_ts_overall_ms)
 
@@ -1168,7 +1168,7 @@ for app in config['APPS']:
         'idx'       : memidx,
         'iglim'     : iglim,
         'applen'    : applen,
-        'mindemand' : [1] * len(memidx),
+        'mindemand' : [app['DEMAND']] * len(memidx),
         'instances' : app['INSTANCES']
     })
     currentFID += app['INSTANCES']

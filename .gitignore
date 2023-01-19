@@ -11,6 +11,7 @@ _ica/
 clients/dpdk-client/build/
 local/
 sde
+malloc/stats/
 
 CMake*
 bf_drivers*
@@ -32,3 +33,4 @@ clients/dpdk-client/cache_stats*.csv
 clients/dpdk-client/dpdk_ap4_stats*.csv
 apps/cache/clients/udpc/*.png
 apps/cache/clients/udpc/kvapp*.csv
+malloc/*.csv

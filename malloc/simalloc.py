@@ -395,8 +395,8 @@ if custom:
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
 
-    numApps = 128
-    type = 'random'
+    numApps = 8
+    type = 'fixed'
     appname = 'freqitem'
     optimize = True
     minimize = True
