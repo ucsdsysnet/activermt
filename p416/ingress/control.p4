@@ -1396,9 +1396,9 @@ action mar_mbr_add_mbr2() {
     hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
 }
 
-/*action load_salt() {
+action load_salt() {
     hdr.meta.mbr = CONST_SALT;
-}*/
+}
 
 action not_mbr() {
     hdr.meta.mbr = ~hdr.meta.mbr;
@@ -2195,6 +2195,7 @@ table instruction_0 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2294,6 +2295,7 @@ table instruction_1 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2393,6 +2395,7 @@ table instruction_2 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2492,6 +2495,7 @@ table instruction_3 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2591,6 +2595,7 @@ table instruction_4 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2690,6 +2695,7 @@ table instruction_5 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2789,6 +2795,7 @@ table instruction_6 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2888,6 +2895,7 @@ table instruction_7 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -2987,6 +2995,7 @@ table instruction_8 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;
@@ -3086,6 +3095,7 @@ table instruction_9 {
 		mar_add_mbr2;
 		mbr_add_mbr2;
 		mar_mbr_add_mbr2;
+		load_salt;
 		not_mbr;
 		mbr_or_mbr2;
 		mbr_subtract_mbr2;

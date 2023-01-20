@@ -72,9 +72,9 @@ action mar_mbr_add_mbr2() {
     hdr.meta.mar = hdr.meta.mbr + hdr.meta.mbr2;
 }
 
-/*action load_salt() {
+action load_salt() {
     hdr.meta.mbr = CONST_SALT;
-}*/
+}
 
 action not_mbr() {
     hdr.meta.mbr = ~hdr.meta.mbr;
