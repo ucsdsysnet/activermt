@@ -180,19 +180,16 @@ active_base_dir = '../apps'
 paths_active_config = {
     'cache'     : '../apps/cache/active/cacheread',
     'cheetahlb' : '../apps/cheetahlb/active/cheetahlb-syn',
-    'cms'       : '../apps/cms/active/cms_short',
     'freqitem'  : '../apps/scenario_distcache/active/freqitem'
 }
 
 appCfg = {}
 
-# apps = [ 'cache', 'cheetahlb', 'cms', 'freqitem' ]
-apps = [ 'cache', 'freqitem' ]
+apps = [ 'cache', 'freqitem', 'cheetahlb' ]
 
 demands = {
     'cache'     : 1,
-    'cheetahlb' : 2,
-    'cms'       : 2,
+    'cheetahlb' : 4,
     'freqitem'  : 8
 }
 
@@ -395,16 +392,16 @@ if custom:
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
 
-    numApps = 8
+    numApps = 128
     type = 'fixed'
-    appname = 'freqitem'
+    appname = 'cache'
     optimize = True
     minimize = True
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type, granularity=granularity)
     print("running analysis with params:", paramStr)
-    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps)
+    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
     writeResults(results, "allocation_%s.csv" % paramStr)
 else:
     param_fit = [(True, True), (True, False)]

@@ -37,7 +37,7 @@ class ActiveFunction:
         self.constrUB = self.constrLB + self.maxProgLen - self.progLen - 1
         # self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
         # self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
-        if self.igLim >= 0:
+        if self.igLim >= 0 and self.igLim < self.num_stage_ig:
             for i in range(0, self.numAccesses):
                 if self.constrLB[i] < self.igLim:
                     self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
@@ -265,7 +265,7 @@ class Allocator:
             if cost > self.max_occupancy:
                 return -1
             sumcost += cost
-        return cost
+        return sumcost
 
     # utility = normalized sum of fraction of max demand satisfied at each stage.
     # eg. utility=1 implies that the application got what it asked for.
