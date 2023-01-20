@@ -491,6 +491,7 @@ class Allocator:
                     frag_start = -1
             apps = [ (fid, self.activeFuncs[fid].wt, self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[i]]) for fid in allocationMap[i] ]
             numElastic = 0
+            numInelastic = 0
             # prune allocation set.
             pruned_apps = []
             for app in apps:
@@ -529,14 +530,13 @@ class Allocator:
                         if demand == fraghole[1]:
                             self.fragmentation[i].pop(fragIdx)
                         else:
-                            self.fragmentation[i][0] += demand
-                            self.fragmentation[i][1] -= demand
+                            self.fragmentation[i][fragIdx] = (self.fragmentation[i][fragIdx][0] + demand, self.fragmentation[i][fragIdx][1] - demand)
+                    numInelastic += 1
             remaining = self.max_occupancy - self.elastic_offset[i]
             for frag in self.fragmentation[i]:
                 remaining += frag[1]
             # allocate number of blocks for elastic apps.
             elasticBlocks = remaining
-            # self.elastic_offset[i] = self.max_occupancy - remaining
             numBlocks = {}
             clusters = {}
             app_fids = []
@@ -593,13 +593,10 @@ class Allocator:
                         clusters[fragment_id].append((nblocks, current))
                         current += 1
                         fragments[k] = (fragments[k][0], 0)
-                    self.fragmentation[i] = []
                     # print("clusters", clusters)
                 else:
                     # default allocation.
                     raise Exception("Default allocation not implemented!")
-            # retain previously allocated blocks for inelastic apps by pinning them in order of arrival.
-            # apps.sort(key=lambda x: x[0] if x[2] > 1 else self.WT_OVERFLOW)
             # update the allocation matrix.
             for frag in fragments:
                 clusterId = frag[0]
@@ -614,14 +611,6 @@ class Allocator:
                         allocationMatrix[k + offset, i] = fid
                     offset += nblocks
             self.fragmentation[i].sort(key=lambda x: -x[1])
-            # offset = 0
-            # for app in apps:
-            #     fid = app[0]
-            #     if fid not in numBlocks:
-            #         continue
-            #     for j in range(0, numBlocks[fid]):
-            #         allocationMatrix[offset + j, i] = fid
-            #     offset += numBlocks[fid]
             # verify that inelastic blocks are not reallocated.
             for k in range(0, self.max_occupancy):
                 for j in range(0, i + 1):

@@ -93,3 +93,34 @@ print_allocated_blocks(allocator.allocationMatrix, 2)
 with open("fairness_indices.csv", "w") as f:
     f.write("\n".join([str(x) for x in fairness]))
     f.close()
+
+# create fragments in allocation matrix.
+fid_start = 16
+for i in range(0, 6):
+    fragid = fid_start + i
+    print("Deallocating", fragid)
+    allocator.deallocate(fragid)
+
+print_allocated_blocks(allocator.allocationMatrix, 2)
+
+print("Fragmentation", allocator.fragmentation)
+
+filled = False
+
+# allocate inelastic apps.
+while not filled and numAllocated < 1000:
+    program = ActiveFunction(fid, memIdx, iglim, applen, [5] * len(memIdx), enumerate=True)
+    assert(len(program.getEnumeration()) == 1)
+    optimal,_,_,_, allocation, allocationMap = allocator.computeAllocation(program)
+    if optimal is not None:
+        allocator.enqueueAllocation(allocation, allocationMap)
+        allocator.applyQueuedAllocation()
+        numAllocated += 1
+        fid += 1
+        print("Allocated", numAllocated)
+    else:
+        print("Cannot allocate any more inelastic apps.")
+        filled = True
+        break
+
+print_allocated_blocks(allocator.allocationMatrix, 2)
