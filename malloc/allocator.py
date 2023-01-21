@@ -29,19 +29,9 @@ class ActiveFunction:
         self.igLim = igLim
         self.progLen = progLen
         self.minDemand = minDemand
+        self.accessIdx = copy.deepcopy(accessIdx)
         # ensuring re-circulation cost does not increase.
-        self.maxProgLen = self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg)
-        self.numAccesses = len(accessIdx)
-        self.A = self.getDeltaMatrix(self.numAccesses)
-        self.constrLB = np.copy(accessIdx).astype('uint32')
-        self.constrUB = self.constrLB + self.maxProgLen - self.progLen - 1
-        # self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
-        # self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
-        if self.igLim >= 0 and self.igLim < self.num_stage_ig:
-            for i in range(0, self.numAccesses):
-                if self.constrLB[i] < self.igLim:
-                    self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
-        self.constrDelta = np.matmul(self.A, self.constrLB)
+        self.computeConstraints()
         if self.debug:
             print("[DEBUG] Maximum program length:", self.maxProgLen)
             print("[DEBUG] Constraint (UB):")
@@ -51,6 +41,20 @@ class ActiveFunction:
         self.enumTime = None
         if enumerate:
             self.enumerate()
+
+    def computeConstraints(self):
+        self.maxProgLen = self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg)
+        self.numAccesses = len(self.accessIdx)
+        self.A = self.getDeltaMatrix(self.numAccesses)
+        self.constrLB = np.copy(self.accessIdx).astype('uint32')
+        self.constrUB = self.constrLB + self.maxProgLen - self.progLen - 1
+        # self.constrUB = self.constrLB + self.num_stages - self.progLen - 1
+        # self.constrUB = self.constrLB + self.num_stages - self.progLen + 1
+        if self.igLim >= 0 and self.igLim < self.num_stage_ig:
+            for i in range(0, self.numAccesses):
+                if self.constrLB[i] < self.igLim:
+                    self.constrUB[i] = self.constrLB[i] + self.num_stage_ig - self.igLim - 1
+        self.constrDelta = np.matmul(self.A, self.constrLB)
 
     def setFID(self, fid):
         self.fid = fid
@@ -126,6 +130,7 @@ class Allocator:
     ALLOCATION_TYPE_DEFAULT = 0
     ALLOCATION_TYPE_MAXMINFAIR = 1
     NUM_STAGES = 20
+    FID_AUGMENTATION = 253
 
     def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = self.NUM_STAGES
@@ -681,6 +686,36 @@ class Allocator:
         self.revAllocationMap = copy.deepcopy(self.queue['revAllocationMap'])
         self.allocationMatrix = copy.deepcopy(self.queue['allocationMatrix'])
         self.resetQueue()
+
+    def commitAugmentedAllocation(self, fid):
+        if self.FID_AUGMENTATION in self.allocation:
+            self.allocation.remove(self.FID_AUGMENTATION)
+        for stageId in self.allocationMap:
+            if self.FID_AUGMENTATION in self.allocationMap[stageId]:
+                self.allocationMap[stageId].remove(self.FID_AUGMENTATION)
+                if fid not in self.allocationMap[stageId]:
+                    self.allocationMap[stageId].add(fid)
+        if self.FID_AUGMENTATION in self.revAllocationMap:
+            stages = self.revAllocationMap[self.FID_AUGMENTATION]
+            if fid not in self.revAllocationMap:
+                raise Exception("FID %d not in allocation map!" % fid)
+            for stageId in stages:
+                self.revAllocationMap[fid].append(stageId)
+            self.revAllocationMap.pop(self.FID_AUGMENTATION)
+        for i in range(0, self.NUM_STAGES):
+            for j in range(0, self.ALLOCATION_GRANULARITY):
+                if self.allocationMatrix[j, i] == self.FID_AUGMENTATION:
+                    self.allocationMatrix[j, i] = fid 
+        assert(fid in self.activeFuncs)
+        augFunc = self.activeFuncs[self.FID_AUGMENTATION]
+        self.activeFuncs[fid].progLen = augFunc.progLen
+        self.activeFuncs[fid].igLim = augFunc.igLim
+        self.activeFuncs[fid].accessIdx = np.append(self.activeFuncs[fid].accessIdx, augFunc.accessIdx)
+        self.activeFuncs[fid].minDemand = np.append(self.activeFuncs[fid].minDemand, augFunc.minDemand)
+        for idx in augFunc.allocation:
+            self.activeFuncs[fid].allocation[idx] = augFunc.allocation[idx]
+        self.activeFuncs[fid].computeConstraints()
+        self.activeFuncs.pop(self.FID_AUGMENTATION)
 
     def getAllocationBlocks(self, fid):
         allocation = {}

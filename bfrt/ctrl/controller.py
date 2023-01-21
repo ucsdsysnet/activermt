@@ -67,6 +67,7 @@ class ActiveP4Controller:
         else:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
+        self.augment_fid = ap4alloc.Allocator.FID_AUGMENTATION
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
@@ -128,6 +129,7 @@ class ActiveP4Controller:
         self.remapTiming = {}
         self.enqueued = set()
         self.allocationRequests = queue.Queue()
+        self.programDefs = {}
         self.active = []
         self.coredumps = {}
         self.coredumpQueue = set()
@@ -136,6 +138,7 @@ class ActiveP4Controller:
         self.remoteDrainInitiator = None
         self.remaps = None
         self.remoteDrainStartTs = None
+        self.allocationChangeInProgress = None
         self.mutex = threading.Lock()
         self.digestMutex = threading.Lock()
         self.monitorThread = None
@@ -632,7 +635,8 @@ class ActiveP4Controller:
         bfrt.complete_operations()
         elapsed_ms_t4 = (time.time() - ts_then) * 1E3
         ts_then = time.time()
-        self.active.append(fid)
+        if fid != self.augment_fid:
+            self.active.append(fid)
         self.queue.remove(fid)
         elapsed_ts_overall_ms = (time.time() - self.allocTiming[fid]['start']) * 1E3
         self.allocTiming.pop(fid)
@@ -646,6 +650,9 @@ class ActiveP4Controller:
         logging.info("[FID %d] allocation complete, version %d, elapsed time %.3f ms, allocation %s", fid, self.allocVersion[fid], elapsed_ts_overall_ms, str(self.allocator.getAllocationBlocksRange(fid)))
         if self.DEBUG:
             print("Allocation complete for FID", fid, "version", self.allocVersion[fid], "elapsed (ms)", elapsed_ts_overall_ms)
+        if fid == self.augment_fid:
+            logging.info("[FID %d] committing augmented allocation ...", self.allocationChangeInProgress)
+            self.completeAugmentedAllocation()
 
     def updateAllocation(self, fid, allocation, remaps):
 
@@ -795,6 +802,12 @@ class ActiveP4Controller:
         if self.DEBUG:
             print("FID", fid, "updateAllocation() (ms)", timing_elapsed_ms)
 
+    def completeAugmentedAllocation(self):
+        baseFID = self.allocationChangeInProgress
+        self.allocator.commitAugmentedAllocation(baseFID)
+        self.allocationChangeInProgress = None
+        logging.info("[FID %d] allocation change complete.", baseFID)
+
     """def allocatorRandomized(self, constr):
 
         numAccesses = len(constr)
@@ -913,6 +926,9 @@ class ActiveP4Controller:
 
         activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
 
+        if fid != self.augment_fid:
+            self.programDefs[fid] = activeFunc
+
         # TODO preserve ordering of memory accesses to aid mutant generation.
         (memIdx, cost, utilization, allocTime, overallAlloc, allocationMap) = self.allocator.computeAllocation(activeFunc)
         if memIdx is not None and cost < self.allocator.WT_OVERFLOW:
@@ -929,6 +945,8 @@ class ActiveP4Controller:
             self.p4.Ingress.allocation.delete(fid=fid, flag_reqalloc=2)
             bfrt.complete_operations()
             self.queue.remove(fid)
+            if fid in self.programDefs:
+                self.programDefs.pop(fid)
             if self.DEBUG:
                 print("Allocation failed for FID", fid)
             # TODO handle failed allocations.
@@ -985,6 +1003,28 @@ class ActiveP4Controller:
         if self.DEBUG:
             print(self.allocator.allocationMatrix)
         self.mutex.release()
+
+    def reallocate(self, fid, progLen, igLim, accessIdx, minDemand, ignorePeers=False):
+        if fid not in self.programDefs:
+            return
+        self.allocationChangeInProgress = fid
+        baseFunc = self.programDefs[fid]
+        allocationDelta = max(self.allocator.revAllocationMap[fid]) - max(baseFunc.constrLB)
+        baseProgLen = baseFunc.progLen + allocationDelta
+        if progLen is None:
+            # horizontal memory expansion.
+            progLen = baseProgLen + len(accessIdx)
+            igLim = -1
+            accessIdx += allocationDelta
+            logging.info("[FID %d] expanding memory ...", fid)
+            self.allocate(self.augment_fid, progLen, igLim, accessIdx, minDemand, ignorePeers=ignorePeers)
+        else:
+            # function augmentation.
+            accessIdx += baseProgLen - 1
+            progLen += baseProgLen - 1
+            igLim += baseProgLen - 1
+            logging.info("[FID %d] updating program ...", fid)
+            self.allocate(self.augment_fid, progLen, igLim, accessIdx, minDemand, ignorePeers=ignorePeers)
 
     def onMallocRequest(self, dev_id, pipe_id, directon, parser_id, session, msg):
         for digest in msg:
@@ -1146,9 +1186,6 @@ controller.createSidToPortMapping()
 controller.setMirrorSessions()
 controller.installInstructionTableEntries()
 
-if testMode:
-    pass
-
 apps = []
 currentFID = 1
 for app in config['APPS']:
@@ -1180,6 +1217,14 @@ for app in apps:
 # for gressId in controller.instrTableEntryParams:
 #     print("[%s]" % gressId)
 #     print(controller.instrTableEntryParams[gressId].keys())
+
+if testMode:
+    testFID = 1
+    accessIdx = [3, 5]
+    minDemand = [1] * len(accessIdx)
+    igLim = -1
+    print("Testing reallocation for", testFID)
+    controller.reallocate(testFID, 12, igLim, accessIdx, minDemand, ignorePeers=True)
 
 controller.initController()
 controller.listen()

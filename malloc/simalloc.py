@@ -188,7 +188,7 @@ appCfg = {}
 apps = [ 'cache', 'freqitem', 'cheetahlb' ]
 
 demands = {
-    'cache'     : 1,
+    'cache'     : 4,
     'cheetahlb' : 4,
     'freqitem'  : 8
 }
@@ -394,14 +394,14 @@ if custom:
 
     numApps = 128
     type = 'fixed'
-    appname = 'freqitem'
+    appname = 'cache'
     optimize = True
     minimize = True
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type, granularity=granularity)
     print("running analysis with params:", paramStr)
-    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=True, departureProb=0.25)
+    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
     writeResults(results, "allocation_%s.csv" % paramStr)
 else:
     param_fit = [(True, True), (True, False)]
