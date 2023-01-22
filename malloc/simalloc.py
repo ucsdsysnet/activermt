@@ -135,7 +135,8 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
 
     statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames', 'stages', 'numblocks']
     if outputDir is not None:
-        statdir = os.path.join(os.getcwd(), "stats", str(expId))
+        # statdirname = "stats_g%d_n%d" % (Allocator.ALLOCATION_GRANULARITY, seqlen)
+        statdir = os.path.join(os.getcwd(), outputDir, str(expId))
         if not os.path.exists(statdir):
             os.makedirs(statdir)
         for stat in statkeys:
@@ -188,7 +189,7 @@ appCfg = {}
 apps = [ 'cache', 'freqitem', 'cheetahlb' ]
 
 demands = {
-    'cache'     : 4,
+    'cache'     : 1,
     'cheetahlb' : 4,
     'freqitem'  : 8
 }
@@ -294,14 +295,17 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
 
 def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None, seqLen=256):
     results = []
+    outputDirName = "stats_g%d_n%d_%s" % (Allocator.ALLOCATION_GRANULARITY, seqLen, appname if w != 'random' else w)
+    if os.path.exists(os.path.join(os.getcwd(), outputDirName)):
+        raise Exception("Stats directory already exists! Remove/rename existing directory.")
     for k in range(0, numRepeats):
         if fixedSequence is None:
-            sequence = generateSequence(appCfg, appname=appname, appSeqLen=seqLen) if w != 'random' else generateSequence(appCfg, type='random')
+            sequence = generateSequence(appCfg, appname=appname, appSeqLen=seqLen) if w != 'random' else generateSequence(appCfg, type='random', appSeqLen=seqLen)
         else:
             sequence = fixedSequence
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
-        result = simAllocation(k, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb, debug=False, outputDir=True)
+        result = simAllocation(k, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb, debug=False, outputDir=outputDirName)
         results.append(result[:6])
     # if debug:
     #     print(result[6]['allocmatrix'])
@@ -392,8 +396,8 @@ if custom:
     # print(stats['appnames'])
     # print(stats['allocmatrix'])
 
-    numApps = 128
-    type = 'fixed'
+    numApps = 32
+    type = 'random'
     appname = 'cache'
     optimize = True
     minimize = True
@@ -402,7 +406,7 @@ if custom:
     paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type, granularity=granularity)
     print("running analysis with params:", paramStr)
     results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
-    writeResults(results, "allocation_%s.csv" % paramStr)
+    # writeResults(results, "allocation_%s.csv" % paramStr)
 else:
     param_fit = [(True, True), (True, False)]
     param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
