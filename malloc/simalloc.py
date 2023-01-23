@@ -295,7 +295,9 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
 
 def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None, seqLen=256):
     results = []
-    outputDirName = "stats_g%d_n%d_%s" % (Allocator.ALLOCATION_GRANULARITY, seqLen, appname if w != 'random' else w)
+    param_workload = appname if w != 'random' else w
+    param_fit = 'ff' if not optimize else ('wf' if minimize else 'bf')
+    outputDirName = "stats_g%d_n%d_%s_%s" % (Allocator.ALLOCATION_GRANULARITY, seqLen, param_workload, param_fit)
     if os.path.exists(os.path.join(os.getcwd(), outputDirName)):
         raise Exception("Stats directory already exists! Remove/rename existing directory.")
     for k in range(0, numRepeats):
@@ -316,90 +318,17 @@ def print_allocation_matrix(allocation_matrix):
     print("Allocation Matrix:")
     print(buf)
 
-# METRICS: utilization, utility, cost, time
-# ANALYSIS: one app (of each type)
-# ANALYSIS: probabilistic sampling (uniform)
-# ANALYSIS: only elastic app(s)
-# ANALYSIS: only inelastic app
-# ANALYSIS: fragmentation (arrival/departure)
+# Experiments.
 
-custom = True
+custom = False
 
 if custom:
     print("[Custom Experiment]")
-    expId = 0
 
-    # appname = 'cache_hh'
-    # cfg = appCfg[appname]
-    # activeFunc = ActiveFunction(1, np.transpose(np.array(cfg['idx'], dtype=np.uint32)), cfg['iglim'], cfg['applen'], cfg['mindemand'], enumerate=True)
-    # print("Enumeration size: ", activeFunc.getEnumerationSize())
-    # # enums = activeFunc.getEnumeration()
-    # # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
-
-    # sequence = generateSequence(appCfg, appname='cache_hh')
-    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (cache_hh)", utilization)
-    # # print_allocation_matrix(stats['allocmatrix'])
-
-    # sequence = generateSequence(appCfg, type='random')
-
-    # results = runAnalysis(appCfg, Allocator.METRIC_SAT, False, False, numRepeats, w='random', debug=True, fixedSequence=sequence)
-    # writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(False, False, Allocator.METRIC_SAT, type='random'))
-
-    # results = runAnalysis(appCfg, Allocator.METRIC_COST, True, True, numRepeats, w='random', debug=True, fixedSequence=sequence)
-    # writeResults(results, "allocation_fixedwl_%s.csv" % getParamString(True, True, Allocator.METRIC_COST, type='random'))
-
-    # activeFunc = ActiveFunction(1, np.transpose(np.array([4, 7, 9, 11], dtype=np.uint32)), 0, 14, [1, 1, 1, 1], enumerate=True)
-    # enums = activeFunc.getEnumeration()
-    # print("\n".join([ ",".join([ str(x) for x in y ]) for y in enums ]))
-    
-    # appname = 'cache'
-    # sequence = generateSequence(appCfg, appname=appname, appSeqLen=32)
-    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats, mutants) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Results (Cache):")
-    # print("Mutants", len(mutants[appname]))
-    # print("Utilization", utilization)
-    # print("Allocated", len(stats['allocated']))
-    # print("Average compute time (ms)", avgTime * 1000)
-    # print("Median compute time (ms)", np.median(stats['alloctime']) * 1000)
-    # print(stats['appnames'])
-    # alloc_disp = "\n".join([",".join([str(x) for x in y]) for y in stats['allocmatrix']])
-    # print(alloc_disp)
-
-    # print("")
-
-    # sequence = generateSequence(appCfg, type='random')
-    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (random)", utilization)
-    # print(stats['allocated'])
-    # print(stats['appnames'])
-    # print(stats['allocmatrix'])
-
-    # sequence = generateSequence(appCfg, type='random')
-
-    # allocator = Allocator(metric=Allocator.METRIC_COST, optimize=True, minimize=True)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (random, cost)", utilization)
-    # print(stats['allocated'])
-    # print(stats['appnames'])
-    # print(stats['allocmatrix'])
-
-    # print("")
-
-    # allocator = Allocator(metric=Allocator.METRIC_SAT, optimize=False, minimize=False)
-    # (sumCost, utilization, utility, avgTime, iter, numDepartures, stats) = simAllocation(expId, appCfg, allocator, sequence)
-    # print("Utilization (random, strawman)", utilization)
-    # print(stats['allocated'])
-    # print(stats['appnames'])
-    # print(stats['allocmatrix'])
-
-    numApps = 32
-    type = 'random'
+    numApps = 128
+    type = 'fixed'
     appname = 'cache'
-    optimize = True
+    optimize = False
     minimize = True
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
@@ -408,60 +337,25 @@ if custom:
     results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
     # writeResults(results, "allocation_%s.csv" % paramStr)
 else:
-    param_fit = [(True, True), (True, False)]
-    param_metric = [Allocator.METRIC_COST, Allocator.METRIC_UTILITY, Allocator.METRIC_UTILIZATION]
-
     workloads = appCfg.keys()
     workloads.append('random')
 
-    # Strawman: get first-fit for each workload.
+    param_fit = [(False, False), (True, True), (True, False)]
+
+    numApps = 128
+
     for w in workloads:
         type = 'fixed' if w != 'random' else w
         appname = w
-        optimize = False
-        minimize = False
-        metric = Allocator.METRIC_SAT
-        paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
-        print("running analysis with params:", paramStr)
-        results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
-        writeResults(results, "allocation_%s.csv" % paramStr)
-
-    # Combinations: (first-fit, best-fit, worst-fit) x (relocations, utility, utilization).
-    for w in workloads:
-        type = 'fixed' if w != 'random' else w
-        appname = w
-        for p1 in param_metric:
-            metric = p1
-            for p2 in param_fit:
-                optimize = p2[0]
-                minimize = p2[1]
-                paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type)
-                print("running analysis with params:", paramStr)
-                results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True)
-                writeResults(results, "allocation_%s.csv" % paramStr)
-
-"""if analysisType == "exclusive":
-    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    for i in range(0, numRepeats):
-        analysisExclusiveApp(i, appSeqLen, isOnline)
-elif analysisType == "random":
-    numRepeats = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    for i in range(0, numRepeats):
-        analysisSampling(i, appSeqLen, isOnline)
-elif analysisType == "test":
-    allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
-    appname = sys.argv[2] if len(sys.argv) > 2 else 'cache'
-    accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
-    progLen = appCfg[appname]['applen']
-    igLim = appCfg[appname]['iglim']
-    minDemand = appCfg[appname]['mindemand']
-    activeFunc = ActiveFunction(1, accessIdx, igLim, progLen, minDemand, enumerate=True)
-    enumeration = activeFunc.getEnumeration()
-    print("Enum size", len(enumeration))
-    print("\n".join([ ",".join([ str(x) for x in y ]) for y in enumeration ]))
-elif analysisType == "testseq":
-    allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
-    appname = sys.argv[2] if len(sys.argv) > 2 else 'cache'
-    testSequence(appname, appSeqLen)
-else:
-    printUsage()"""
+        for fit in param_fit:
+            optimize = fit[0]
+            minimize = fit[1]
+            metric = Allocator.METRIC_COST
+            useDepartures = False
+            departureProb = 0
+            print("Running analysis with parameters: optimize=%s, minimize=%s, workload=%s, granularity=%d, numapps=%d" % (str(optimize), str(minimize), w, Allocator.ALLOCATION_GRANULARITY, numApps))
+            ts_start = time.time()
+            results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=useDepartures, departureProb=departureProb)
+            ts_end = time.time()
+            ts_elapsed_sec = ts_end - ts_start
+            print("Experiments complete after %f seconds." % ts_elapsed_sec)
