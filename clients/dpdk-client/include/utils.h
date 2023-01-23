@@ -24,10 +24,10 @@ pthread_mutex_t buflock;
 void read_activep4_config(char* config_filename, active_config_t* cfg) {
 	FILE* fp = fopen(config_filename, "r");
     assert(fp != NULL);
-	char buf[50];
+	char buf[1024];
     const char* tok;
 	int i, n = 0;
-	while( fgets(buf, 50, fp) > 0 ) {
+	while( fgets(buf, 1024, fp) > 0 ) {
 		for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
 			switch(i) {
 				case 0:

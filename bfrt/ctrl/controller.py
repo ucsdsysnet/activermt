@@ -71,7 +71,7 @@ class ActiveP4Controller:
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
-        self.vaddr_support = True
+        self.vaddr_support = False
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
@@ -975,12 +975,13 @@ class ActiveP4Controller:
                     print("Queueing FID %d for reallocation ... " % tid)
                 self.remoteDrainInit.add(tid)
                 self.remoteDrainQueue[tid] = remaps
+                self.remapTiming[tid] = {
+                    'initiator' : fid,
+                    'start'     : time.time(),
+                    'stop'      : None
+                }
                 # TODO race condition with previous allocation remaps.
                 self.p4.Ingress.remap_check.add_with_remapped(fid=tid, flag_initiated=0, allocation_id=self.allocVersion[tid])
-                self.remapTiming[tid] = {
-                    'start' : time.time(),
-                    'stop'  : None
-                }
                 bfrt.complete_operations()
 
         tsOverallStop = time.time()
@@ -1168,7 +1169,7 @@ def getReferenceOpcodes(basePath, sourceName):
     return opcodes
 
 TOTAL_STAGES = 20
-testMode = True
+testMode = False
 debug = True
 restrictedInstructionSet = False
 referenceProgram = "condition"
