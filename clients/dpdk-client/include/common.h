@@ -196,28 +196,6 @@ static inline activep4_context_t* get_app_context_from_packet(char* bufptr, acti
 	return ctxt;
 }
 
-/*static inline void sync_memory_region(memory_t* mem, activep4_context_t* ctxt, activep4_def_t* memsync_cache, int portid, struct rte_mempool *mempool) {
-	struct rte_mbuf* mbuf;
-	const int qid = 1;
-	int snapshotting_in_progress = 1;
-	while(snapshotting_in_progress) {
-		snapshotting_in_progress = 0;
-		for(int i = 0; i < NUM_STAGES; i++) {
-			if(!mem->valid_stages[i] || !ctxt->syncmap[i]) continue;
-			for(int j = mem->sync_data[i].mem_start; j <= mem->sync_data[i].mem_end; j++) {
-				if(mem->sync_data[i].valid[j]) continue;
-				snapshotting_in_progress = 1;
-				if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
-					construct_snapshot_packet(mbuf, portid, ctxt, i, j, memsync_cache, false);
-					rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
-					// printf("[SNAPSHOT] stage %d index %d \n", i, j);
-				}
-			}
-		}
-	}
-	rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-}*/
-
 static inline void telemetry_allocation_start(activep4_context_t* ctxt) {
 	if(ctxt->telemetry.allocation_is_active == 0) {
 		ctxt->telemetry.allocation_request_start_ts = rte_rdtsc_precise();
@@ -384,7 +362,7 @@ active_decap_filter(
 								ctxt->allocation.sync_data[i].valid[j] = 0;
 							}
 						}
-						rte_memcpy(ctxt->syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
+						rte_memcpy(ctxt->allocation.syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
 						ctxt->allocation.invalid = 1;
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] remap initiated.\n", fid);
@@ -670,7 +648,7 @@ lcore_control(void* arg) {
 					if(ctrlstat->snapshotting_in_progress) {
 						int sent = 0;
 						for(int i = 0; i < NUM_STAGES; i++) {
-							if(!ctxt->allocation.valid_stages[i] || !ctxt->syncmap[i]) continue;
+							if(!ctxt->allocation.valid_stages[i] || !ctxt->allocation.syncmap[i]) continue;
 							for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
 								if(ctxt->allocation.sync_data[i].valid[j]) continue;
 								if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
@@ -766,7 +744,7 @@ lcore_control(void* arg) {
 					while(snapshotting_in_progress) {
 						snapshotting_in_progress = 0;
 						for(int i = 0; i < NUM_STAGES; i++) {
-							if(!ctxt->allocation.valid_stages[i] || !ctxt->syncmap[i]) continue;
+							if(!ctxt->allocation.valid_stages[i] || !ctxt->allocation.syncmap[i]) continue;
 							for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
 								if(ctxt->allocation.sync_data[i].valid[j]) continue;
 								snapshotting_in_progress = 1;
@@ -791,9 +769,9 @@ lcore_control(void* arg) {
 						while(invalidating_in_progress) {
 							invalidating_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
-								if(!ctxt->allocation.valid_stages[i] || !ctxt->syncmap[i]) continue;
+								if(!ctxt->allocation.valid_stages[i]) continue;
 								for(int j = ctxt->allocation.sync_data[i].mem_start; j <= ctxt->allocation.sync_data[i].mem_end; j++) {
-									if(ctxt->allocation.sync_data[i].valid[j]) continue;
+									if(ctxt->allocation.sync_data[i].valid[j] || !ctxt->allocation.syncmap[i]) continue;
 									invalidating_in_progress = 1;
 									if((mbuf = rte_pktmbuf_alloc(ctrl->mempool)) != NULL) {
 										construct_memremap_packet(mbuf, ctrl->port_id, ctxt, i, j, ctxt->allocation.sync_data[i].data[j], memset_cache);
@@ -823,7 +801,6 @@ lcore_control(void* arg) {
 						updated_region->sync_data[k].mem_end = ctxt->allocation.sync_data[k].mem_end;
 					}
 					if(reset_memory_region(updated_region, ctxt)) {
-						memcpy(ctxt->syncmap, updated_region->valid_stages, NUM_STAGES);
 						get_rw_stages_str(ctxt, tmpbuf);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->program->fid, tmpbuf);
 						while(remapping_in_progress) {
@@ -934,6 +911,8 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 		ap4_ctxt[i].program = (activep4_def_t*) rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
 		assert(ap4_ctxt[i].program != NULL);
 		rte_memcpy(ap4_ctxt[i].program, &active_function[i], sizeof(activep4_def_t));
+		rte_memcpy(ap4_ctxt[i].program->mutant.code, active_function[i].code, sizeof(active_function[i].code));
+		ap4_ctxt[i].program->mutant.proglen = active_function[i].proglen;
 		ap4_ctxt[i].program->fid = fid;
 		ap4_ctxt[i].active_tx_enabled = true;
 		ap4_ctxt[i].active_heartbeat_enabled = true;

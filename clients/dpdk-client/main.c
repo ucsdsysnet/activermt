@@ -1,5 +1,5 @@
-//#define DEBUG
-#define PDUMP_ENABLE
+// #define DEBUG
+// #define PDUMP_ENABLE
 
 #define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
 
@@ -59,7 +59,14 @@ main(int argc, char** argv)
 			ctxt->memory_reset = memory_reset_hh;
 			ctxt->shutdown = shutdown_hh;
 			ctxt->timer = timer_hh;
+			ctxt->timer_interval_us = 1000000;
+			ctxt->active_tx_enabled = true;
+			ctxt->active_timer_enabled = true;
 			ctxt->active_heartbeat_enabled = true;
+			#ifdef DEBUG
+			// static_allocation(&ctxt->allocation);
+			// ctxt->status = ACTIVE_STATE_TRANSMITTING;
+			#endif
 		} else if(strcmp(cfg.appname[app_id], "cheetahlb-syn") == 0) {
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.appname[app_id]);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(lb_context_t), 0);

@@ -116,6 +116,7 @@ typedef struct {
     uint8_t         invalid;
     memory_stage_t  sync_data[NUM_STAGES];
     uint8_t         valid_stages[NUM_STAGES];
+    uint8_t         syncmap[NUM_STAGES];
     uint16_t        fid;
     uint16_t        version;
     uint16_t        sync_version;
@@ -180,7 +181,6 @@ typedef struct {
     memory_t            allocation;
     memory_t            membuf;
     uint8_t             is_elastic;
-    uint8_t             syncmap[NUM_STAGES];
     activep4_data_t     data;
     uint32_t            ipv4_srcaddr;
     void*               app_context;

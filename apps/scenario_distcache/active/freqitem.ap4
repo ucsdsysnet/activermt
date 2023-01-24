@@ -18,6 +18,7 @@ CRET
 MBR_LOAD_DATA_0 // reload key
 COPY_MBR2_MBR
 MAR_LOAD_DATA_2 // write key to direct index computed at source.
+NOP
 MEM_WRITE_CONDZERO
 MEM_WRITE_CONDZERO
 RETURN

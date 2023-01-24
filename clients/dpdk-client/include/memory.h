@@ -33,7 +33,7 @@ static inline int reset_memory_region(memory_t* region, activep4_context_t* ctxt
 
 static inline int get_next_valid_stage(activep4_context_t* ctxt, active_control_state_t* ctrlstat) {
     for(int i = ctrlstat->current_stage; i < NUM_STAGES; i++) {
-        if(ctxt->allocation.valid_stages[i] && ctxt->syncmap[i]) {
+        if(ctxt->allocation.valid_stages[i] && ctxt->allocation.syncmap[i]) {
             ctrlstat->current_stage = i;
             return i;
         }

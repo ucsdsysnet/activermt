@@ -114,7 +114,7 @@ static inline void print_pktinfo(char* buf, int pktlen) {
 static inline void get_rw_stages_str(activep4_context_t* ctxt, char* stages_str) {
 	int offset = 0;
 	for(int i = 0; i < NUM_STAGES; i++) {
-		if(!ctxt->allocation.valid_stages[i] || !ctxt->syncmap[i]) continue;
+		if(!ctxt->allocation.valid_stages[i] || !ctxt->allocation.syncmap[i]) continue;
 		if((offset = sprintf(stages_str, "%d ", i)) >= 0) {
 			stages_str += offset;
 		}

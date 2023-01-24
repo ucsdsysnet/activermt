@@ -21,9 +21,12 @@ class ActiveInstruction:
         instr = ( bytes(chr(self.goto)) + bytes(chr(self.opcode)) )
         return instr
 
-    def printInstruction(self, mnemonics=None):
+    def printInstruction(self, mnemonics=None, idx=None):
         opname = mnemonics[self.opcode] if mnemonics is not None else "OPCODE"
-        print("%02X (%d)\t[%d]\t%s" % (self.opcode, self.opcode, self.goto, opname))
+        if idx is None:
+            print("%02X (%d)\t[%d]\t%s" % (self.opcode, self.opcode, self.goto, opname))
+        else:
+            print("%d.\t%02X (%d)\t[%d]\t%s" % (idx, self.opcode, self.opcode, self.goto, opname))
 
 class ActiveProgram:
     def __init__(self, program):
@@ -113,6 +116,26 @@ class ActiveProgram:
         self.program.reverse()
         self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], goto=0))
 
+    def compileToTarget(self, num_stages_ig, num_stages_eg):
+        if len(self.memidx) == 0:
+            return
+        # total number of memory accesses cannot exceed the number of stages.
+        assert(len(self.memidx) <= (num_stages_ig + num_stages_eg))
+        # check for conflicting memory accesses.
+        # swMemIdx = [ ( x if x < num_stages_ig else num_stages_ig + (x - num_stages_ig) % num_stages_eg ) for x in self.memidx ]
+        memMap = {}
+        for i in range(0, len(self.program)):
+            pnemonic = self.MNEMONICS[self.program[i].opcode]
+            if 'MEM' not in pnemonic:
+                continue
+            swIdx = i if i < num_stages_ig else num_stages_ig + (i - num_stages_ig) % num_stages_eg
+            if swIdx not in memMap:
+                memMap[swIdx] = []
+            memMap[swIdx].append(i)
+        for memIdx in memMap:
+            if len(memMap[memIdx]) > 1:
+                print("WARN: Conflicting memory access for stage %d (%s)" % (memIdx, ",".join([ str(x) for x in memMap[memIdx] ])))
+
     def getByteCode(self):
         if len(self.program) < 1:
             return bytes('')
@@ -122,9 +145,9 @@ class ActiveProgram:
         return bytecode
 
     def printProgram(self):
-        print("OPCODE\tFLAGS\tMNEMONIC")
+        print("#\tOPCODE\tFLAGS\tMNEMONIC")
         for i in range(0, len(self.program)):
-            self.program[i].printInstruction(mnemonics=self.MNEMONICS)
+            self.program[i].printInstruction(mnemonics=self.MNEMONICS, idx=i)
     
     def getArgumentMap(self):
         args = []
@@ -138,8 +161,11 @@ class ActiveProgram:
         return self.memidx
 
 if len(sys.argv) < 2:
-    print('Usage: %s <program.ap4>' % sys.argv[0])
+    print('Usage: %s <program.ap4> [num_ingress_stages=10] [num_egress_stages=10]' % sys.argv[0])
     exit(0)
+
+num_stages_ig = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+num_stages_eg = int(sys.argv[3]) if len(sys.argv) > 3 else 10
 
 with open(sys.argv[1]) as f:
     rows = f.read().strip().splitlines()
@@ -149,6 +175,7 @@ with open(sys.argv[1]) as f:
             rows[i] = rows[i][0:idx].strip()
     program = [ x.split(',') for x in rows ]
     ap = ActiveProgram(program)
+    ap.compileToTarget(num_stages_ig, num_stages_eg)
     ap.printProgram()
     with open(sys.argv[1].replace('.ap4', '.apo'), 'w') as out:
         out.write(ap.getByteCode())

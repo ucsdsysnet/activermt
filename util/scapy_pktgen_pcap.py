@@ -2,7 +2,7 @@
 
 from scapy.all import *
 
-pkts = rdpcap('pcaps/debug_remap.pcap')
+pkts = rdpcap('pcaps/debug-server.pcap')
 
 i = 0
 for pkt in pkts:
