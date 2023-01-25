@@ -19,6 +19,7 @@
 #define CTRL_SEND_INTVL_US	100
 #define CTRL_HEARTBEAT_ITVL	1000
 #define MAX_APPS			1024
+#define MAX_PROGRAMS_APP	8
 #define MAX_STATS_SAMPLES	1000
 #define MAX_TXSTAT_SAMPLES	1000000
 #define STATS_ITVL_MS		1
@@ -69,11 +70,22 @@ typedef struct {
 } active_control_app_t;
 
 typedef struct {
-	int			num_apps;
-	int			app_id[MAX_APPS];
-	char		appname[MAX_APPS][50];
-	char		appdir[MAX_APPS][50];
-	int			fid[MAX_APPS];
+	char		program_path[1024];
+	char		program_name[50];
+} active_program_path_t;
+
+typedef struct {
+	int						app_id;
+	char					appname[128];
+	active_program_path_t*	functions[MAX_PROGRAMS_APP];
+	int						num_functions;
+} active_application_t;
+
+typedef struct {
+	int						num_apps;
+	int						num_programs;
+	active_application_t	active_apps[MAX_APPS];
+	active_program_path_t	active_programs[MAX_APPS];
 } active_config_t;
 
 typedef struct {

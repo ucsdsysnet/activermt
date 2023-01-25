@@ -12,6 +12,7 @@
 #define MAXFILESIZE     1024
 #define BUFLEN          128
 #define MNEMONIC_MAXLEN 50
+#define MAX_PROGRAMS    8
 #define ACTIVEP4SIG     0x12345678
 #define AP4_INSTR_LEN   2
 #define AP4_DATA_LEN    4
@@ -177,7 +178,9 @@ typedef struct {
     uint64_t            ctrl_timer_lasttick;
     active_telemetry_t  telemetry;
     pnemonic_opcode_t*  instr_set;   
-    activep4_def_t*     program;
+    activep4_def_t*     programs[MAX_PROGRAMS];
+    int                 num_programs;
+    int                 start_fid;
     memory_t            allocation;
     memory_t            membuf;
     uint8_t             is_elastic;

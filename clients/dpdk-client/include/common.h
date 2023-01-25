@@ -280,7 +280,7 @@ active_decap_filter(
 			// Get active app context.
 			activep4_context_t* ctxt = NULL;
 			for(int i = 0; i < apps_ctxt->num_apps; i++) {
-				if(apps_ctxt->ctxt[i].program->fid == fid) ctxt = &apps_ctxt->ctxt[i];
+				if(fid >= apps_ctxt->ctxt[i].start_fid && fid < (apps_ctxt->ctxt[i].start_fid + apps_ctxt->ctxt[i].num_programs)) ctxt = &apps_ctxt->ctxt[i];
 			}
 			if(ctxt == NULL) {
 				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Unable to extract app context!\n");
@@ -315,7 +315,7 @@ active_decap_filter(
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "\n");
 							// TODO
 							// ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
-							mutate_active_program(ctxt->program, &ctxt->allocation, 1, ctxt->instr_set);
+							mutate_active_program(ctxt->programs[fid - ctxt->start_fid], &ctxt->allocation, 1, ctxt->instr_set);
 							ctxt->telemetry.allocation_is_active = 0;
 							ctxt->status = ACTIVE_STATE_REMAPPING;
 							uint64_t allocation_elapsed_ns 
@@ -853,7 +853,7 @@ lcore_control(void* arg) {
 	return 0;
 }
 
-void active_client_init(char* config_filename, char* dev, char* instr_set_path) {
+void active_client_init(char* config_filename, char* active_programs_config_filename, char* dev, char* instr_set_path) {
 
 	is_running = 1;
 	signal(SIGINT, interrupt_handler);
@@ -866,8 +866,13 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 		rte_log_register_type_and_pick_level("AP4", RTE_LOG_INFO);
 	}
 
-    // Read application configurations.
 	memset(&cfg, 0, sizeof(active_config_t));
+
+	// Read active program configurations.
+	read_active_program_config(active_programs_config_filename, &cfg);
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Read configurations for %d programs.\n", cfg.num_programs);
+
+    // Read application configurations.
 	read_activep4_config(config_filename, &cfg);
 	if(cfg.num_apps > MAX_APPS) cfg.num_apps = MAX_APPS;
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Read configurations for %d apps.\n", cfg.num_apps);
@@ -897,23 +902,42 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 
     uint64_t ts_ref = rte_rdtsc_precise();
 
-	for(int i = 0; i < cfg.num_apps; i++) {
+	read_opcode_action_map(instr_set_path, &instr_set);
 
-		char* active_dir = cfg.appdir[i];
-		char* active_program_name = cfg.appname[i];
-		int fid = cfg.fid[i];
-
-		read_opcode_action_map(instr_set_path, &instr_set);
+	// read active program definitions.
+	for(int i = 0; i < cfg.num_programs; i++) {
+		char* active_dir = cfg.active_programs[i].program_path;
+		char* active_program_name = cfg.active_programs[i].program_name;
 		read_active_function(&active_function[i], active_dir, active_program_name);
+	}
+
+	int current_fid = 1;
+
+	// read active application definitions.
+	for(int i = 0; i < cfg.num_apps; i++) {
 
 		app_stats[i].ts_ref = ts_ref;
 		ap4_ctxt[i].instr_set = &instr_set;
-		ap4_ctxt[i].program = (activep4_def_t*) rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
-		assert(ap4_ctxt[i].program != NULL);
-		rte_memcpy(ap4_ctxt[i].program, &active_function[i], sizeof(activep4_def_t));
-		rte_memcpy(ap4_ctxt[i].program->mutant.code, active_function[i].code, sizeof(active_function[i].code));
-		ap4_ctxt[i].program->mutant.proglen = active_function[i].proglen;
-		ap4_ctxt[i].program->fid = fid;
+
+		ap4_ctxt[i].num_programs = cfg.active_apps[i].num_functions;
+		ap4_ctxt[i].programs = (activep4_def_t*) rte_zmalloc(NULL, ap4_ctxt[i].num_programs * sizeof(activep4_def_t), 0);
+		assert(ap4_ctxt[i].num_programs > 0);
+
+		ap4_ctxt[i].start_fid = current_fid;
+
+		// assign active functions to applications.
+		for(int j = 0; j < cfg.active_apps[i].num_functions; j++) {
+			ap4_ctxt[i].programs[j]->fid = current_fid++;
+			for(int k = 0; k < cfg.num_programs; k++) {
+				if(strcmp(cfg.active_apps[i].functions[j]->program_name, cfg.active_programs[k].program_name) == 0) {
+					rte_memcpy(ap4_ctxt[i].programs[j], &active_function[k], sizeof(activep4_def_t));
+					rte_memcpy(ap4_ctxt[i].programs[j]->mutant.code, active_function[k].code, sizeof(active_function[k].code));
+					ap4_ctxt[i].programs[j]->mutant.proglen = active_function[k].proglen;
+					break;
+				}
+			}
+		}
+
 		ap4_ctxt[i].active_tx_enabled = true;
 		ap4_ctxt[i].active_heartbeat_enabled = true;
 		ap4_ctxt[i].active_timer_enabled = false;
@@ -922,8 +946,10 @@ void active_client_init(char* config_filename, char* dev, char* instr_set_path) 
 		ap4_ctxt[i].is_elastic = true;
 		ap4_ctxt[i].status = ACTIVE_STATE_INITIALIZING;
 		ap4_ctxt[i].ipv4_srcaddr = ipv4_ifaceaddr;
-		apps_ctxt.app_id[i] = cfg.app_id[i];
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for %s FID %d.\n", active_program_name, fid);
+		
+		apps_ctxt.app_id[i] = cfg.active_apps[i].app_id;
+
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for %s.\n", cfg.active_apps[i].appname);
 	}
 
     apps_ctxt.ctxt = ap4_ctxt;

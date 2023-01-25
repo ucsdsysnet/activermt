@@ -98,6 +98,7 @@ int memory_consume_hh(memory_t* mem, void* context) {
                 }
             }
         }
+        // TODO use techniques from Sketchlib or HashPipe.
         qsort((void*)&hh_ctxt->filter_counts, num_counts, sizeof(uint32_t), compare_elements);
         hh_ctxt->hh_threshold = hh_ctxt->filter_counts[hh_ctxt->top_k - 1];
         hh_ctxt->num_counts = num_counts;

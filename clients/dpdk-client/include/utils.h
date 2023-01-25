@@ -21,7 +21,7 @@
 
 pthread_mutex_t buflock;
 
-void read_activep4_config(char* config_filename, active_config_t* cfg) {
+void read_active_program_config(char* config_filename, active_config_t* cfg) {
 	FILE* fp = fopen(config_filename, "r");
     assert(fp != NULL);
 	char buf[1024];
@@ -31,21 +31,48 @@ void read_activep4_config(char* config_filename, active_config_t* cfg) {
 		for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
 			switch(i) {
 				case 0:
-					cfg->fid[n] = atoi(tok);
+					strcpy(cfg->active_programs[n].program_name, tok);
 					break;
 				case 1:
-					strcpy(cfg->appdir[n], tok);
-					break;
-				case 2:
-					strcpy(cfg->appname[n], tok);
-					break;
-				case 3:
-					cfg->app_id[n] = atoi(tok);
+					strcpy(cfg->active_programs[n].program_path, tok);
 					break;
 				default:
 					break;
 			}
 		}
+		n++;
+	}
+	cfg->num_programs = n;
+	fclose(fp);
+}
+
+void read_activep4_config(char* config_filename, active_config_t* cfg) {
+	FILE* fp = fopen(config_filename, "r");
+    assert(fp != NULL);
+	char buf[1024];
+    const char* tok;
+	int i, n = 0;
+	while( fgets(buf, 1024, fp) > 0 ) {
+		int m = 0;
+		for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
+			switch(i) {
+				case 0:
+					cfg->active_apps[n].app_id = atoi(tok);
+					break;
+				case 1:
+					strcpy(cfg->active_apps[n].appname, tok);
+					break;
+				default:
+					for(int j = 0; j < cfg->num_programs; j++) {
+						if(strcmp(cfg->active_programs[j].program_name, tok) == 0) {
+							cfg->active_apps[n].functions[m++] = &cfg->active_programs[j];
+							break;
+						}
+					}
+					break;
+			}
+		}
+		cfg->active_apps[n].num_functions = m;
 		n++;
 	}
 	cfg->num_apps = n;

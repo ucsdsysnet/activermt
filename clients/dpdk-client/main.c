@@ -10,13 +10,14 @@
 int
 main(int argc, char** argv)
 {
-	if(argc < 3) {
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Usage: %s <iface> <config_file>\n", argv[0]);
+	if(argc < 4) {
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Usage: %s <iface> <config_file> <program_config_filename>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	char* dev = argv[1];
 	char* config_filename = argv[2];
+	char* programs_config_filename = argv[3];
 
 	int ret = rte_eal_init(argc, argv);
 
@@ -25,16 +26,16 @@ main(int argc, char** argv)
 	argc -= ret;
 	argv += ret;
 
-	active_client_init(config_filename, dev, INSTR_SET_PATH);
+	active_client_init(config_filename, programs_config_filename, dev, INSTR_SET_PATH);
 
 	uint64_t ts_ref = rte_rdtsc_precise();
 
 	activep4_context_t* ctxt;
 	int app_id;
 	ACTIVE_FOREACH_APP(app_id, ctxt) {
-		if(strcmp(cfg.appname[app_id], "cacheread") == 0) {
+		if(strcmp(cfg.active_apps[app_id].appname, "cacheread") == 0) {
 			// socket application: custom udp client sending kv requests.
-			printf("Initializing app %d (%s) ...\n", app_id, cfg.appname[app_id]);
+			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(cache_context_t), 0);
 			assert(ctxt->app_context != NULL);
 			((cache_context_t*)ctxt->app_context)->ts_ref = ts_ref;
@@ -47,9 +48,9 @@ main(int argc, char** argv)
 			ctxt->timer = timer_cache;
 			ctxt->active_heartbeat_enabled = true;
 			// set_memory_demand(ctxt, 2);
-		} else if(strcmp(cfg.appname[app_id], "freqitem") == 0) {
+		} else if(strcmp(cfg.active_apps[app_id].appname, "freqitem") == 0) {
 			// socket application: custom udp client sending kv requests.
-			printf("Initializing app %d (%s) ...\n", app_id, cfg.appname[app_id]);
+			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(hh_context_t), 0);
 			assert(ctxt->app_context != NULL);
 			ctxt->tx_handler = active_tx_handler_hh;
@@ -67,8 +68,8 @@ main(int argc, char** argv)
 			// static_allocation(&ctxt->allocation);
 			// ctxt->status = ACTIVE_STATE_TRANSMITTING;
 			#endif
-		} else if(strcmp(cfg.appname[app_id], "cheetahlb-syn") == 0) {
-			printf("Initializing app %d (%s) ...\n", app_id, cfg.appname[app_id]);
+		} else if(strcmp(cfg.active_apps[app_id].appname, "cheetahlb-syn") == 0) {
+			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(lb_context_t), 0);
 			assert(ctxt->app_context != NULL);
 			ctxt->tx_handler = active_tx_handler_lb;
@@ -80,7 +81,7 @@ main(int argc, char** argv)
 			ctxt->timer = timer_lb;
 			ctxt->active_heartbeat_enabled = true;
 		} else {
-			printf("Error: unknown application (%s) in config!\n", cfg.appname[app_id]);
+			printf("Error: unknown application (%s) in config!\n", cfg.active_apps[app_id].appname);
 		}
 	}
 
