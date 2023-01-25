@@ -11,6 +11,7 @@
 #include "../../../headers/activep4.h"
 
 static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+	activep4_def_t* program = ctxt->programs[ctxt->current_pid];
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -24,18 +25,18 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_FLAG_REQALLOC);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	memset(mreq, 0, sizeof(activep4_malloc_req_t));
-	mreq->proglen = htons((uint16_t)ctxt->program->proglen);
-	mreq->iglim = (uint8_t)ctxt->program->iglim;
+	mreq->proglen = htons((uint16_t)program->proglen);
+	mreq->iglim = (uint8_t)program->iglim;
 	#ifdef DEBUG
-	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->program->fid, ctxt->program->num_accesses);
+	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->program->num_accesses);
 	#endif
-	for(int i = 0; i < ctxt->program->num_accesses; i++) {
-		mreq->mem[i] = ctxt->program->access_idx[i];
-		mreq->dem[i] = ctxt->program->demand[i];
+	for(int i = 0; i < program->num_accesses; i++) {
+		mreq->mem[i] = program->access_idx[i];
+		mreq->dem[i] = program->demand[i];
 	}
 	#ifdef DEBUG
 	for(int i = 0; i < 8; i++) printf("%d ", mreq->dem[i]);
@@ -72,7 +73,7 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_FLAG_GETALLOC);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	iph->version = 4;
@@ -105,7 +106,7 @@ static inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_i
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK | AP4FLAGMASK_FLAG_GETALLOC);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
@@ -152,7 +153,7 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = (complete) ? htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK) : htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_INITIATED);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
@@ -163,7 +164,7 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	} else {
 		ap4data->data[0] = htonl((uint32_t)mem_addr);
 		ap4data->data[2] = htonl((uint32_t)stage_id);
-		program = construct_memsync_program(ctxt->program->fid, stage_id, ctxt->instr_set, memsync_cache);
+		program = construct_memsync_program(ctxt->fid, stage_id, ctxt->instr_set, memsync_cache);
 	}
 	if(program == NULL) {
 		rte_exit(EXIT_FAILURE, "Could not construct memsync/completion program!\n");
@@ -205,7 +206,7 @@ static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_MARKED);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
@@ -247,14 +248,14 @@ static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id,
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
-	ap4ih->fid = htons(ctxt->program->fid);
+	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
 	ap4data->data[0] = htonl((uint32_t)mem_addr);
 	ap4data->data[1] = htonl(data);
 	ap4data->data[2] = htonl((uint32_t)stage_id);
-	activep4_def_t* program = construct_memset_program(ctxt->program->fid, stage_id, ctxt->instr_set, memset_cache);
+	activep4_def_t* program = construct_memset_program(ctxt->fid, stage_id, ctxt->instr_set, memset_cache);
 	if(program == NULL) {
 		rte_exit(EXIT_FAILURE, "Could not construct memset program!\n");
 		return;

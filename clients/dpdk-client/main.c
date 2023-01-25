@@ -33,7 +33,8 @@ main(int argc, char** argv)
 	activep4_context_t* ctxt;
 	int app_id;
 	ACTIVE_FOREACH_APP(app_id, ctxt) {
-		if(strcmp(cfg.active_apps[app_id].appname, "cacheread") == 0) {
+		int initialized = 0;
+		if(strcmp(cfg.active_apps[app_id].appname, "cache") == 0) {
 			// socket application: custom udp client sending kv requests.
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(cache_context_t), 0);
@@ -48,7 +49,8 @@ main(int argc, char** argv)
 			ctxt->timer = timer_cache;
 			ctxt->active_heartbeat_enabled = true;
 			// set_memory_demand(ctxt, 2);
-		} else if(strcmp(cfg.active_apps[app_id].appname, "freqitem") == 0) {
+			initialized = 1;
+		} else if(strcmp(cfg.active_apps[app_id].appname, "hh") == 0) {
 			// socket application: custom udp client sending kv requests.
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(hh_context_t), 0);
@@ -68,7 +70,8 @@ main(int argc, char** argv)
 			// static_allocation(&ctxt->allocation);
 			// ctxt->status = ACTIVE_STATE_TRANSMITTING;
 			#endif
-		} else if(strcmp(cfg.active_apps[app_id].appname, "cheetahlb-syn") == 0) {
+			initialized = 1;
+		} else if(strcmp(cfg.active_apps[app_id].appname, "lb") == 0) {
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(lb_context_t), 0);
 			assert(ctxt->app_context != NULL);
@@ -80,9 +83,11 @@ main(int argc, char** argv)
 			ctxt->shutdown = shutdown_lb;
 			ctxt->timer = timer_lb;
 			ctxt->active_heartbeat_enabled = true;
+			initialized = 1;
 		} else {
 			printf("Error: unknown application (%s) in config!\n", cfg.active_apps[app_id].appname);
 		}
+		assert(initialized == 1);
 	}
 
 	#ifdef PDUMP_ENABLE

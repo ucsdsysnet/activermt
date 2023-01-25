@@ -6,6 +6,12 @@ import random
 
 random.seed()
 
+appnames = {
+    'cacheread'     : 'cache',
+    'freqitem'      : 'hh',
+    'cheetahlb-syn' : 'lb'
+}
+
 known_paths = {
     'cacheread'     : '../../apps/cache/active',
     'freqitem'      : '../../apps/scenario_distcache/active',
@@ -35,8 +41,12 @@ config = []
 for i in range(0, num_apps):
     appname = apps[i][0]
     base_path = apps[i][1]
-    config.append("%d,%s,%s,%d" % (i + 1, base_path, appname, port_start + i))
+    config.append("%d,%s,%s" % (port_start + i, appnames[appname], appname))
 
 with open("config.csv", "w") as f:
     f.write("\n".join(config))
+    f.close()
+
+with open("application_paths.csv", "w") as f:
+    f.write("\n".join([ "%s,%s" % (x, known_paths[x]) for x in known_apps ]))
     f.close()

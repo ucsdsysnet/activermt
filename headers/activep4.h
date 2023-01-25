@@ -132,7 +132,8 @@ typedef struct {
 } active_mutant_t;
 
 typedef struct {
-    uint16_t        fid;
+    uint16_t        pid;
+    char            name[100];
     activep4_instr  code[MAXPROGLEN];
     activep4_arg    args[MAXARGS];
     int             num_args;
@@ -169,6 +170,7 @@ typedef struct {
 
 typedef struct {
     int                 id;
+    int                 fid;
     uint8_t             active_tx_enabled;
     uint8_t             active_heartbeat_enabled;
     uint8_t             is_active;
@@ -180,7 +182,7 @@ typedef struct {
     pnemonic_opcode_t*  instr_set;   
     activep4_def_t*     programs[MAX_PROGRAMS];
     int                 num_programs;
-    int                 start_fid;
+    int                 current_pid;
     memory_t            allocation;
     memory_t            membuf;
     uint8_t             is_elastic;
@@ -371,7 +373,7 @@ static inline void add_instruction(activep4_def_t* program, pnemonic_opcode_t* i
 
 static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
     if(stageId > NUM_STAGES || stageId == 0) return NULL;
-    if(cache[stageId].fid > 0) return &cache[stageId];
+    if(cache[stageId].proglen > 0) return &cache[stageId];
     int rts_inserted = 0, i = 0;
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
     while(i < NUM_STAGES - 1) {
@@ -393,13 +395,13 @@ static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pn
     add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
     add_instruction(&cache[stageId], instr_set, "EOF"); i++;
     cache[stageId].proglen = i;
-    cache[stageId].fid = fid;
+    // cache[stageId].fid = fid;
     return &cache[stageId];
 }
 
 static inline activep4_def_t* construct_memset_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
     if(stageId > NUM_STAGES || stageId == 0 || stageId < 2) return NULL;
-    if(cache[stageId].fid > 0) return &cache[stageId];
+    if(cache[stageId].proglen > 0) return &cache[stageId];
     int i = 0;
     add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
     add_instruction(&cache[stageId], instr_set, "MBR_LOAD_DATA_1"); i++;
@@ -414,7 +416,7 @@ static inline activep4_def_t* construct_memset_program(int fid, int stageId, pne
     add_instruction(&cache[stageId], instr_set, "RETURN"); i++;
     add_instruction(&cache[stageId], instr_set, "EOF"); i++;
     cache[stageId].proglen = i;
-    cache[stageId].fid = fid;
+    // cache[stageId].fid = fid;
     return &cache[stageId];
 }
 
@@ -515,8 +517,8 @@ static inline void clear_memory_regions(memory_t* mem) {
 static inline void set_memory_demand(activep4_context_t* ctxt, int demand) {
     if(demand > 1) ctxt->is_elastic = 0;
     else ctxt->is_elastic = 1;
-    for(int i = 0; i < ctxt->program->num_accesses; i++)
-        ctxt->program->demand[i] = demand;
+    for(int i = 0; i < ctxt->programs[ctxt->current_pid]->num_accesses; i++)
+        ctxt->programs[ctxt->current_pid]->demand[i] = demand;
 }
 
 #endif

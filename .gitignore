@@ -34,3 +34,4 @@ clients/dpdk-client/dpdk_ap4_stats*.csv
 apps/cache/clients/udpc/*.png
 apps/cache/clients/udpc/kvapp*.csv
 malloc/*.csv
+clients/dpdk-client/*.csv

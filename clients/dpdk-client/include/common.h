@@ -119,7 +119,7 @@ static inline void write_active_tx_stats(active_apps_t* apps) {
 	for(int i = 0; i < apps->num_apps; i++) {
 		if(apps->stats[i].num_samples == 0) continue;
 		char filename[50];
-		sprintf(filename, "active_tx_stats_%d.csv", apps->ctxt[i].program->fid);
+		sprintf(filename, "active_tx_stats_%d.csv", apps->ctxt[i].fid);
 		FILE* fp = fopen(filename, "w");
 		for(int j = 0; j < apps->stats[i].num_samples; j++) {
 			fprintf(fp, "%lu,%u,%u\n", apps->stats[i].ts[j], apps->stats[i].tx_active[j], apps->stats[i].tx_total[j]);
@@ -135,7 +135,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 	hdr_eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
 
-	active_mutant_t* program = &ap4_ctxt->program->mutant;
+	active_mutant_t* program = &ap4_ctxt->programs[ap4_ctxt->current_pid]->mutant;
 
 	int ap4hlen = sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr));
 
@@ -146,7 +146,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
 	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
-	ap4ih->fid = htons(ap4_ctxt->program->fid);
+	ap4ih->fid = htons(ap4_ctxt->fid);
 	ap4ih->seq = htons(0);
 
 	char* payload = NULL;
@@ -162,6 +162,8 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	}
 
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+
+	assert(ap4_ctxt->tx_handler != NULL);
 	ap4_ctxt->tx_handler(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
 
 	for(int i = 0; i < program->proglen; i++) {
@@ -280,7 +282,7 @@ active_decap_filter(
 			// Get active app context.
 			activep4_context_t* ctxt = NULL;
 			for(int i = 0; i < apps_ctxt->num_apps; i++) {
-				if(fid >= apps_ctxt->ctxt[i].start_fid && fid < (apps_ctxt->ctxt[i].start_fid + apps_ctxt->ctxt[i].num_programs)) ctxt = &apps_ctxt->ctxt[i];
+				if(fid == apps_ctxt->ctxt[i].fid) ctxt = &apps_ctxt->ctxt[i];
 			}
 			if(ctxt == NULL) {
 				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Unable to extract app context!\n");
@@ -294,7 +296,7 @@ active_decap_filter(
 					}
 					break;
 				case ACTIVE_STATE_REALLOCATING:
-					// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d STATE %d Flags %x\n", ctxt->program->fid, ctxt->status, flags);
+					// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d STATE %d Flags %x\n", ctxt->fid, ctxt->status, flags);
 				case ACTIVE_STATE_ALLOCATING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
 						if(ctxt->allocation.version != seq) {
@@ -315,7 +317,7 @@ active_decap_filter(
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "\n");
 							// TODO
 							// ctxt->status = (ctxt->status == ACTIVE_STATE_ALLOCATING) ? ACTIVE_STATE_TRANSMITTING : ACTIVE_STATE_REMAPPING;
-							mutate_active_program(ctxt->programs[fid - ctxt->start_fid], &ctxt->allocation, 1, ctxt->instr_set);
+							mutate_active_program(ctxt->programs[ctxt->current_pid], &ctxt->allocation, 1, ctxt->instr_set);
 							ctxt->telemetry.allocation_is_active = 0;
 							ctxt->status = ACTIVE_STATE_REMAPPING;
 							uint64_t allocation_elapsed_ns 
@@ -378,7 +380,7 @@ active_decap_filter(
 							inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
 						}
 						ctxt->rx_handler((void*)ctxt, ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
-						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d Flags %x OFFSET %d PKTLEN %d IP dst %x\n", ctxt->program->fid, flags, offset, pkts[k]->pkt_len, inet_pkt.hdr_ipv4->dst_addr);
+						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d Flags %x OFFSET %d PKTLEN %d IP dst %x\n", ctxt->fid, flags, offset, pkts[k]->pkt_len, inet_pkt.hdr_ipv4->dst_addr);
 					}
 					// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "pkt length %d\n", pkts[k]->pkt_len);
 					break;
@@ -665,15 +667,15 @@ lcore_control(void* arg) {
 							ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 							consume_memory_objects(&ctxt->allocation, ctxt);
 							uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
-							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns, %u packets sent.\n", ctxt->program->fid, snapshot_time_ns, ctrlstat->counter);
+							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns, %u packets sent.\n", ctxt->fid, snapshot_time_ns, ctrlstat->counter);
 							ctrlstat->snapshotting_in_progress = 0;
 							ctrlstat->counter = 0;
 							if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
 								get_rw_stages_str(ctxt, tmpbuf);
-								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->program->fid, tmpbuf);
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->fid, tmpbuf);
 								ctrlstat->invalidating_in_progress = 1;
 							} else {
-								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->program->fid);
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->fid);
 								if(ctxt->allocation.invalid)
 									ctxt->status = ACTIVE_STATE_REALLOCATING;
 								else
@@ -688,15 +690,15 @@ lcore_control(void* arg) {
 							ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 							consume_memory_objects(&ctxt->allocation, ctxt);
 							uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
-							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns, %u packets sent.\n", ctxt->program->fid, snapshot_time_ns, ctrlstat->counter);
+							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns, %u packets sent.\n", ctxt->fid, snapshot_time_ns, ctrlstat->counter);
 							ctrlstat->counter = 0;
 							ctrlstat->snapshotting_in_progress = 0;
 							if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
 								get_rw_stages_str(ctxt, tmpbuf);
-								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->program->fid, tmpbuf);
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->fid, tmpbuf);
 								ctrlstat->invalidating_in_progress = 1;
 							} else {
-								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->program->fid);
+								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->fid);
 								if(ctxt->allocation.invalid)
 									ctxt->status = ACTIVE_STATE_REALLOCATING;
 								else
@@ -715,7 +717,7 @@ lcore_control(void* arg) {
 						int index = get_next_valid_index(ctxt, ctrlstat);
 						if(stage < 0 || index < 0) {
 							rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->program->fid);
+							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->fid);
 							ctrlstat->invalidating_in_progress = 0;
 							if(ctxt->allocation.invalid)
 								ctxt->status = ACTIVE_STATE_REALLOCATING;
@@ -730,13 +732,13 @@ lcore_control(void* arg) {
 					} else {
 						memset(ctrlstat, 0, sizeof(active_control_state_t));
 						get_rw_stages_str(ctxt, tmpbuf);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->program->fid, tmpbuf);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->fid, tmpbuf);
 						ctxt->allocation.sync_start_time = rte_rdtsc_precise();
 						ctrlstat->snapshotting_in_progress = 1;
 					}
 					#else
 					get_rw_stages_str(ctxt, tmpbuf);
-					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->program->fid, tmpbuf);
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->fid, tmpbuf);
 					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
 					// sync_memory_region(&ctxt->allocation, ctxt, memsync_cache, ctrl->port_id, ctrl->mempool);
 					snapshotting_in_progress = 1;
@@ -761,10 +763,10 @@ lcore_control(void* arg) {
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
 					uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
-					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns w/ %d packets\n", ctxt->program->fid, snapshot_time_ns, num_sent);
+					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns w/ %d packets\n", ctxt->fid, snapshot_time_ns, num_sent);
 					if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
 						get_rw_stages_str(ctxt, tmpbuf);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->program->fid, tmpbuf);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->fid, tmpbuf);
 						invalidating_in_progress = 1;
 						while(invalidating_in_progress) {
 							invalidating_in_progress = 0;
@@ -781,9 +783,9 @@ lcore_control(void* arg) {
 							}
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->program->fid);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->fid);
 					} else {
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->program->fid);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->fid);
 					}
 					if(ctxt->allocation.invalid)
 						ctxt->status = ACTIVE_STATE_REALLOCATING;
@@ -802,7 +804,7 @@ lcore_control(void* arg) {
 					}
 					if(reset_memory_region(updated_region, ctxt)) {
 						get_rw_stages_str(ctxt, tmpbuf);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->program->fid, tmpbuf);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->fid, tmpbuf);
 						while(remapping_in_progress) {
 							remapping_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
@@ -819,9 +821,9 @@ lcore_control(void* arg) {
 							}
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->program->fid);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->fid);
 					} else {
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping reset ...\n", ctxt->program->fid);
+						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping reset ...\n", ctxt->fid);
 					}
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
@@ -911,7 +913,7 @@ void active_client_init(char* config_filename, char* active_programs_config_file
 		read_active_function(&active_function[i], active_dir, active_program_name);
 	}
 
-	int current_fid = 1;
+	int current_pid = 0, current_fid = 1;
 
 	// read active application definitions.
 	for(int i = 0; i < cfg.num_apps; i++) {
@@ -920,14 +922,15 @@ void active_client_init(char* config_filename, char* active_programs_config_file
 		ap4_ctxt[i].instr_set = &instr_set;
 
 		ap4_ctxt[i].num_programs = cfg.active_apps[i].num_functions;
-		ap4_ctxt[i].programs = (activep4_def_t*) rte_zmalloc(NULL, ap4_ctxt[i].num_programs * sizeof(activep4_def_t), 0);
 		assert(ap4_ctxt[i].num_programs > 0);
 
-		ap4_ctxt[i].start_fid = current_fid;
+		ap4_ctxt[i].fid = current_fid++;
+		ap4_ctxt[i].current_pid = current_pid;
 
 		// assign active functions to applications.
 		for(int j = 0; j < cfg.active_apps[i].num_functions; j++) {
-			ap4_ctxt[i].programs[j]->fid = current_fid++;
+			ap4_ctxt[i].programs[j] = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+			ap4_ctxt[i].programs[j]->pid = current_pid++;
 			for(int k = 0; k < cfg.num_programs; k++) {
 				if(strcmp(cfg.active_apps[i].functions[j]->program_name, cfg.active_programs[k].program_name) == 0) {
 					rte_memcpy(ap4_ctxt[i].programs[j], &active_function[k], sizeof(activep4_def_t));
