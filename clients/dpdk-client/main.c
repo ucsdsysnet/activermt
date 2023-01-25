@@ -48,8 +48,11 @@ main(int argc, char** argv)
 			ctxt->shutdown = shutdown_cache;
 			ctxt->timer = timer_cache;
 			ctxt->active_heartbeat_enabled = true;
-			// set_memory_demand(ctxt, 2);
 			initialized = 1;
+			printf("Functions:\n");
+			for(int k = 0; k < ctxt->num_programs; k++) {
+				printf("%d. %s\n", k + 1, cfg.active_apps[app_id].functions[k]->program_name);
+			}
 		} else if(strcmp(cfg.active_apps[app_id].appname, "hh") == 0) {
 			// socket application: custom udp client sending kv requests.
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
@@ -83,6 +86,7 @@ main(int argc, char** argv)
 			ctxt->shutdown = shutdown_lb;
 			ctxt->timer = timer_lb;
 			ctxt->active_heartbeat_enabled = true;
+			// set_memory_demand(ctxt, 2);
 			initialized = 1;
 		} else {
 			printf("Error: unknown application (%s) in config!\n", cfg.active_apps[app_id].appname);

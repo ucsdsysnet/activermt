@@ -38,8 +38,11 @@ typedef struct {
 
 void shutdown_lb(int id, void* context) {}
 
-void active_tx_handler_lb(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc, void* context) {
+void active_tx_handler_lb(void* inet_hdrs, activep4_data_t* ap4data, memory_t* alloc, void* context) {
     lb_context_t* lb_ctxt = (lb_context_t*)context;
+    inet_pkt_t* hdrs = (inet_pkt_t*)inet_hdrs;
+    char* payload = hdrs->payload;
+    int payload_length = hdrs->payload_length;
     memset(ap4data, 0, sizeof(activep4_data_t));
 }
 

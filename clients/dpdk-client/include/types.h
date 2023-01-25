@@ -98,6 +98,7 @@ typedef struct {
 typedef struct {
 	struct rte_ipv4_hdr*	hdr_ipv4;
 	struct rte_udp_hdr*		hdr_udp;
+	struct rte_tcp_hdr*		hdr_tcp;
 	char*					payload;
 	int						payload_length;
 } inet_pkt_t;

@@ -30,11 +30,16 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
+#include "active_hh.h"
+
 #define MAX_SAMPLES_CACHE	100000
 #define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
 #define HH_COMPUTE_ITVL_SEC	1
 #define PAYLOAD_MINLENGTH	8
+
+void switch_context_cache(activep4_context_t*);
+void switch_context_hh(activep4_context_t*);
 
 typedef struct {
 	uint32_t	key;
@@ -66,7 +71,10 @@ void shutdown_cache(int id, void* context) {
 	fclose(fp);
 }
 
-void payload_parser_cache(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc, void* context) {
+void payload_parser_cache(void* inet_hdrs, activep4_data_t* ap4data, memory_t* alloc, void* context) {
+	inet_pkt_t* hdrs = (inet_pkt_t*)inet_hdrs;
+	char* payload = hdrs->payload;
+	int payload_length = hdrs->payload_length;
 	if(payload_length < sizeof(uint32_t)) return;
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 	memset(ap4data, 0, sizeof(activep4_data_t));
@@ -136,5 +144,29 @@ int memory_invalidate_cache(memory_t* mem, void* context) { return 0; }
 int memory_reset_cache(memory_t* mem, void* context) { return 0; }
 
 void timer_cache(void* arg) {}
+
+void switch_context_cache(activep4_context_t* ctxt) {
+	ctxt->is_active = 0;
+	ctxt->tx_handler = payload_parser_cache;
+	ctxt->rx_handler = active_rx_handler_cache;
+	ctxt->memory_consume = memory_consume_cache;
+	ctxt->memory_invalidate = memory_invalidate_cache;
+	ctxt->memory_reset = memory_reset_cache;
+	ctxt->shutdown = shutdown_cache;
+	ctxt->timer = timer_cache;
+	ctxt->is_active = 0;
+}
+
+void switch_context_hh(activep4_context_t* ctxt) {
+	ctxt->tx_handler = active_tx_handler_hh;
+	ctxt->rx_handler = active_rx_handler_hh;
+	ctxt->memory_consume = memory_consume_hh;
+	ctxt->memory_invalidate = memory_invalidate_hh;
+	ctxt->memory_reset = memory_reset_hh;
+	ctxt->shutdown = shutdown_hh;
+	ctxt->timer = timer_hh;
+	ctxt->timer_interval_us = 1000000;
+	ctxt->active_timer_enabled = true;
+}
 
 #endif

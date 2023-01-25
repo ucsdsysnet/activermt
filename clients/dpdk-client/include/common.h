@@ -131,6 +131,8 @@ static inline void write_active_tx_stats(active_apps_t* apps) {
 static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, struct rte_mbuf* pkt) {
 	
 	char* bufptr = rte_pktmbuf_mtod(pkt, char*);
+
+	inet_pkt_t inet_hdrs;
 	
 	struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 	hdr_eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -152,19 +154,30 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 	char* payload = NULL;
 	int payload_length = 0;
 
+	struct rte_udp_hdr* hdr_udp = NULL;
+	struct rte_tcp_hdr* hdr_tcp = NULL;
+
 	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + ap4hlen);
 	if(iph->next_proto_id == IPPROTO_UDP) {
+		hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 		payload = bufptr + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + ap4hlen;
 		payload_length = pkt->pkt_len - (sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr));
 	} else if(iph->next_proto_id == IPPROTO_TCP) {
+		hdr_tcp = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 		payload = bufptr + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr) + ap4hlen;
 		payload_length = pkt->pkt_len - (sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 	}
 
+	inet_hdrs.hdr_ipv4 = iph;
+	inet_hdrs.hdr_udp = hdr_udp;
+	inet_hdrs.hdr_tcp = hdr_tcp;
+	inet_hdrs.payload = payload;
+	inet_hdrs.payload_length = payload_length;
+
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 
 	assert(ap4_ctxt->tx_handler != NULL);
-	ap4_ctxt->tx_handler(payload, payload_length, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
+	ap4_ctxt->tx_handler(&inet_hdrs, ap4data, &ap4_ctxt->allocation, ap4_ctxt->app_context);
 
 	for(int i = 0; i < program->proglen; i++) {
 		activep4_instr* instr = (activep4_instr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (i * sizeof(activep4_instr)));
@@ -911,6 +924,7 @@ void active_client_init(char* config_filename, char* active_programs_config_file
 		char* active_dir = cfg.active_programs[i].program_path;
 		char* active_program_name = cfg.active_programs[i].program_name;
 		read_active_function(&active_function[i], active_dir, active_program_name);
+		strcpy(active_function[i].name, cfg.active_programs[i].program_name);
 	}
 
 	int current_pid = 0, current_fid = 1;

@@ -55,8 +55,11 @@ typedef struct {
 
 void shutdown_hh(int id, void* context) {}
 
-void active_tx_handler_hh(char* payload, int payload_length, activep4_data_t* ap4data, memory_t* alloc, void* context) {
+void active_tx_handler_hh(void* inet_hdrs, activep4_data_t* ap4data, memory_t* alloc, void* context) {
     hh_context_t* hh_ctxt = (hh_context_t*)context;
+    inet_pkt_t* hdrs = (inet_pkt_t*)inet_hdrs;
+    char* payload = hdrs->payload;
+    int payload_length = hdrs->payload_length;
     memset(ap4data, 0, sizeof(activep4_data_t));
     uint32_t* key = (uint32_t*)payload;
 	int stage_id_key = -1, stage_id_value = -1;
@@ -99,8 +102,9 @@ int memory_consume_hh(memory_t* mem, void* context) {
             }
         }
         // TODO use techniques from Sketchlib or HashPipe.
-        qsort((void*)&hh_ctxt->filter_counts, num_counts, sizeof(uint32_t), compare_elements);
-        hh_ctxt->hh_threshold = hh_ctxt->filter_counts[hh_ctxt->top_k - 1];
+        // qsort((void*)&hh_ctxt->filter_counts, num_counts, sizeof(uint32_t), compare_elements);
+        // hh_ctxt->hh_threshold = hh_ctxt->filter_counts[hh_ctxt->top_k - 1];
+        hh_ctxt->hh_threshold = 10;
         hh_ctxt->num_counts = num_counts;
         hh_ctxt->threshold_determined = 1;
         hh_ctxt->last_computed_threshold = rte_rdtsc_precise();

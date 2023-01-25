@@ -191,7 +191,7 @@ typedef struct {
     void*               app_context;
     int                 timer_interval_us;
     void                (*timer)(void*);
-    void                (*tx_handler)(char*, int, activep4_data_t*, memory_t*, void*);
+    void                (*tx_handler)(void*, activep4_data_t*, memory_t*, void*);
     void                (*rx_handler)(void*, activep4_ih*, activep4_data_t*, void*, void*);
     int                 (*memory_consume)(memory_t*, void*);
     int                 (*memory_invalidate)(memory_t*, void*);

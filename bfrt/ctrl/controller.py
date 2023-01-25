@@ -71,7 +71,7 @@ class ActiveP4Controller:
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
-        self.vaddr_support = False
+        self.vaddr_support = True
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
