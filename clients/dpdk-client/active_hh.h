@@ -55,11 +55,18 @@ typedef struct {
 
 void shutdown_hh(int id, void* context) {}
 
-void active_tx_handler_hh(void* inet_hdrs, activep4_data_t* ap4data, memory_t* alloc, void* context) {
+void tx_mux_hh(void* inet_hdrs, void* context, int* pid) {}
+
+void active_tx_handler_hh(void* inet_bufptr, activep4_data_t* ap4data, memory_t* alloc, void* context) {
     hh_context_t* hh_ctxt = (hh_context_t*)context;
-    inet_pkt_t* hdrs = (inet_pkt_t*)inet_hdrs;
-    char* payload = hdrs->payload;
-    int payload_length = hdrs->payload_length;
+    char* bufptr = (char*)inet_bufptr;
+
+    struct rte_ipv4_hdr* hdr_ipv4 = (struct rte_ipv4_hdr*)bufptr;
+    if(hdr_ipv4->next_proto_id != IPPROTO_UDP) return;
+
+    struct rte_udp_hdr* hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
+    char* payload = bufptr + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
+
     memset(ap4data, 0, sizeof(activep4_data_t));
     uint32_t* key = (uint32_t*)payload;
 	int stage_id_key = -1, stage_id_value = -1;

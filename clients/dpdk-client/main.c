@@ -40,6 +40,7 @@ main(int argc, char** argv)
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(cache_context_t), 0);
 			assert(ctxt->app_context != NULL);
 			((cache_context_t*)ctxt->app_context)->ts_ref = ts_ref;
+			ctxt->tx_mux = tx_mux_cache;
 			ctxt->tx_handler = payload_parser_cache;
 			ctxt->rx_handler = active_rx_handler_cache;
 			ctxt->memory_consume = memory_consume_cache;
@@ -58,6 +59,7 @@ main(int argc, char** argv)
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(hh_context_t), 0);
 			assert(ctxt->app_context != NULL);
+			ctxt->tx_mux = tx_mux_hh;
 			ctxt->tx_handler = active_tx_handler_hh;
 			ctxt->rx_handler = active_rx_handler_hh;
 			ctxt->memory_consume = memory_consume_hh;
@@ -78,6 +80,7 @@ main(int argc, char** argv)
 			printf("Initializing app %d (%s) ...\n", app_id, cfg.active_apps[app_id].appname);
 			ctxt->app_context = rte_zmalloc(NULL, sizeof(lb_context_t), 0);
 			assert(ctxt->app_context != NULL);
+			ctxt->tx_mux = active_tx_mux_lb;
 			ctxt->tx_handler = active_tx_handler_lb;
 			ctxt->rx_handler = active_rx_handler_lb;
 			ctxt->memory_consume = memory_consume_lb;
@@ -88,6 +91,10 @@ main(int argc, char** argv)
 			ctxt->active_heartbeat_enabled = true;
 			// set_memory_demand(ctxt, 2);
 			initialized = 1;
+			printf("Functions:\n");
+			for(int k = 0; k < ctxt->num_programs; k++) {
+				printf("%d. %s\n", k + 1, cfg.active_apps[app_id].functions[k]->program_name);
+			}
 		} else {
 			printf("Error: unknown application (%s) in config!\n", cfg.active_apps[app_id].appname);
 		}
