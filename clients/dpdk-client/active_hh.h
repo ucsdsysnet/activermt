@@ -181,7 +181,7 @@ void timer_hh(void* arg) {
 	ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 }
 
-void static_allocation(memory_t* mem) {
+void static_allocation_hh(memory_t* mem) {
     int num_valid_stages = 4;
     int valid_stages[] = {5, 10, 11, 12};
     for(int i = 0; i < num_valid_stages; i++) {

@@ -56,7 +56,8 @@ class ActiveP4Controller:
     global IPAddress
     global ap4alloc
 
-    REG_MAX = 0xFFFF
+    MAR_MAX = 0xFFFFF
+    REG_MAX = 0xFFFFF
     DEBUG = True
     MEMSIZE = 65536
     REALLOCATION_TIMEOUT_SEC = 5
@@ -301,9 +302,10 @@ class ActiveP4Controller:
         add_method_rejoin = getattr(instr_table, 'add_with_attempt_rejoin_s%s' % str(stageId))
         fid_start = fid if act['memory'] else 0
         fid_end = fid if act['memory'] else 0xFF
+        reg_max = self.REG_MAX if (act['memory'] or act['vaddr']) else self.MAR_MAX
         if act['condition'] is not None:
             if act['condition']:
-                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=32, mar_19_0__start=memStart, mar_19_0__end=reg_max)
                 self.addInstructionTableParams(gress, stageId, {
                     'fid_start' : fid_start,
                     'fid_end'   : fid_end,
@@ -313,7 +315,7 @@ class ActiveP4Controller:
                     'mbr'       : 0,
                     'mbr_pfx'   : 32,
                     'marStart'  : memStart,
-                    'marEnd'    : self.REG_MAX
+                    'marEnd'    : reg_max
                 })
                 add_method(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=memEnd)
                 self.addInstructionTableParams(gress, stageId, {
@@ -340,7 +342,7 @@ class ActiveP4Controller:
                     'marStart'  : memStart,
                     'marEnd'    : memEnd
                 })
-                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+                add_method_skip(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=0, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=reg_max)
                 self.addInstructionTableParams(gress, stageId, {
                     'fid_start' : fid_start,
                     'fid_end'   : fid_end,
@@ -350,7 +352,7 @@ class ActiveP4Controller:
                     'mbr'       : 0,
                     'mbr_pfx'   : 0,
                     'marStart'  : memStart,
-                    'marEnd'    : self.REG_MAX
+                    'marEnd'    : reg_max
                 })
         else:
             if act['opcode'] == 0:
@@ -378,7 +380,7 @@ class ActiveP4Controller:
                 'marStart'  : memStart,
                 'marEnd'    : memEnd
             })
-        add_method_rejoin(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=self.REG_MAX)
+        add_method_rejoin(fid_start=fid_start, fid_end=fid_end, opcode=act['opcode'], complete=0, disabled=1, mbr=0, mbr_p_length=0, mar_19_0__start=memStart, mar_19_0__end=reg_max)
         self.addInstructionTableParams(gress, stageId, {
             'fid_start' : fid_start,
             'fid_end'   : fid_end,
@@ -388,7 +390,7 @@ class ActiveP4Controller:
             'mbr'       : 0,
             'mbr_pfx'   : 0,
             'marStart'  : memStart,
-            'marEnd'    : self.REG_MAX
+            'marEnd'    : reg_max
         })
         #instr_table.dump(table=True)
 

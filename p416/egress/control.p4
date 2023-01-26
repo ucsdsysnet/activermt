@@ -1388,66 +1388,98 @@ action addr_mask_apply(bit<32> addr_mask) {
 action addr_offset_apply(bit<32> offset) {
     hdr.meta.mar = hdr.meta.mar + offset;
 }
+/*action <reg>_load_d0() {
+    hdr.meta.<reg> = hdr.data.data_0;
+}*/
+
+/*action d0_load_<reg>() {
+    hdr.data.data_0 = hdr.meta.<reg>;
+}*/
+
 action mar_load_d0() {
-    hdr.meta.mar = hdr.data.data_0;
-}
-action mar_load_d1() {
-    hdr.meta.mar = hdr.data.data_1;
-}
-action mar_load_d2() {
-    hdr.meta.mar = hdr.data.data_2;
-}
-action mar_load_d3() {
-    hdr.meta.mar = hdr.data.data_3;
+    hdr.meta.mar = hdr.data.data_0 & 0xFFFFF;
 }
 action mbr_load_d0() {
     hdr.meta.mbr = hdr.data.data_0;
 }
-action d0_load_mbr() {
-    hdr.data.data_0 = hdr.meta.mbr;
-}
-action mbr_load_d1() {
-    hdr.meta.mbr = hdr.data.data_1;
-}
-action d1_load_mbr() {
-    hdr.data.data_1 = hdr.meta.mbr;
-}
-action mbr_load_d2() {
-    hdr.meta.mbr = hdr.data.data_2;
-}
-action d2_load_mbr() {
-    hdr.data.data_2 = hdr.meta.mbr;
-}
-action mbr_load_d3() {
-    hdr.meta.mbr = hdr.data.data_3;
-}
-action d3_load_mbr() {
-    hdr.data.data_3 = hdr.meta.mbr;
-}
 action mbr2_load_d0() {
     hdr.meta.mbr2 = hdr.data.data_0;
 }
-action mbr2_load_d1() {
-    hdr.meta.mbr2 = hdr.data.data_1;
-}
-action mbr2_load_d2() {
-    hdr.meta.mbr2 = hdr.data.data_2;
-}
-action mbr2_load_d3() {
-    hdr.meta.mbr2 = hdr.data.data_3;
+action d0_load_mbr() {
+    hdr.data.data_0 = hdr.meta.mbr;
 }
 /*action addrmap_load_d0() {
     hdr.meta.paddr_mask = hdr.data.data_0;
     hdr.meta.paddr_offset = hdr.data.data_0 >> 16;
 }*/
+/*action <reg>_load_d1() {
+    hdr.meta.<reg> = hdr.data.data_1;
+}*/
+
+/*action d1_load_<reg>() {
+    hdr.data.data_1 = hdr.meta.<reg>;
+}*/
+
+action mar_load_d1() {
+    hdr.meta.mar = hdr.data.data_1 & 0xFFFFF;
+}
+action mbr_load_d1() {
+    hdr.meta.mbr = hdr.data.data_1;
+}
+action mbr2_load_d1() {
+    hdr.meta.mbr2 = hdr.data.data_1;
+}
+action d1_load_mbr() {
+    hdr.data.data_1 = hdr.meta.mbr;
+}
 /*action addrmap_load_d1() {
     hdr.meta.paddr_mask = hdr.data.data_1;
     hdr.meta.paddr_offset = hdr.data.data_1 >> 16;
 }*/
+/*action <reg>_load_d2() {
+    hdr.meta.<reg> = hdr.data.data_2;
+}*/
+
+/*action d2_load_<reg>() {
+    hdr.data.data_2 = hdr.meta.<reg>;
+}*/
+
+action mar_load_d2() {
+    hdr.meta.mar = hdr.data.data_2 & 0xFFFFF;
+}
+action mbr_load_d2() {
+    hdr.meta.mbr = hdr.data.data_2;
+}
+action mbr2_load_d2() {
+    hdr.meta.mbr2 = hdr.data.data_2;
+}
+action d2_load_mbr() {
+    hdr.data.data_2 = hdr.meta.mbr;
+}
 /*action addrmap_load_d2() {
     hdr.meta.paddr_mask = hdr.data.data_2;
     hdr.meta.paddr_offset = hdr.data.data_2 >> 16;
 }*/
+/*action <reg>_load_d3() {
+    hdr.meta.<reg> = hdr.data.data_3;
+}*/
+
+/*action d3_load_<reg>() {
+    hdr.data.data_3 = hdr.meta.<reg>;
+}*/
+
+action mar_load_d3() {
+    hdr.meta.mar = hdr.data.data_3 & 0xFFFFF;
+}
+action mbr_load_d3() {
+    hdr.meta.mbr = hdr.data.data_3;
+}
+action mbr2_load_d3() {
+    hdr.meta.mbr2 = hdr.data.data_3;
+}
+action d3_load_mbr() {
+    hdr.data.data_3 = hdr.meta.mbr;
+}
 /*action addrmap_load_d3() {
     hdr.meta.paddr_mask = hdr.data.data_3;
     hdr.meta.paddr_offset = hdr.data.data_3 >> 16;
@@ -2154,21 +2186,21 @@ table instruction_0 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s0;
 		attempt_rejoin_s0;
 		memory_read_s0;
@@ -2230,21 +2262,21 @@ table instruction_1 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s1;
 		attempt_rejoin_s1;
 		memory_read_s1;
@@ -2306,21 +2338,21 @@ table instruction_2 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s2;
 		attempt_rejoin_s2;
 		memory_read_s2;
@@ -2382,21 +2414,21 @@ table instruction_3 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s3;
 		attempt_rejoin_s3;
 		memory_read_s3;
@@ -2458,21 +2490,21 @@ table instruction_4 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s4;
 		attempt_rejoin_s4;
 		memory_read_s4;
@@ -2534,21 +2566,21 @@ table instruction_5 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s5;
 		attempt_rejoin_s5;
 		memory_read_s5;
@@ -2610,21 +2642,21 @@ table instruction_6 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s6;
 		attempt_rejoin_s6;
 		memory_read_s6;
@@ -2686,21 +2718,21 @@ table instruction_7 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s7;
 		attempt_rejoin_s7;
 		memory_read_s7;
@@ -2762,21 +2794,21 @@ table instruction_8 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s8;
 		attempt_rejoin_s8;
 		memory_read_s8;
@@ -2838,21 +2870,21 @@ table instruction_9 {
 		addr_mask_apply;
 		addr_offset_apply;
 		mar_load_d0;
-		mar_load_d1;
-		mar_load_d2;
-		mar_load_d3;
 		mbr_load_d0;
-		d0_load_mbr;
-		mbr_load_d1;
-		d1_load_mbr;
-		mbr_load_d2;
-		d2_load_mbr;
-		mbr_load_d3;
-		d3_load_mbr;
 		mbr2_load_d0;
+		d0_load_mbr;
+		mar_load_d1;
+		mbr_load_d1;
 		mbr2_load_d1;
+		d1_load_mbr;
+		mar_load_d2;
+		mbr_load_d2;
 		mbr2_load_d2;
+		d2_load_mbr;
+		mar_load_d3;
+		mbr_load_d3;
 		mbr2_load_d3;
+		d3_load_mbr;
 		jump_s9;
 		attempt_rejoin_s9;
 		memory_read_s9;

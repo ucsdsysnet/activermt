@@ -366,11 +366,14 @@ active_decap_filter(
 						inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset);
 						if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
 							inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
+							// for packets returned by the switch.
 							uint16_t tmp = inet_pkt.hdr_udp->src_port;
 							inet_pkt.hdr_udp->src_port = inet_pkt.hdr_udp->dst_port;
 							inet_pkt.hdr_udp->dst_port = tmp;
 							inet_pkt.payload = bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
 							inet_pkt.payload_length = ntohs(inet_pkt.hdr_udp->dgram_len) - sizeof(struct rte_udp_hdr);
+						} else if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_TCP) {
+							inet_pkt.hdr_tcp = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
 						}
 						ctxt->rx_handler((void*)ctxt, ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
 						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d Flags %x OFFSET %d PKTLEN %d IP dst %x\n", ctxt->fid, flags, offset, pkts[k]->pkt_len, inet_pkt.hdr_ipv4->dst_addr);

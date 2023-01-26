@@ -4,10 +4,11 @@ from scapy.all import *
 
 pkts = rdpcap('pcaps/debug-server.pcap')
 
-i = 0
+pkt_index = 9
+
+current_idx = 0
 for pkt in pkts:
-    i += 1
-    if i < 10:
-        continue
-    sendp(pkt, iface="veth0", verbose=True)
-    break
+    current_idx += 1
+    if current_idx == pkt_index:
+        sendp(pkt, iface="veth0", verbose=True)
+        break
