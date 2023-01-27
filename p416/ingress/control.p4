@@ -1125,7 +1125,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s0;
@@ -1136,7 +1136,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s1;
@@ -1147,7 +1147,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s2;
@@ -1158,7 +1158,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s3;
@@ -1169,7 +1169,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s4;
@@ -1180,7 +1180,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s5;
@@ -1191,7 +1191,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s6;
@@ -1202,7 +1202,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s7;
@@ -1213,7 +1213,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s8;
@@ -1224,7 +1224,7 @@ CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
     reversed    = true,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = 0x0000,
     xor         = 0x0000
 ) crc_16_poly_s9;

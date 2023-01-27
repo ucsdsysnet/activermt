@@ -2,7 +2,7 @@ CRCPolynomial<bit<16>>(
     coeff       = <poly-param-coeff>,
     reversed    = <poly-param-reversed>,
     msb         = false,
-    extended    = false,
+    extended    = true,
     init        = <poly-param-init>,
     xor         = <poly-param-xor>
 ) crc_16_poly_s<stage-id>;
