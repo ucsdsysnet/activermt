@@ -17,10 +17,10 @@ MEM_READ // mbr now has offset to DIP pool
 MAR_MBR_ADD_MBR2 // mar now has address to DIP
 MEM_READ // mbr now has DIP
 SET_DST
+DATA_2_LOAD_MBR
 COPY_MBR2_MBR
 LOAD_SALT
 COPY_HASHDATA_MBR
-NOP
 HASH
 COPY_MBR_MAR
 MBR_EQUALS_MBR2

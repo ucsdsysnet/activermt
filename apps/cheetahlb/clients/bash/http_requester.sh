@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NUM_REQUESTS=10
-URL=http://10.0.2.2:8000/
+URL=http://10.1.0.2:8000/
 
 if [ "$#" -gt 0 ]
 then

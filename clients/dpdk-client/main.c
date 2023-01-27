@@ -89,6 +89,8 @@ main(int argc, char** argv)
 			ctxt->shutdown = shutdown_lb;
 			ctxt->timer = timer_lb;
 			ctxt->active_heartbeat_enabled = true;
+			ctxt->is_active = true;
+			ctxt->active_tx_enabled = true;
 			// DEBUG code
 			// static_allocation_lb(&ctxt->allocation);
 			// ctxt->status = ACTIVE_STATE_TRANSMITTING;

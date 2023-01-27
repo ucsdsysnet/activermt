@@ -30,6 +30,8 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
+#define DEBUG_LB
+
 #define MAXCONN     1024
 
 typedef struct {
@@ -76,8 +78,12 @@ void active_tx_handler_lb(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
     memset(ap4data, 0, sizeof(activep4_data_t));
     
     if(hdr_tcp->tcp_flags & RTE_TCP_SYN_FLAG) {
+        // ap4data->data[0] = 1;
         ap4data->data[1] = hdr_ipv4->dst_addr;
-        // printf("[LB] new flow!\n");
+        // ap4data->data[2] = htonl(184);
+        #ifdef DEBUG_LB
+        rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[LB] TCP SYN source port %d\n", ntohs(hdr_tcp->src_port));
+        #endif
     } else {
         const inet_5tuple_t flow = {
             .src_addr = hdr_ipv4->dst_addr,
@@ -93,7 +99,9 @@ void active_tx_handler_lb(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
             // printf("Cookie: %x\n", cookie);
         } else {
             // should have been installed upon connection setup.
-            printf("[LB] error: cookie does not exist!\n");
+            #ifdef DEBUG_LB
+            rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[LB] error: cookie does not exist!\n");
+            #endif
         }
     }
 }
@@ -102,6 +110,12 @@ void active_rx_handler_lb(void* active_context, activep4_ih* ap4ih, activep4_dat
     lb_context_t* lb_ctxt = (lb_context_t*)context;
     inet_pkt_t* inet_pkt = (inet_pkt_t*)pkt;
     if(inet_pkt->hdr_tcp == NULL || ap4args->data[0] == 0) return;
+    if(!(inet_pkt->hdr_tcp->tcp_flags & RTE_TCP_SYN_FLAG)) {
+        #ifdef DEBUG_LB
+        rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[LB] error: unexpected packet!\n");
+        #endif
+        return;
+    }
     unsigned long cookie = ap4args->data[0];
     const inet_5tuple_t flow = {
         .src_addr = inet_pkt->hdr_ipv4->src_addr,
@@ -111,7 +125,9 @@ void active_rx_handler_lb(void* active_context, activep4_ih* ap4ih, activep4_dat
         .dst_port = inet_pkt->hdr_tcp->dst_port
     };
     rte_hash_add_key_data(lb_ctxt->ht, &flow, (void*)cookie);
-    printf("[LB] Received cookie: %lx\n", cookie);
+    #ifdef DEBUG_LB
+    rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[LB] Received cookie: %lx\n", cookie);
+    #endif
 }
 
 int memory_consume_lb(memory_t* mem, void* context) { return 0; }

@@ -28,6 +28,8 @@
 
 #include "../../../headers/activep4.h"
 
+#define DEBUG_COMMON
+
 // #define CTRL_PARALLEL
 // #define CTRL_MULTICORE
 
@@ -245,11 +247,14 @@ active_decap_filter(
 ) {
 	active_apps_t* apps_ctxt = (active_apps_t*)ctxt;
 
+	// static uint64_t decap_ts_start = 0, decap_ts_end = 0, decap_ts_elapsed = 0;
+
 	for(int k = 0; k < nb_pkts; k++) {
 		char* bufptr = rte_pktmbuf_mtod(pkts[k], char*);
 		inet_pkt_t inet_pkt = {0};
 		struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;
 		int offset = 0;
+		// decap_ts_start = rte_rdtsc_precise();
 		if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
 			// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] Non active packet.\n");
 		} else if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
@@ -394,7 +399,9 @@ active_decap_filter(
 			// print_pktinfo(bufptr, pkts[k]->pkt_len);
 		}
 		
-		// TODO update application state.
+		// decap_ts_end = rte_rdtsc_precise();
+		// decap_ts_elapsed = (double)(decap_ts_end - decap_ts_start) * 1E9 / rte_get_tsc_hz();
+		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DECAP] elapsed time (ns): %lu\n", decap_ts_elapsed);
 	}	
 
 	return nb_pkts;
