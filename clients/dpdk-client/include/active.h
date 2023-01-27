@@ -32,7 +32,7 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	mreq->proglen = htons((uint16_t)program->proglen);
 	mreq->iglim = (uint8_t)program->iglim;
 	#ifdef DEBUG
-	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->program->num_accesses);
+	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->programs[ctxt->current_pid]->num_accesses);
 	#endif
 	for(int i = 0; i < program->num_accesses; i++) {
 		mreq->mem[i] = program->access_idx[i];

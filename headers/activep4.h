@@ -501,7 +501,7 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
     }
 
     #ifdef DEBUG
-    printf("[FID %d] program size increased by %d, mutant:\n", ap4->fid, increase);
+    printf("[PID %d] program size increased by %d, mutant:\n", ap4->pid, increase);
     for(int i = 0; i < program->proglen; i++) {
         printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);
     }

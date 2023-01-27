@@ -421,7 +421,7 @@ class ActiveP4Controller:
         for port in self.ports:
             sid = sid + 1
             self.sid_to_port_mapping[sid] = port
-        print(self.sid_to_port_mapping)
+        print("SID-PORT mapping:", self.sid_to_port_mapping)
     
     def setMirrorSessions(self):
         if not self.recirculation_enabled:
