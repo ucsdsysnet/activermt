@@ -9,7 +9,7 @@ control Ingress(
 ) {
     
 
-Register<bit<32>, bit<32>>(32w65536) heap_s0;
+Register<bit<32>, bit<32>>(32w94208) heap_s0;
 
 /*
     Write mbr to register value, return old value.
@@ -120,7 +120,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s0) heap_conditional_rw_zero_s0 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s1;
+Register<bit<32>, bit<32>>(32w94208) heap_s1;
 
 /*
     Write mbr to register value, return old value.
@@ -231,7 +231,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s1) heap_conditional_rw_zero_s1 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s2;
+Register<bit<32>, bit<32>>(32w94208) heap_s2;
 
 /*
     Write mbr to register value, return old value.
@@ -342,7 +342,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s2) heap_conditional_rw_zero_s2 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s3;
+Register<bit<32>, bit<32>>(32w94208) heap_s3;
 
 /*
     Write mbr to register value, return old value.
@@ -453,7 +453,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s3) heap_conditional_rw_zero_s3 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s4;
+Register<bit<32>, bit<32>>(32w94208) heap_s4;
 
 /*
     Write mbr to register value, return old value.
@@ -564,7 +564,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s4) heap_conditional_rw_zero_s4 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s5;
+Register<bit<32>, bit<32>>(32w94208) heap_s5;
 
 /*
     Write mbr to register value, return old value.
@@ -675,7 +675,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_zero_s5 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s6;
+Register<bit<32>, bit<32>>(32w94208) heap_s6;
 
 /*
     Write mbr to register value, return old value.
@@ -786,7 +786,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_zero_s6 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s7;
+Register<bit<32>, bit<32>>(32w94208) heap_s7;
 
 /*
     Write mbr to register value, return old value.
@@ -897,7 +897,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s7) heap_conditional_rw_zero_s7 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s8;
+Register<bit<32>, bit<32>>(32w94208) heap_s8;
 
 /*
     Write mbr to register value, return old value.
@@ -1008,7 +1008,7 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s8) heap_conditional_rw_zero_s8 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w65536) heap_s9;
+Register<bit<32>, bit<32>>(32w94208) heap_s9;
 
 /*
     Write mbr to register value, return old value.
@@ -2261,7 +2261,7 @@ table instruction_0 {
 		memory_minreadinc_s0;
 		hash_s0;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s0(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2361,7 +2361,7 @@ table instruction_1 {
 		memory_minreadinc_s1;
 		hash_s1;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s1(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2461,7 +2461,7 @@ table instruction_2 {
 		memory_minreadinc_s2;
 		hash_s2;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s2(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2561,7 +2561,7 @@ table instruction_3 {
 		memory_minreadinc_s3;
 		hash_s3;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s3(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2661,7 +2661,7 @@ table instruction_4 {
 		memory_minreadinc_s4;
 		hash_s4;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s4(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2761,7 +2761,7 @@ table instruction_5 {
 		memory_minreadinc_s5;
 		hash_s5;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s5(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2861,7 +2861,7 @@ table instruction_6 {
 		memory_minreadinc_s6;
 		hash_s6;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s6(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -2961,7 +2961,7 @@ table instruction_7 {
 		memory_minreadinc_s7;
 		hash_s7;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s7(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -3061,7 +3061,7 @@ table instruction_8 {
 		memory_minreadinc_s8;
 		hash_s8;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s8(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {
@@ -3161,7 +3161,7 @@ table instruction_9 {
 		memory_minreadinc_s9;
 		hash_s9;
     }
-    size = 512;
+    size = 640;
 }
 
 action get_allocation_s9(bit<16> offset_ig, bit<16> size_ig, bit<16> offset_eg, bit<16> size_eg) {

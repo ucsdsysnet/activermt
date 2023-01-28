@@ -21,5 +21,5 @@ table instruction_<stage-id> {
         fetch_pktcount;
         <generated-actions>
     }
-    size = 512;
+    size = 640;
 }

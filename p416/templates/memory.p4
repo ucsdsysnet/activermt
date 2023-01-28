@@ -1,4 +1,4 @@
-Register<bit<32>, bit<32>>(32w65536) heap_s<stage-id>;
+Register<bit<32>, bit<32>>(32w94208) heap_s<stage-id>;
 
 /*
     Write mbr to register value, return old value.
