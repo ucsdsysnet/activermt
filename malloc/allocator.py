@@ -17,10 +17,11 @@ import numpy as np
 # active function
 
 class ActiveFunction:
-    def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False):
+    def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False, allow_filling=True):
         assert len(accessIdx) == len(minDemand)
         # assert progLen <= 20
         self.debug = False
+        self.allow_recirculations = allow_filling
         self.num_stages = 20
         self.num_stage_ig = 10
         self.num_stage_eg = self.num_stages - self.num_stage_ig
@@ -43,7 +44,9 @@ class ActiveFunction:
             self.enumerate()
 
     def computeConstraints(self):
-        self.maxProgLen = self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg)
+        self.maxProgLen = max(self.progLen if self.progLen <= self.num_stages else self.num_stage_ig + int(math.ceil((self.progLen - self.num_stage_ig) * 1.0 / self.num_stage_eg) * self.num_stage_eg), self.num_stages)
+        if self.allow_recirculations:
+            self.maxProgLen += self.num_stage_eg
         self.numAccesses = len(self.accessIdx)
         self.A = self.getDeltaMatrix(self.numAccesses)
         self.constrLB = np.copy(self.accessIdx).astype('uint32')

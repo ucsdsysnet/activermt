@@ -320,7 +320,7 @@ def print_allocation_matrix(allocation_matrix):
 
 # Experiments.
 
-custom = False
+custom = True
 
 if custom:
     print("[Custom Experiment]")
@@ -328,12 +328,15 @@ if custom:
     numApps = 128
     type = 'fixed'
     appname = 'cache'
-    optimize = False
+    optimize = True
     minimize = True
+    ignoreIglim = True
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
-    paramStr = getParamString(optimize, minimize, metric, appname=appname, type=type, granularity=granularity)
-    print("running analysis with params:", paramStr)
+    if ignoreIglim:
+        for app in appCfg:
+            appCfg[app]['iglim'] = -1
+    print("Running analysis with parameters: optimize=%s, minimize=%s, workload=%s, granularity=%d, numapps=%d" % (str(optimize), str(minimize), (appname if type == 'fixed' else type), Allocator.ALLOCATION_GRANULARITY, numApps))
     results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
     # writeResults(results, "allocation_%s.csv" % paramStr)
 else:
