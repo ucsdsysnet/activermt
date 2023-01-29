@@ -85,7 +85,7 @@ header active_initial_h {
     bit<1>          flag_allocated;
     bit<1>          flag_pending;
     bit<1>          flag_leader;
-    bit<1>          _padding;
+    bit<1>          flag_preload;
     bit<16>         fid;
     bit<16>         seq;
 }

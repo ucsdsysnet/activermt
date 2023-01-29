@@ -29,8 +29,8 @@ class ActiveInstruction:
             print("%d.\t%02X (%d)\t[%d]\t%s" % (idx, self.opcode, self.opcode, self.goto, opname))
 
 class ActiveProgram:
-    def __init__(self, program):
-        self.max_args = 5
+    def __init__(self, program, optimize=True):
+        self.max_args = 4
         self.opt_data = False
         self.IG_ONLY = ['SET_DST', 'RTS', 'CRTS']
         self.OPCODES = {}
@@ -41,8 +41,13 @@ class ActiveProgram:
             pnemonic = m[0]
             self.OPCODES[pnemonic] = opcode
             self.MNEMONICS[opcode] = pnemonic
-        self.LOAD_INSTR = [ 'MBR_LOAD', 'MAR_LOAD', 'MBR2_LOAD' ]
+        self.LOAD_INSTR = [ 'MAR_LOAD', 'MBR_LOAD', 'MBR2_LOAD' ]
         self.regex_data = re.compile('DATA_([0-9])')
+        self.reg_load = {
+            'MAR'   : None,
+            'MBR'   : None,
+            'MBR2'  : None
+        }
         self.program = []
         self.args = {}
         self.labels = {}
@@ -51,13 +56,24 @@ class ActiveProgram:
         self.memidx = []
         self.memlim = []
         self.iglim = -1
+        self.referenced_regs = set()
         for i in range(0, len(program)):
-            if 'MEM' in program[i][0]:
+            opcode = program[i][0]
+            if 'MEM' in opcode:
                 self.memidx.append(i)
+            elif opcode in self.LOAD_INSTR:
+                reg = opcode.split('_')[0]
+                arg = program[i][1] if len(program[i]) > 1 else None
+                referenced = reg in self.referenced_regs
+                self.reg_load[reg] = (i, arg, referenced)
             if program[i][0] in self.IG_ONLY:
                 self.iglim = i if i > self.iglim else self.iglim
+            for reg in self.reg_load:
+                if reg in opcode:
+                    self.referenced_regs.add(reg)
         program.reverse()
         memIdx = None
+        buffer = []
         for i in range(0, len(program)):
             opcode = program[i][0]
             if '_LOAD_' in opcode:
@@ -95,7 +111,8 @@ class ActiveProgram:
                                 self.num_data = self.num_data + 1
                             self.args[argname]['didx'] = self.num_data
                             self.data_idx.append(self.num_data)
-                        opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
+                        # opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
+                        opcode = '%s_DATA_%d' % (opcode, self.LOAD_INSTR.index(opcode))
                     elif '_BULK_WRITE' in opcode:
                         self.args[argname]['bulk'] = True
                         self.args[argname]['didx'] = 0
@@ -112,9 +129,25 @@ class ActiveProgram:
                         self.args[argname] = []    
                     self.args[argname].append(len(program) - i - 1)
             # print(program[i])
-            self.program.append(ActiveInstruction(opcode=self.OPCODES[opcode], goto=label))
-        self.program.reverse()
-        self.program.append(ActiveInstruction(opcode=self.OPCODES['EOF'], goto=0))
+            buffer.append(ActiveInstruction(opcode=self.OPCODES[opcode], goto=label))
+        buffer.reverse()
+        buffer.append(ActiveInstruction(opcode=self.OPCODES['EOF'], goto=0))
+        # optimize program
+        if optimize:
+            self.memidx = []
+            idx = 0
+            for instr in buffer:
+                pnemonic = self.MNEMONICS[instr.opcode]
+                reg = pnemonic.split('_LOAD_')[0] if '_LOAD_' in pnemonic else pnemonic
+                if reg in self.reg_load and not self.reg_load[reg][2]:
+                    print("[Optimization] Skipping %s ..." % pnemonic)
+                    continue
+                if 'MEM' in pnemonic:
+                    self.memidx.append(idx)
+                self.program.append(instr)
+                idx += 1
+        else:
+            self.program = buffer
 
     def compileToTarget(self, num_stages_ig, num_stages_eg):
         if len(self.memidx) == 0:
@@ -168,6 +201,7 @@ num_stages_ig = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 num_stages_eg = int(sys.argv[3]) if len(sys.argv) > 3 else 10
 
 with open(sys.argv[1]) as f:
+    print("")
     rows = f.read().strip().splitlines()
     for i in range(0, len(rows)):
         idx = rows[i].find('//')
@@ -176,6 +210,7 @@ with open(sys.argv[1]) as f:
     program = [ x.split(',') for x in rows ]
     ap = ActiveProgram(program)
     ap.compileToTarget(num_stages_ig, num_stages_eg)
+    print("")
     ap.printProgram()
     with open(sys.argv[1].replace('.ap4', '.apo'), 'w') as out:
         out.write(ap.getByteCode())
@@ -187,5 +222,12 @@ with open(sys.argv[1]) as f:
         memDef = ",".join([str(x) for x in ap.getMemoryAccessIndices()])
         memDef += "\n" + str(ap.iglim) + "\n"
         out.write(memDef)
+        out.close()
+    with open(sys.argv[1].replace('.ap4', '.regloads.csv'), 'w') as out:
+        data = []
+        for x in ap.reg_load:
+            if ap.reg_load[x] is not None:
+                data.append("%s,%s" % (x, ap.reg_load[x][1]))
+        out.write("\n".join(data))
         out.close()
     f.close()
