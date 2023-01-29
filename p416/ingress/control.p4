@@ -3328,6 +3328,11 @@ table allocation_9 {
     apply {
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
+        if(hdr.ih.flag_preload == 1) {
+            hdr.meta.mar = hdr.data.data_0;
+            hdr.meta.mbr = hdr.data.data_1;
+            hdr.meta.mbr2 = hdr.data.data_2;
+        }
         if(hdr.ih.isValid()) {
             // leader_elect();
             // leader_fetch.apply();

@@ -17,7 +17,7 @@ import numpy as np
 # active function
 
 class ActiveFunction:
-    def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False, allow_filling=True):
+    def __init__(self, fid, accessIdx, igLim, progLen, minDemand, weight=1, enumerate=False, allow_filling=False):
         assert len(accessIdx) == len(minDemand)
         # assert progLen <= 20
         self.debug = False

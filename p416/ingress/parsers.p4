@@ -105,14 +105,14 @@ parser IngressParser(
 
     state parse_active_args {
         pkt.extract(hdr.data);
-        transition select(hdr.ih.flag_preload) {
+        /*transition select(hdr.ih.flag_preload) {
             1   : parse_preloads;
             _   : parse_active_instruction;
-        }
-        /*transition select(hdr.ih.opt_data) {
+        }*/
+        transition select(hdr.ih.opt_data) {
             1   : parse_active_data;
             _   : parse_active_instruction;
-        }*/
+        }
     }
 
     state parse_preloads {
@@ -122,10 +122,10 @@ parser IngressParser(
         transition parse_active_instruction;
     }
 
-    /*state parse_active_data {
+    state parse_active_data {
         //pkt.extract(hdr.bulk_data);
         transition parse_active_instruction;
-    }*/
+    }
 
     state parse_active_instruction {
         pkt.extract(hdr.instr.next);
