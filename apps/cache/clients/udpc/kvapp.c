@@ -27,6 +27,8 @@
 
 #include "../../../../headers/stats.h"
 
+typedef uint64_t cache_keysize_t;
+
 typedef struct {
     uint32_t    rx_hits[NUM_SAMPLES_HM];
     uint32_t    rx_total[NUM_SAMPLES_HM];
@@ -36,7 +38,7 @@ typedef struct {
 
 typedef struct {
     uint16_t        fid;
-    int*            dist;
+    unsigned long*  dist;
     int             dist_size;
     kvapp_stats_t*  kv_stats;
     int             sockfd;
@@ -123,8 +125,8 @@ void* rx_loop(void* argp) {
         for (int i = 0; i < num_msgs; i++) {
             bufs[i][msgs[i].msg_len] = 0;
             if(msgs[i].msg_len >= KVRESP_LEN) {
-                uint32_t* key = (uint32_t*)bufs[i];
-                uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(uint32_t));
+                cache_keysize_t* key = (cache_keysize_t*)bufs[i];
+                cache_keysize_t* hm_flag = (cache_keysize_t*)(bufs[i] + sizeof(cache_keysize_t));
                 if(*key > 0) {
                     if(*hm_flag == 1) rx_hits++;
                     /*else if(instance_id == 2) {
@@ -160,7 +162,7 @@ void* tx_loop(void* argp) {
     app_context_t* ctxt = (app_context_t*)argp;
 
     int sockfd = ctxt->sockfd;
-    int* dist = ctxt->dist;
+    unsigned long* dist = ctxt->dist;
     int num_keys = ctxt->dist_size;
 
     printf("[INFO] %d samples in distribution.\n", num_keys);
@@ -171,11 +173,11 @@ void* tx_loop(void* argp) {
 
     fd_set wr_set;
     int ret, max_iter = 1000;
-    uint32_t keys[2 * MAX_KEYS], key;
+    cache_keysize_t keys[2 * MAX_KEYS], key;
     uint8_t bloom[MAX_KEYS];
 
     memset(bloom, 0, MAX_KEYS * sizeof(uint8_t));
-    memset(keys, 0, 2 * MAX_KEYS * sizeof(uint32_t));
+    memset(keys, 0, 2 * MAX_KEYS * sizeof(cache_keysize_t));
 
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
@@ -189,7 +191,7 @@ void* tx_loop(void* argp) {
         bloom[key] = 1;
         // printf("%d.\tKey = %u\n", i, key);
         msg[i].iov_base = &keys[i*2];
-        msg[i].iov_len = 2 * sizeof(uint32_t);
+        msg[i].iov_len = 2 * sizeof(cache_keysize_t);
     }
 
     printf("[INFO] %d unique keys generated.\n", compute_unique_keys(bloom));
@@ -270,13 +272,13 @@ int main(int argc, char** argv) {
 
     is_running = 1;
 
-    int dist[ZIPF_SIZE];
+    unsigned long dist[ZIPF_SIZE];
 
     FILE* fp = fopen(dist_file, "r");
     char buf[100];
     int i = 0;
     while(fgets(buf, 100, fp) != NULL) {
-        dist[i++] = atoi(buf);
+        dist[i++] = atol(buf);
         if(i >= ZIPF_SIZE) break;
     }
     fclose(fp);

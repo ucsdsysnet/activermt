@@ -45,6 +45,11 @@
 #define ACTIVE_STATE_REMAPPING      5
 #define ACTIVE_STATE_REALLOCATING   6
 
+#define ACTIVE_DEFAULT_ARG_MAR      0
+#define ACTIVE_DEFAULT_ARG_MBR      1
+#define ACTIVE_DEFAULT_ARG_MBR2     2
+#define ACTIVE_DEFAULT_ARG_RESULT   3
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
