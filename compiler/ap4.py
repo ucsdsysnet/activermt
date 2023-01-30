@@ -76,11 +76,11 @@ class ActiveProgram:
         buffer = []
         for i in range(0, len(program)):
             opcode = program[i][0]
-            if '_LOAD_' in opcode:
-                data_reg = re.search('DATA_([0-9])', opcode).group(1)
-                didx = int(data_reg)
-                if didx not in self.data_idx:
-                    self.data_idx.append(didx)
+            # if '_LOAD_' in opcode:
+            #     data_reg = re.search('DATA_([0-9])', opcode).group(1)
+            #     didx = int(data_reg)
+            #     if didx not in self.data_idx:
+            #         self.data_idx.append(didx)
             if 'MEM' in opcode:
                 memIdx = len(program) - i - 1
             elif 'ADDR' in opcode and memIdx is not None:
@@ -99,24 +99,24 @@ class ActiveProgram:
                     label = self.labels[':%s' % param_1[1:]]
                 elif param_1[0] == '$':
                     argname = param_1[1:]
-                    if argname not in self.args:
-                        self.args[argname] = {
-                            'idx'   : [],
-                            'didx'  : None,
-                            'bulk'  : False
-                        }
-                    if opcode in self.LOAD_INSTR:
-                        if self.args[argname]['didx'] is None:
-                            while self.num_data in self.data_idx:
-                                self.num_data = self.num_data + 1
-                            self.args[argname]['didx'] = self.num_data
-                            self.data_idx.append(self.num_data)
-                        # opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
-                        opcode = '%s_DATA_%d' % (opcode, self.LOAD_INSTR.index(opcode))
-                    elif '_BULK_WRITE' in opcode:
-                        self.args[argname]['bulk'] = True
-                        self.args[argname]['didx'] = 0
-                    self.args[argname]['idx'].append(len(program) - i - 1)
+                    # if argname not in self.args:
+                    #     self.args[argname] = {
+                    #         'idx'   : [],
+                    #         'didx'  : None,
+                    #         'bulk'  : False
+                    #     }
+                    # if opcode in self.LOAD_INSTR:
+                    #     if self.args[argname]['didx'] is None:
+                    #         while self.num_data in self.data_idx:
+                    #             self.num_data = self.num_data + 1
+                    #         self.args[argname]['didx'] = self.num_data
+                    #         self.data_idx.append(self.num_data)
+                    #     # opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
+                    #     opcode = '%s_DATA_%d' % (opcode, self.LOAD_INSTR.index(opcode))
+                    # elif '_BULK_WRITE' in opcode:
+                    #     self.args[argname]['bulk'] = True
+                    #     self.args[argname]['didx'] = 0
+                    # self.args[argname]['idx'].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
                     self.labels[param_2] = 1
@@ -138,7 +138,7 @@ class ActiveProgram:
             idx = 0
             for instr in buffer:
                 pnemonic = self.MNEMONICS[instr.opcode]
-                reg = pnemonic.split('_LOAD_')[0] if '_LOAD_' in pnemonic else pnemonic
+                reg = pnemonic.split('_LOAD')[0] if '_LOAD' in pnemonic else pnemonic
                 if reg in self.reg_load and not self.reg_load[reg][2]:
                     print("[Optimization] Skipping %s ..." % pnemonic)
                     continue

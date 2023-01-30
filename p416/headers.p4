@@ -97,6 +97,10 @@ header active_data_h {
     bit<32>     data_3;
 }
 
+header active_data_extended_h {
+    bit<32>     data;
+}
+
 header active_instruction_h {
     bit<6>      flags;
     bit<1>      tr_nz;
@@ -225,9 +229,9 @@ struct ingress_headers_t {
     ethernet_h                                  ethernet;
     active_initial_h                            ih;
     active_data_h                               data;
+    active_data_extended_h[MAX_EXTENDED_DATA]   extended_data;
     active_malloc_req_h                         malloc;
     active_malloc_h[NUM_STAGES]                 alloc;
-    //active_bulk_data_h                          bulk_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
     ipv4_h                                      ipv4;
     udp_h                                       udp;
@@ -241,7 +245,7 @@ struct egress_headers_t {
     active_initial_h                            ih;
     active_malloc_h[NUM_STAGES]                 alloc;
     active_data_h                               data;
-    //active_bulk_data_h                          bulk_data;
+    active_data_extended_h[MAX_EXTENDED_DATA]   extended_data;
     active_instruction_h[MAX_INSTRUCTIONS]      instr;
 }
 

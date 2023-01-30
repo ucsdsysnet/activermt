@@ -114,3 +114,52 @@ action addr_mask_apply(bit<32> addr_mask) {
 action addr_offset_apply(bit<32> offset) {
     hdr.meta.mar = hdr.meta.mar + offset;
 }
+
+action mar_load() {
+    hdr.meta.mar = hdr.data.data_0 & 0xFFFFF;
+}
+
+action mbr_load() {
+    hdr.meta.mbr = hdr.data.data_1;
+}
+
+action mbr2_load() {
+    hdr.meta.mbr2 = hdr.data.data_2;
+}
+
+action mbr_store() {
+    hdr.data.data_3 = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_0() {
+    hdr.extended_data[0].data = hdr.meta.mbr;
+    // hdr.extended_data[0].setValid();
+}
+
+action mbr_store_extended_data_1() {
+    hdr.extended_data[1].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_2() {
+    hdr.extended_data[2].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_3() {
+    hdr.extended_data[3].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_4() {
+    hdr.extended_data[4].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_5() {
+    hdr.extended_data[5].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_6() {
+    hdr.extended_data[6].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_7() {
+    hdr.extended_data[7].data = hdr.meta.mbr;
+}

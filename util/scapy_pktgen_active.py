@@ -28,7 +28,7 @@ program = utils.readActiveProgram(active_program, print_bytecode=True)
 
 pkt = utils.constructActivePacket(fid, program, {
     'data_0'    : 1,
-    'data_1'    : 0,
+    'data_1'    : 1,
     'data_2'    : 1,
     'data_3'    : 0
 }, preload=True)

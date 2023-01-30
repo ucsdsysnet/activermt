@@ -152,7 +152,7 @@ static inline void insert_active_program_headers(activep4_context_t* ap4_ctxt, s
 
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_PRELOAD);
 	ap4ih->fid = htons(ap4_ctxt->fid);
 	ap4ih->seq = htons(0);
 

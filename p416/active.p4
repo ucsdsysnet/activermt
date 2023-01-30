@@ -18,6 +18,7 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 #define RESUBMIT_TYPE_DEFAULT   1
 
 #define MAX_INSTRUCTIONS        32
+#define MAX_EXTENDED_DATA       8
 #define MAX_TCP_OPTIONS         10
 #define CONST_SALT              0x5093
 #define MAX_RECIRCULATIONS      10

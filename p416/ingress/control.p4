@@ -1438,102 +1438,131 @@ action addr_mask_apply(bit<32> addr_mask) {
 action addr_offset_apply(bit<32> offset) {
     hdr.meta.mar = hdr.meta.mar + offset;
 }
-/*action <reg>_load_d0() {
-    hdr.meta.<reg> = hdr.data.data_0;
-}*/
 
-/*action d0_load_<reg>() {
-    hdr.data.data_0 = hdr.meta.<reg>;
-}*/
-
-action mar_load_d0() {
+action mar_load() {
     hdr.meta.mar = hdr.data.data_0 & 0xFFFFF;
 }
-action mbr_load_d0() {
-    hdr.meta.mbr = hdr.data.data_0;
-}
-action mbr2_load_d0() {
-    hdr.meta.mbr2 = hdr.data.data_0;
-}
-action d0_load_mbr() {
-    hdr.data.data_0 = hdr.meta.mbr;
-}
-/*action addrmap_load_d0() {
-    hdr.meta.paddr_mask = hdr.data.data_0;
-    hdr.meta.paddr_offset = hdr.data.data_0 >> 16;
-}*/
-/*action <reg>_load_d1() {
-    hdr.meta.<reg> = hdr.data.data_1;
-}*/
 
-/*action d1_load_<reg>() {
-    hdr.data.data_1 = hdr.meta.<reg>;
-}*/
-
-action mar_load_d1() {
-    hdr.meta.mar = hdr.data.data_1 & 0xFFFFF;
-}
-action mbr_load_d1() {
+action mbr_load() {
     hdr.meta.mbr = hdr.data.data_1;
 }
-action mbr2_load_d1() {
-    hdr.meta.mbr2 = hdr.data.data_1;
-}
-action d1_load_mbr() {
-    hdr.data.data_1 = hdr.meta.mbr;
-}
-/*action addrmap_load_d1() {
-    hdr.meta.paddr_mask = hdr.data.data_1;
-    hdr.meta.paddr_offset = hdr.data.data_1 >> 16;
-}*/
-/*action <reg>_load_d2() {
-    hdr.meta.<reg> = hdr.data.data_2;
-}*/
 
-/*action d2_load_<reg>() {
-    hdr.data.data_2 = hdr.meta.<reg>;
-}*/
-
-action mar_load_d2() {
-    hdr.meta.mar = hdr.data.data_2 & 0xFFFFF;
-}
-action mbr_load_d2() {
-    hdr.meta.mbr = hdr.data.data_2;
-}
-action mbr2_load_d2() {
+action mbr2_load() {
     hdr.meta.mbr2 = hdr.data.data_2;
 }
-action d2_load_mbr() {
-    hdr.data.data_2 = hdr.meta.mbr;
-}
-/*action addrmap_load_d2() {
-    hdr.meta.paddr_mask = hdr.data.data_2;
-    hdr.meta.paddr_offset = hdr.data.data_2 >> 16;
-}*/
-/*action <reg>_load_d3() {
-    hdr.meta.<reg> = hdr.data.data_3;
-}*/
 
-/*action d3_load_<reg>() {
-    hdr.data.data_3 = hdr.meta.<reg>;
-}*/
-
-action mar_load_d3() {
-    hdr.meta.mar = hdr.data.data_3 & 0xFFFFF;
-}
-action mbr_load_d3() {
-    hdr.meta.mbr = hdr.data.data_3;
-}
-action mbr2_load_d3() {
-    hdr.meta.mbr2 = hdr.data.data_3;
-}
-action d3_load_mbr() {
+action mbr_store() {
     hdr.data.data_3 = hdr.meta.mbr;
 }
-/*action addrmap_load_d3() {
-    hdr.meta.paddr_mask = hdr.data.data_3;
-    hdr.meta.paddr_offset = hdr.data.data_3 >> 16;
-}*/
+
+action mbr_store_extended_data_0() {
+    hdr.extended_data[0].data = hdr.meta.mbr;
+    // hdr.extended_data[0].setValid();
+}
+
+action mbr_store_extended_data_1() {
+    hdr.extended_data[1].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_2() {
+    hdr.extended_data[2].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_3() {
+    hdr.extended_data[3].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_4() {
+    hdr.extended_data[4].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_5() {
+    hdr.extended_data[5].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_6() {
+    hdr.extended_data[6].data = hdr.meta.mbr;
+}
+
+action mbr_store_extended_data_7() {
+    hdr.extended_data[7].data = hdr.meta.mbr;
+}
+// action mar_load_d0() {
+//     hdr.meta.mar = hdr.data.data_0 & 0xFFFFF;
+// }
+// action mbr_load_d0() {
+//     hdr.meta.mbr = hdr.data.data_0;
+// }
+// action mbr2_load_d0() {
+//     hdr.meta.mbr2 = hdr.data.data_0;
+// }
+// action d0_load_mbr() {
+//     hdr.data.data_0 = hdr.meta.mbr;
+// }
+// action addrmap_load_d0() {
+//     hdr.meta.paddr_mask = hdr.data.data_0;
+//     hdr.meta.paddr_offset = hdr.data.data_0 >> 16;
+// }
+action mbr_equals_d0() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_0;
+}
+// action mar_load_d1() {
+//     hdr.meta.mar = hdr.data.data_1 & 0xFFFFF;
+// }
+// action mbr_load_d1() {
+//     hdr.meta.mbr = hdr.data.data_1;
+// }
+// action mbr2_load_d1() {
+//     hdr.meta.mbr2 = hdr.data.data_1;
+// }
+// action d1_load_mbr() {
+//     hdr.data.data_1 = hdr.meta.mbr;
+// }
+// action addrmap_load_d1() {
+//     hdr.meta.paddr_mask = hdr.data.data_1;
+//     hdr.meta.paddr_offset = hdr.data.data_1 >> 16;
+// }
+action mbr_equals_d1() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_1;
+}
+// action mar_load_d2() {
+//     hdr.meta.mar = hdr.data.data_2 & 0xFFFFF;
+// }
+// action mbr_load_d2() {
+//     hdr.meta.mbr = hdr.data.data_2;
+// }
+// action mbr2_load_d2() {
+//     hdr.meta.mbr2 = hdr.data.data_2;
+// }
+// action d2_load_mbr() {
+//     hdr.data.data_2 = hdr.meta.mbr;
+// }
+// action addrmap_load_d2() {
+//     hdr.meta.paddr_mask = hdr.data.data_2;
+//     hdr.meta.paddr_offset = hdr.data.data_2 >> 16;
+// }
+action mbr_equals_d2() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_2;
+}
+// action mar_load_d3() {
+//     hdr.meta.mar = hdr.data.data_3 & 0xFFFFF;
+// }
+// action mbr_load_d3() {
+//     hdr.meta.mbr = hdr.data.data_3;
+// }
+// action mbr2_load_d3() {
+//     hdr.meta.mbr2 = hdr.data.data_3;
+// }
+// action d3_load_mbr() {
+//     hdr.data.data_3 = hdr.meta.mbr;
+// }
+// action addrmap_load_d3() {
+//     hdr.meta.paddr_mask = hdr.data.data_3;
+//     hdr.meta.paddr_offset = hdr.data.data_3 >> 16;
+// }
+action mbr_equals_d3() {
+    hdr.meta.mbr = hdr.meta.mbr ^ hdr.data.data_3;
+}
 action jump_s0() {
     hdr.meta.disabled = 1;
 }
@@ -2235,22 +2264,22 @@ table instruction_0 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s0;
 		attempt_rejoin_s0;
 		memory_read_s0;
@@ -2335,22 +2364,22 @@ table instruction_1 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s1;
 		attempt_rejoin_s1;
 		memory_read_s1;
@@ -2435,22 +2464,22 @@ table instruction_2 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s2;
 		attempt_rejoin_s2;
 		memory_read_s2;
@@ -2535,22 +2564,22 @@ table instruction_3 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s3;
 		attempt_rejoin_s3;
 		memory_read_s3;
@@ -2635,22 +2664,22 @@ table instruction_4 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s4;
 		attempt_rejoin_s4;
 		memory_read_s4;
@@ -2735,22 +2764,22 @@ table instruction_5 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s5;
 		attempt_rejoin_s5;
 		memory_read_s5;
@@ -2835,22 +2864,22 @@ table instruction_6 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s6;
 		attempt_rejoin_s6;
 		memory_read_s6;
@@ -2935,22 +2964,22 @@ table instruction_7 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s7;
 		attempt_rejoin_s7;
 		memory_read_s7;
@@ -3035,22 +3064,22 @@ table instruction_8 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s8;
 		attempt_rejoin_s8;
 		memory_read_s8;
@@ -3135,22 +3164,22 @@ table instruction_9 {
 		max_mbr_mbr2;
 		addr_mask_apply;
 		addr_offset_apply;
-		mar_load_d0;
-		mbr_load_d0;
-		mbr2_load_d0;
-		d0_load_mbr;
-		mar_load_d1;
-		mbr_load_d1;
-		mbr2_load_d1;
-		d1_load_mbr;
-		mar_load_d2;
-		mbr_load_d2;
-		mbr2_load_d2;
-		d2_load_mbr;
-		mar_load_d3;
-		mbr_load_d3;
-		mbr2_load_d3;
-		d3_load_mbr;
+		mar_load;
+		mbr_load;
+		mbr2_load;
+		mbr_store;
+		mbr_store_extended_data_0;
+		mbr_store_extended_data_1;
+		mbr_store_extended_data_2;
+		mbr_store_extended_data_3;
+		mbr_store_extended_data_4;
+		mbr_store_extended_data_5;
+		mbr_store_extended_data_6;
+		mbr_store_extended_data_7;
+		mbr_equals_d0;
+		mbr_equals_d1;
+		mbr_equals_d2;
+		mbr_equals_d3;
 		jump_s9;
 		attempt_rejoin_s9;
 		memory_read_s9;
