@@ -1,8 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-// #define STATS
-
 #include <assert.h>
 #include <stdio.h>
 #include <signal.h>
@@ -30,6 +28,7 @@
 
 #define DEBUG_COMMON
 
+#define STATS
 // #define CTRL_PARALLEL
 // #define CTRL_MULTICORE
 

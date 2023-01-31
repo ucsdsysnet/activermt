@@ -128,7 +128,7 @@ void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_
 	// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] key %u frequency %u\n", key, freq);
 	if(cached_value != 0) {
 		cache_ctxt->rx_stats[cache_ctxt->num_samples].rx_hits++;
-		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint32_t));
+		uint32_t* hm_flag = (uint32_t*)(inet_pkt->payload + sizeof(uint64_t) + sizeof(uint32_t));
 		*hm_flag = 1;
 		inet_pkt->hdr_udp->dgram_cksum = 0;
 		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[RXHDL] hit IP src %x dst %x UDP src %d dst %d \n", ntohl(inet_pkt->hdr_ipv4->src_addr), ntohl(inet_pkt->hdr_ipv4->dst_addr), ntohs(inet_pkt->hdr_udp->src_port), ntohs(inet_pkt->hdr_udp->dst_port));
@@ -142,7 +142,7 @@ void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_
 	if(elapsed_ms >= STATS_ITVL_MS_CACHE && cache_ctxt->num_samples < MAX_SAMPLES_CACHE) {
 		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] cache hits %u total %u\n", cache_ctxt->rx_hits[cache_ctxt->num_samples], cache_ctxt->rx_total[cache_ctxt->num_samples]);
 		cache_ctxt->last_ts = now;
-		cache_ctxt->ts[cache_ctxt->num_samples] = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
+		cache_ctxt->rx_stats[cache_ctxt->num_samples].ts = (double)(now - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		cache_ctxt->num_samples++;
 	}
 	#endif

@@ -325,12 +325,12 @@ custom = True
 if custom:
     print("[Custom Experiment]")
 
-    numApps = 128
+    numApps = 64
     type = 'fixed'
     appname = 'cache'
     optimize = True
     minimize = True
-    ignoreIglim = True
+    ignoreIglim = False
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     if ignoreIglim:

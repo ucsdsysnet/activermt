@@ -25,3 +25,6 @@
 [submodule "ref/dpdk"]
 	path = ref/dpdk
 	url = git@github.com:DPDK/dpdk.git
+[submodule "ref/NetVRM"]
+	path = ref/NetVRM
+	url = git@github.com:netx-repo/NetVRM.git

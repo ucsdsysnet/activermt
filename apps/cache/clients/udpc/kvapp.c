@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@
 #include "../../../../headers/stats.h"
 
 typedef uint64_t cache_keysize_t;
+typedef uint32_t cache_valuesize_t;
 
 typedef struct {
     uint32_t    rx_hits[NUM_SAMPLES_HM];
@@ -126,12 +128,11 @@ void* rx_loop(void* argp) {
             bufs[i][msgs[i].msg_len] = 0;
             if(msgs[i].msg_len >= KVRESP_LEN) {
                 cache_keysize_t* key = (cache_keysize_t*)bufs[i];
-                cache_keysize_t* hm_flag = (cache_keysize_t*)(bufs[i] + sizeof(cache_keysize_t));
+                cache_valuesize_t* value = (cache_valuesize_t*)(bufs[i] + sizeof(cache_keysize_t));
+                uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(cache_keysize_t) + sizeof(cache_valuesize_t));
                 if(*key > 0) {
                     if(*hm_flag == 1) rx_hits++;
-                    /*else if(instance_id == 2) {
-                        printf("MISS key %d\n", *key);
-                    }*/
+                    else assert(*value > 0);
                     rx_total++;
                 }
                 // printf("[DEBUG] key %u HIT %d\n", *key, *hm_flag);
