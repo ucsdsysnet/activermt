@@ -18,7 +18,7 @@
 #define UNIQUE_KEYS     0
 #define MAX_APPS        1024
 #define BURST_SIZE      32
-#define MAX_KEYS        65536
+#define MAX_KEYS        100000
 #define DPORT           5678
 #define BUFSIZE         2048
 #define VLEN            32
@@ -27,9 +27,16 @@
 #define ZIPF_SIZE       100000
 
 #include "../../../../headers/stats.h"
+#include "../../../../ref/uthash/include/uthash.h"
 
 typedef uint64_t cache_keysize_t;
 typedef uint32_t cache_valuesize_t;
+
+typedef struct {
+    cache_keysize_t     key;
+    cache_valuesize_t   value;
+    UT_hash_handle      hh;
+} cache_object_t;
 
 typedef struct {
     uint32_t    rx_hits[NUM_SAMPLES_HM];
@@ -132,7 +139,7 @@ void* rx_loop(void* argp) {
                 uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(cache_keysize_t) + sizeof(cache_valuesize_t));
                 if(*key > 0) {
                     if(*hm_flag == 1) rx_hits++;
-                    else assert(*value > 0);
+                    // else assert(*value > 0);
                     rx_total++;
                 }
                 // printf("[DEBUG] key %u HIT %d\n", *key, *hm_flag);
@@ -173,29 +180,30 @@ void* tx_loop(void* argp) {
     int retval;
 
     fd_set wr_set;
-    int ret, max_iter = 1000;
+    int ret;
     cache_keysize_t keys[2 * MAX_KEYS], key;
-    uint8_t bloom[MAX_KEYS];
 
-    memset(bloom, 0, MAX_KEYS * sizeof(uint8_t));
+    cache_object_t* items = NULL;
+
     memset(keys, 0, 2 * MAX_KEYS * sizeof(cache_keysize_t));
 
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
-        // key = rand() % MAX_KEYS;
-        key = MAX_KEYS + 1;
-        while(key >= MAX_KEYS) {
-            key = dist[rand() % num_keys];
-            if(UNIQUE_KEYS && bloom[key] == 1) key = MAX_KEYS + 1;
+        key = dist[i % num_keys];
+        cache_object_t* item;
+        HASH_FIND_INT(items, &key, item);
+        if(item == NULL) {
+            item = malloc(sizeof(cache_object_t));
+            item->key = key;
+            HASH_ADD_INT(items, key, item);
         }
         keys[i*2] = key;
-        bloom[key] = 1;
-        // printf("%d.\tKey = %u\n", i, key);
         msg[i].iov_base = &keys[i*2];
         msg[i].iov_len = 2 * sizeof(cache_keysize_t);
     }
 
-    printf("[INFO] %d unique keys generated.\n", compute_unique_keys(bloom));
+    unsigned int num_items = HASH_COUNT(items);
+    printf("[INFO] %u unique keys generated.\n", num_items);
 
     int key_current = 0;
 

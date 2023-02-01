@@ -20,6 +20,7 @@
 #define NUM_STAGES_IG   10
 #define NUM_STAGES      20
 #define MAX_DATA        65536
+// #define MAX_DATA        94208
 #define MAX_FIDX        256
 #define FID_RST         255
 #define DEFAULT_TI_US   1000000
@@ -379,14 +380,13 @@ static inline void add_instruction(activep4_def_t* program, pnemonic_opcode_t* i
 }
 
 static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
-    if(stageId > NUM_STAGES || stageId == 0) return NULL;
+    if(stageId > NUM_STAGES) return NULL;
     if(cache[stageId].proglen > 0) return &cache[stageId];
     int rts_inserted = 0, i = 0;
-    add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
     while(i < NUM_STAGES - 1) {
         if(i >= stageId) {
             add_instruction(&cache[stageId], instr_set, "MEM_READ"); i++;
-            add_instruction(&cache[stageId], instr_set, "DATA_1_LOAD_MBR"); i++;
+            add_instruction(&cache[stageId], instr_set, "MBR_STORE"); i++;
             break;
         } else if(rts_inserted == 0) {
             add_instruction(&cache[stageId], instr_set, "RTS"); i++;
@@ -407,11 +407,9 @@ static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pn
 }
 
 static inline activep4_def_t* construct_memset_program(int fid, int stageId, pnemonic_opcode_t* instr_set, activep4_def_t* cache) {
-    if(stageId > NUM_STAGES || stageId == 0 || stageId < 2) return NULL;
+    if(stageId > NUM_STAGES) return NULL;
     if(cache[stageId].proglen > 0) return &cache[stageId];
     int i = 0;
-    add_instruction(&cache[stageId], instr_set, "MAR_LOAD_DATA_0"); i++;
-    add_instruction(&cache[stageId], instr_set, "MBR_LOAD_DATA_1"); i++;
     while(i < NUM_STAGES - 1) {
         if(i == stageId) {
             add_instruction(&cache[stageId], instr_set, "MEM_WRITE"); i++;

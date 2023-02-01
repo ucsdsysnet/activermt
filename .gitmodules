@@ -28,3 +28,6 @@
 [submodule "ref/NetVRM"]
 	path = ref/NetVRM
 	url = git@github.com:netx-repo/NetVRM.git
+[submodule "ref/uthash"]
+	path = ref/uthash
+	url = git@github.com:troydhanson/uthash.git

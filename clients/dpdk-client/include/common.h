@@ -333,20 +333,20 @@ active_decap_filter(
 				case ACTIVE_STATE_SNAPSHOTTING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
 						activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
-						int mem_addr = ntohl(ap4data->data[0]);
-						int mem_data = ntohl(ap4data->data[1]);
-						int stage_id = ntohl(ap4data->data[2]);
+						int mem_addr = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MAR]);
+						int mem_data = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_RESULT]);
+						int stage_id = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR2]);
 						ctxt->allocation.sync_data[stage_id].data[mem_addr] = mem_data;
 						ctxt->allocation.sync_data[stage_id].valid[mem_addr] = 1;
 						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[SNAPACK] stage %d index %d flags %x\n", stage_id, mem_addr, flags);
 					}
 					break;
 				case ACTIVE_STATE_REMAPPING:
-					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS)) {
+					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
 						if(ap4data != NULL) {
-							int mem_addr = ntohl(ap4data->data[0]);
-							int mem_data = ntohl(ap4data->data[1]);
-							int stage_id = ntohl(ap4data->data[2]);
+							int mem_addr = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MAR]);
+							int mem_data = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR]);
+							int stage_id = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR2]);
 							ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;	
 						} else {
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[ERROR] unable to parse args!\n");

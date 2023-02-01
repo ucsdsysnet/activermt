@@ -152,7 +152,7 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = (complete) ? htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK) : htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_INITIATED);
+	ap4ih->flags = (complete) ? htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_ACK) : htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_REMAPPED | AP4FLAGMASK_FLAG_INITIATED | AP4FLAGMASK_FLAG_PRELOAD);
 	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
@@ -162,8 +162,8 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 		program = (activep4_def_t*)rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
 		construct_nop_program(program, ctxt->instr_set, 0);
 	} else {
-		ap4data->data[0] = htonl((uint32_t)mem_addr);
-		ap4data->data[2] = htonl((uint32_t)stage_id);
+		ap4data->data[ACTIVE_DEFAULT_ARG_MAR] = htonl((uint32_t)mem_addr);
+		ap4data->data[ACTIVE_DEFAULT_ARG_MBR2] = htonl((uint32_t)stage_id);
 		program = construct_memsync_program(ctxt->fid, stage_id, ctxt->instr_set, memsync_cache);
 	}
 	if(program == NULL) {
@@ -247,14 +247,14 @@ static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id,
 	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
 	ap4ih->SIG = htonl(ACTIVEP4SIG);
-	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED);
+	ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_INITIATED | AP4FLAGMASK_FLAG_PRELOAD);
 	ap4ih->fid = htons(ctxt->fid);
 	ap4ih->seq = 0;
 	activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
 	for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
-	ap4data->data[0] = htonl((uint32_t)mem_addr);
-	ap4data->data[1] = htonl(data);
-	ap4data->data[2] = htonl((uint32_t)stage_id);
+	ap4data->data[ACTIVE_DEFAULT_ARG_MAR] = htonl((uint32_t)mem_addr);
+	ap4data->data[ACTIVE_DEFAULT_ARG_MBR] = htonl(data);
+	ap4data->data[ACTIVE_DEFAULT_ARG_MBR2] = htonl((uint32_t)stage_id);
 	activep4_def_t* program = construct_memset_program(ctxt->fid, stage_id, ctxt->instr_set, memset_cache);
 	if(program == NULL) {
 		rte_exit(EXIT_FAILURE, "Could not construct memset program!\n");

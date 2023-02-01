@@ -30,21 +30,29 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
-#include "active_hh.h"
+// #include "active_hh.h"
+
+#include "../../ref/uthash/include/uthash.h"
+
+#define CLIENT_MONITORING
 
 #define MAX_SAMPLES_CACHE	100000
-#define MAX_KEY				65535
 #define STATS_ITVL_MS_CACHE	1
 #define HH_COMPUTE_ITVL_SEC	1
-#define PAYLOAD_MINLENGTH	8
+#define PAYLOAD_MINLENGTH	16
+#define MAX_CACHE_SIZE		100000
 
 void switch_context_cache(activep4_context_t*);
 void switch_context_hh(activep4_context_t*);
 
-// typedef struct {
-// 	uint32_t	key;
-// 	uint32_t	freq;
-// } cache_item_freq_t;
+typedef struct {
+	uint32_t		vaddr;
+	uint64_t		key;
+	uint32_t		value;
+	uint32_t		freq;
+	uint32_t		collisions;
+	UT_hash_handle	hh;
+} cache_item_t;
 
 typedef struct {
 	uint64_t			ts;
@@ -55,7 +63,6 @@ typedef struct {
 typedef struct {
 	uint64_t			ts_ref;
 	uint64_t			last_ts;
-	// uint64_t			last_computed_freq;
 	cache_stats_t		rx_stats[MAX_SAMPLES_CACHE];
 	uint32_t			num_samples;
 	int					stage_id_key_0;
@@ -63,8 +70,13 @@ typedef struct {
 	int					stage_id_value;
 	uint32_t			memory_start;
 	int					memory_size;
-	// cache_item_freq_t	frequency[MAX_KEY];
+	cache_item_t*		requested_items;
+	uint8_t				timer_reset_trigger;
 } cache_context_t;
+
+int compare_elements_cache(const void * a, const void * b) {
+	return ( ((cache_item_t*)b)->freq - ((cache_item_t*)a)->freq );
+}
 
 void shutdown_cache(int id, void* context) {
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
@@ -95,10 +107,10 @@ void payload_parser_cache(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
 
 	// uint32_t* key = (uint32_t*)payload;
 
-	uint32_t* key_0 = (uint32_t*)payload;
-	uint32_t* key_1 = (uint32_t*)(payload + sizeof(uint32_t));
-
 	uint64_t* key = (uint64_t*)payload;
+
+	uint32_t key_0 = *key >> 32;;
+	uint32_t key_1 = *key & 0xFFFFFFFF;
 	
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 
@@ -110,8 +122,20 @@ void payload_parser_cache(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
 	uint32_t paddr = cache_ctxt->memory_start + vaddr % cache_ctxt->memory_size;
 	
 	ap4data->data[ACTIVE_DEFAULT_ARG_MAR] = htonl(paddr);
-	ap4data->data[ACTIVE_DEFAULT_ARG_MBR] = htonl(*key_0);
-	ap4data->data[ACTIVE_DEFAULT_ARG_MBR2] = htonl(*key_1);
+	ap4data->data[ACTIVE_DEFAULT_ARG_MBR] = htonl(key_0);
+	ap4data->data[ACTIVE_DEFAULT_ARG_MBR2] = htonl(key_1);
+
+	#ifdef CLIENT_MONITORING
+	cache_item_t* item;
+	HASH_FIND_INT(cache_ctxt->requested_items, key, item);
+	if(item == NULL) {
+		item = (cache_item_t*)rte_zmalloc(NULL, sizeof(cache_item_t), 0);
+		item->key = *key;
+		HASH_ADD_INT(cache_ctxt->requested_items, key, item);
+	}
+	item->vaddr = vaddr;
+	item->freq++;
+	#endif
 }
 
 void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_data_t* ap4args, void* context, void* pkt) {
@@ -159,33 +183,77 @@ int memory_reset_cache(memory_t* mem, void* context) {
 
 	cache_context_t* cache_ctxt = (cache_context_t*)context;
 
-	for(int i = 0, k = 0; i < NUM_STAGES && k < 3; i++) {
-		if(!mem->valid_stages[i]) continue;
-		if(k == 0) cache_ctxt->stage_id_key_0 = i;
-		else if(k == 1) cache_ctxt->stage_id_key_1 = i;
-		else if(k == 2) cache_ctxt->stage_id_value = i;
-		k++;
-	}
+	if(cache_ctxt->timer_reset_trigger == 1) {
 
-	uint32_t mem_start = mem->sync_data[cache_ctxt->stage_id_key_0].mem_start;
-	if(mem->sync_data[cache_ctxt->stage_id_key_1].mem_start > mem_start) mem_start = mem->sync_data[cache_ctxt->stage_id_key_1].mem_start;
-	if(mem->sync_data[cache_ctxt->stage_id_value].mem_start > mem_start) mem_start = mem->sync_data[cache_ctxt->stage_id_value].mem_start;
+		cache_ctxt->timer_reset_trigger = 0;
 
-	uint32_t mem_end = mem->sync_data[cache_ctxt->stage_id_key_0].mem_end;
-	if(mem_end < mem->sync_data[cache_ctxt->stage_id_key_1].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_key_1].mem_end;
-	if(mem_end < mem->sync_data[cache_ctxt->stage_id_value].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_value].mem_end;
+		return 1;
+	} else {
 
-	int memory_size = mem_end - mem_start + 1;
+		for(int i = 0, k = 0; i < NUM_STAGES && k < 3; i++) {
+			if(!mem->valid_stages[i]) continue;
+			if(k == 0) cache_ctxt->stage_id_key_0 = i;
+			else if(k == 1) cache_ctxt->stage_id_key_1 = i;
+			else if(k == 2) cache_ctxt->stage_id_value = i;
+			k++;
+		}
 
-	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] effective memory size: %d\n", memory_size);
+		uint32_t mem_start = mem->sync_data[cache_ctxt->stage_id_key_0].mem_start;
+		if(mem->sync_data[cache_ctxt->stage_id_key_1].mem_start > mem_start) mem_start = mem->sync_data[cache_ctxt->stage_id_key_1].mem_start;
+		if(mem->sync_data[cache_ctxt->stage_id_value].mem_start > mem_start) mem_start = mem->sync_data[cache_ctxt->stage_id_value].mem_start;
 
-	cache_ctxt->memory_start = mem_start;
-	cache_ctxt->memory_size = memory_size;
+		uint32_t mem_end = mem->sync_data[cache_ctxt->stage_id_key_0].mem_end;
+		if(mem_end < mem->sync_data[cache_ctxt->stage_id_key_1].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_key_1].mem_end;
+		if(mem_end < mem->sync_data[cache_ctxt->stage_id_value].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_value].mem_end;
 
-	return 0; 
+		int memory_size = mem_end - mem_start + 1;
+
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] effective memory size: %d\n", memory_size);
+
+		cache_ctxt->memory_start = mem_start;
+		cache_ctxt->memory_size = memory_size;
+
+		return 0;
+	} 
 }
 
-void timer_cache(void* arg) {}
+void timer_cache(void* arg) {
+	
+	activep4_context_t* ctxt = (activep4_context_t*)arg;
+	cache_context_t* cache_ctxt = (cache_context_t*)ctxt->app_context;
+
+	HASH_SORT(cache_ctxt->requested_items, compare_elements_cache);
+
+	memset(&ctxt->membuf, 0, sizeof(ctxt->membuf));
+
+	int num_stored = 0, max_freq = 0;
+
+	cache_item_t* item;
+
+	for(item = cache_ctxt->requested_items; item != NULL; item = item->hh.next) {
+		max_freq = (item->freq > max_freq) ? item->freq : max_freq;
+		uint32_t paddr = cache_ctxt->memory_start + item->vaddr % cache_ctxt->memory_size;
+		uint64_t key = item->key;
+		uint32_t key_0 = key >> 32;
+		uint32_t key_1 = key & 0xFFFFFFFF;
+		assert(key_0 > 0 || key_1 > 0);
+		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_0].data[paddr] = key_0;
+		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_1].data[paddr] = key_1;
+		ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = key_1;
+		num_stored++;
+	}
+
+	rte_memcpy(ctxt->allocation.syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
+
+	HASH_CLEAR(hh, cache_ctxt->requested_items);
+
+	if(num_stored > 0) {
+		cache_ctxt->timer_reset_trigger = 1;
+		ctxt->status = ACTIVE_STATE_REMAPPING;
+	}
+
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, max frequency = %d\n", num_stored, max_freq);	
+}
 
 // void switch_context_cache(activep4_context_t* ctxt) {
 // 	ctxt->is_active = 0;
