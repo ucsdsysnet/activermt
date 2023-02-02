@@ -39,6 +39,12 @@ typedef struct {
 } cache_object_t;
 
 typedef struct {
+    cache_keysize_t     key;
+    cache_valuesize_t   value;
+    uint32_t            hm_flag;
+} __attribute__((packed)) cache_response_t;
+
+typedef struct {
     uint32_t    rx_hits[NUM_SAMPLES_HM];
     uint32_t    rx_total[NUM_SAMPLES_HM];
     uint64_t    ts[NUM_SAMPLES_HM];
@@ -114,7 +120,7 @@ void* rx_loop(void* argp) {
         msgs[i].msg_hdr.msg_iovlen = 1;
     }
 
-    int num_msgs = 0, KVRESP_LEN = 2 * sizeof(uint32_t);
+    int num_msgs = 0, KVRESP_LEN = 2 * sizeof(cache_keysize_t);
 
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
@@ -134,14 +140,19 @@ void* rx_loop(void* argp) {
         for (int i = 0; i < num_msgs; i++) {
             bufs[i][msgs[i].msg_len] = 0;
             if(msgs[i].msg_len >= KVRESP_LEN) {
-                cache_keysize_t* key = (cache_keysize_t*)bufs[i];
-                cache_valuesize_t* value = (cache_valuesize_t*)(bufs[i] + sizeof(cache_keysize_t));
-                uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(cache_keysize_t) + sizeof(cache_valuesize_t));
-                if(*key > 0) {
-                    if(*hm_flag == 1) rx_hits++;
-                    // else assert(*value > 0);
+                cache_response_t* resp = (cache_response_t*)bufs[i];
+                if(resp->key > 0) {
                     rx_total++;
+                    if(resp->hm_flag > 0) rx_hits++;
                 }
+                // cache_keysize_t* key = (cache_keysize_t*)bufs[i];
+                // cache_valuesize_t* value = (cache_valuesize_t*)(bufs[i] + sizeof(cache_keysize_t));
+                // uint32_t* hm_flag = (uint32_t*)(bufs[i] + sizeof(cache_keysize_t) + sizeof(cache_valuesize_t));
+                // if(*key > 0) {
+                //     if(*hm_flag > 0) rx_hits++;
+                //     // else assert(*value > 0);
+                //     rx_total++;
+                // }
                 // printf("[DEBUG] key %u HIT %d\n", *key, *hm_flag);
             }
         }
@@ -190,6 +201,7 @@ void* tx_loop(void* argp) {
     memset(&msg, 0, sizeof(msg));
     for(int i = 0; i < MAX_KEYS; i++) {
         key = dist[i % num_keys];
+        if(key == 0) continue;
         cache_object_t* item;
         HASH_FIND_INT(items, &key, item);
         if(item == NULL) {

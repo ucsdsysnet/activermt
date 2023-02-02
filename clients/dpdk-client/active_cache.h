@@ -47,6 +47,7 @@ void switch_context_hh(activep4_context_t*);
 
 typedef struct {
 	uint32_t		vaddr;
+	uint32_t		paddr;
 	uint64_t		key;
 	uint32_t		value;
 	uint32_t		freq;
@@ -119,6 +120,7 @@ void payload_parser_cache(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
 	if(cache_ctxt->memory_size < 2) return;
 
 	uint32_t vaddr = rte_hash_crc_8byte(*key, 0);
+	// uint32_t vaddr = *key;
 	uint32_t paddr = cache_ctxt->memory_start + vaddr % cache_ctxt->memory_size;
 	
 	ap4data->data[ACTIVE_DEFAULT_ARG_MAR] = htonl(paddr);
@@ -134,6 +136,7 @@ void payload_parser_cache(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
 		HASH_ADD_INT(cache_ctxt->requested_items, key, item);
 	}
 	item->vaddr = vaddr;
+	item->paddr = paddr;
 	item->freq++;
 	#endif
 }
@@ -208,7 +211,7 @@ int memory_reset_cache(memory_t* mem, void* context) {
 
 		int memory_size = mem_end - mem_start + 1;
 
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] effective memory size: %d\n", memory_size);
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] memory idx (%d,%d,%d) effective memory size: %d\n", cache_ctxt->stage_id_key_0, cache_ctxt->stage_id_key_1, cache_ctxt->stage_id_value, memory_size);
 
 		cache_ctxt->memory_start = mem_start;
 		cache_ctxt->memory_size = memory_size;
@@ -226,33 +229,50 @@ void timer_cache(void* arg) {
 
 	memset(&ctxt->membuf, 0, sizeof(ctxt->membuf));
 
-	int num_stored = 0, max_freq = 0;
+	int num_stored = 0, num_total = 0, max_freq = 0, estimated_hitrate = 0, sum_freq = 0;
+
+	uint8_t bloom[MAX_CACHE_SIZE];
+	memset(bloom, 0, MAX_CACHE_SIZE);
 
 	cache_item_t* item;
 
-	for(item = cache_ctxt->requested_items; item != NULL; item = item->hh.next) {
+	for(item = cache_ctxt->requested_items; item != NULL && num_stored < cache_ctxt->memory_size; item = item->hh.next) {
+		// estimated_hitrate += item->freq;
 		max_freq = (item->freq > max_freq) ? item->freq : max_freq;
-		uint32_t paddr = cache_ctxt->memory_start + item->vaddr % cache_ctxt->memory_size;
+		// uint32_t paddr = cache_ctxt->memory_start + item->vaddr % cache_ctxt->memory_size;
+		uint32_t paddr = item->paddr;
+		if(bloom[paddr]) continue;
 		uint64_t key = item->key;
 		uint32_t key_0 = key >> 32;
 		uint32_t key_1 = key & 0xFFFFFFFF;
 		assert(key_0 > 0 || key_1 > 0);
 		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_0].data[paddr] = key_0;
 		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_1].data[paddr] = key_1;
-		ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = key_1;
+		ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = 1;
 		num_stored++;
+		bloom[paddr] = 1;
+		estimated_hitrate += item->freq;
+		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "storing item %lu freq %d\n", key, item->freq);
+	}
+
+	if(num_stored > 0) {
+		for(item = cache_ctxt->requested_items; item != NULL; item = item->hh.next) {
+			sum_freq += item->freq;
+			num_total++;
+		}
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "estimated hit rate: %f\n", estimated_hitrate * 1.0f / sum_freq);
 	}
 
 	rte_memcpy(ctxt->allocation.syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
 
-	HASH_CLEAR(hh, cache_ctxt->requested_items);
+	// HASH_CLEAR(hh, cache_ctxt->requested_items);
 
 	if(num_stored > 0) {
 		cache_ctxt->timer_reset_trigger = 1;
 		ctxt->status = ACTIVE_STATE_REMAPPING;
 	}
 
-	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, max frequency = %d\n", num_stored, max_freq);	
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, total items = %d, max frequency = %d\n", num_stored, num_total, max_freq);	
 }
 
 // void switch_context_cache(activep4_context_t* ctxt) {
