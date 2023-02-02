@@ -59,7 +59,8 @@ class ActiveP4Controller:
     MAR_MAX = 0xFFFFF
     REG_MAX = 0xFFFFF
     DEBUG = True
-    MEMSIZE = 65536
+    # MEMSIZE = 65536
+    MEMSIZE = 94208
     REALLOCATION_TIMEOUT_SEC = 5
 
     def __init__(self, allocator=None, custom=None, basePath=""):
@@ -540,6 +541,7 @@ class ActiveP4Controller:
         blockEnd = allocationBlocks[-1]
         memStart = self.block_size * blockStart
         memEnd = self.block_size * (blockEnd + 1) - 1
+        # print("Memory range for blocks %d - %d = %d - %d" % (blockStart, blockEnd, memStart, memEnd))
         return (memStart, memEnd)
 
     def installMemoryAccessEntries(self, gress, stageIdGress, fid, allocationBlocks):
@@ -792,6 +794,7 @@ class ActiveP4Controller:
                 egOffset = allocationTableGroups[2, i]
                 egSize = allocationTableGroups[3, i]
                 allocTableActionSpec(fid=fid, flag_allocated=1, offset_ig=igOffset, size_ig=igSize, offset_eg=egOffset, size_eg=egSize)
+                # print("allocation table %d,%d %d,%d" % (igOffset, igSize, egOffset, egSize))
             else:
                 allocTableActionSpecDefault(fid=fid, flag_allocated=1)
         elapsed_ms_t8 = (time.time() - ts_then) * 1E3

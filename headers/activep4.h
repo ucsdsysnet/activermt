@@ -19,8 +19,8 @@
 #define MAX_MEMACCESS   8
 #define NUM_STAGES_IG   10
 #define NUM_STAGES      20
-#define MAX_DATA        65536
-// #define MAX_DATA        94208
+// #define MAX_DATA        65536
+#define MAX_DATA        94208
 #define MAX_FIDX        256
 #define FID_RST         255
 #define DEFAULT_TI_US   1000000
@@ -85,8 +85,8 @@ typedef struct {
 } __attribute__((packed)) activep4_malloc_req_t;
 
 typedef struct {
-    uint16_t    start;
-    uint16_t    end;
+    uint32_t    start;
+    uint32_t    end;
 } __attribute__((packed)) activep4_malloc_block_t;
 
 typedef struct {
@@ -108,8 +108,8 @@ typedef struct {
 typedef struct {
     int         stageIdx[NUM_STAGES];
     int         numStages;
-    uint16_t    memStart[NUM_STAGES];
-    uint16_t    memEnd[NUM_STAGES];
+    uint32_t    memStart[NUM_STAGES];
+    uint32_t    memEnd[NUM_STAGES];
     int         memSize[NUM_STAGES];
 } activep4_malloc_t;
 

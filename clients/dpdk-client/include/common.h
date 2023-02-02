@@ -304,8 +304,8 @@ active_decap_filter(
 							ctxt->allocation.hash_function = NULL;
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] ALLOCATION (ver %d) ", fid, ctxt->allocation.version);
 							for(int i = 0; i < NUM_STAGES; i++) {
-								ctxt->allocation.sync_data[i].mem_start = ntohs(ap4malloc->mem_range[i].start);
-								ctxt->allocation.sync_data[i].mem_end = ntohs(ap4malloc->mem_range[i].end);
+								ctxt->allocation.sync_data[i].mem_start = ntohl(ap4malloc->mem_range[i].start);
+								ctxt->allocation.sync_data[i].mem_end = ntohl(ap4malloc->mem_range[i].end);
 								if((ctxt->allocation.sync_data[i].mem_end - ctxt->allocation.sync_data[i].mem_start) > 0) {
 									ctxt->allocation.valid_stages[i] = 1;
 									rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "{S%d: %d - %d} ", i, ctxt->allocation.sync_data[i].mem_start, ctxt->allocation.sync_data[i].mem_end);
