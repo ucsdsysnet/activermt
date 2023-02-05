@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -315,10 +316,14 @@ int main(int argc, char** argv) {
 
     pthread_t timer_thread, rx_thread[MAX_APPS], tx_thread[MAX_APPS];
 
+    #ifdef STATS
     if( pthread_create(&timer_thread, NULL, monitor_stats, (void*)&stats) < 0 ) {
         perror("pthread_create(timer_thread)");
         exit(1);
     }
+    #endif
+
+    int cpu_min = 10;
 
     for(int i = 0; i < num_instances; i++) {
 
@@ -332,6 +337,7 @@ int main(int argc, char** argv) {
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = inet_addr(ipv4_dstaddr);
         addr.sin_port = htons(DPORT + i);
+        // addr.sin_port = htons(DPORT);
         if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
             perror("connect()");
             exit(EXIT_FAILURE);
@@ -343,15 +349,25 @@ int main(int argc, char** argv) {
         ctxts[i].sockfd = sockfd;
         ctxts[i].fid = i + 1;
 
+        cpu_set_t mask;
+
         if( pthread_create(&rx_thread[i], NULL, rx_loop, (void*)&ctxts[i]) < 0 ) {
             perror("pthread_create(rx_thread)");
             exit(1);
         }
 
+        CPU_ZERO(&mask);
+        CPU_SET(i + cpu_min + 1, &mask);
+        pthread_setaffinity_np(rx_thread[i], sizeof(cpu_set_t), &mask);
+
         if( pthread_create(&tx_thread[i], NULL, tx_loop, (void*)&ctxts[i]) < 0 ) {
             perror("pthread_create(tx_thread)");
             exit(1);
         }
+
+        CPU_ZERO(&mask);
+        CPU_SET(i + cpu_min, &mask);
+        pthread_setaffinity_np(tx_thread[i], sizeof(cpu_set_t), &mask);
 
         if(stagger_interval_sec > 0) {
             printf("[INFO] staggering for %d seconds ... \n", stagger_interval_sec);

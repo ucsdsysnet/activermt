@@ -107,17 +107,17 @@ uint32_t get_iface_ipv4_addr(char* dev) {
 	return ipv4_ifaceaddr;
 }
 
-static inline void print_hwaddr(unsigned char* hwaddr) {
+static __rte_always_inline void print_hwaddr(unsigned char* hwaddr) {
     printf("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
 
-static inline void print_ipv4_addr(uint32_t ipv4addr) {
+static __rte_always_inline void print_ipv4_addr(uint32_t ipv4addr) {
     char buf[100];
     inet_ntop(AF_INET, &ipv4addr, buf, 16);
     printf("%s", buf);
 }
 
-static inline void print_pktinfo(char* buf, int pktlen) {
+static __rte_always_inline void print_pktinfo(char* buf, int pktlen) {
     struct ethhdr* eth = (struct ethhdr*) buf;
     int offset = 0;
     if(ntohs(eth->h_proto) == AP4_ETHER_TYPE_AP4) {
@@ -138,13 +138,48 @@ static inline void print_pktinfo(char* buf, int pktlen) {
     printf("\n");
 }
 
-static inline void get_rw_stages_str(activep4_context_t* ctxt, char* stages_str) {
+static __rte_always_inline void get_rw_stages_str(activep4_context_t* ctxt, char* stages_str) {
 	int offset = 0;
 	for(int i = 0; i < NUM_STAGES; i++) {
 		if(!ctxt->allocation.valid_stages[i] || !ctxt->allocation.syncmap[i]) continue;
 		if((offset = sprintf(stages_str, "%d ", i)) >= 0) {
 			stages_str += offset;
 		}
+	}
+}
+
+static __rte_always_inline void telemetry_allocation_start(activep4_context_t* ctxt) {
+	if(ctxt->telemetry.allocation_is_active == 0) {
+		ctxt->telemetry.allocation_request_start_ts = rte_rdtsc_precise();
+		ctxt->telemetry.allocation_is_active = 1;
+	}
+}
+
+static  __rte_always_inline void update_active_tx_stats(int status, active_app_stats_t* stats) {
+	stats->tx_total[stats->num_samples]++;
+	if(status == ACTIVE_STATE_TRANSMITTING) {
+		stats->tx_active[stats->num_samples]++;
+	}
+	uint64_t now = rte_rdtsc_precise();
+	uint64_t elapsed_ms = (double)(now - stats->ts_last) * 1E3 / rte_get_tsc_hz();
+	if(elapsed_ms >= STATS_ITVL_MS && stats->num_samples < MAX_TXSTAT_SAMPLES) {
+		stats->ts_last = now;
+		stats->ts[stats->num_samples] = (double)(now - stats->ts_ref) * 1E3 / rte_get_tsc_hz();
+		stats->num_samples++;
+	}
+}
+
+static  __rte_always_inline void write_active_tx_stats(active_apps_t* apps) {
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] writing active TX stats ... \n");
+	for(int i = 0; i < apps->num_apps; i++) {
+		if(apps->stats[i].num_samples == 0) continue;
+		char filename[50];
+		sprintf(filename, "active_tx_stats_%d.csv", apps->ctxt[i].fid);
+		FILE* fp = fopen(filename, "w");
+		for(int j = 0; j < apps->stats[i].num_samples; j++) {
+			fprintf(fp, "%lu,%u,%u\n", apps->stats[i].ts[j], apps->stats[i].tx_active[j], apps->stats[i].tx_total[j]);
+		}
+		fclose(fp);
 	}
 }
 

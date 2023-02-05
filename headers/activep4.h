@@ -61,6 +61,8 @@
 #include <assert.h>
 #include <arpa/inet.h>
 
+/* Active packet headers. */
+
 typedef struct {
     uint32_t    SIG;
     uint16_t    flags;
@@ -94,18 +96,6 @@ typedef struct {
 } __attribute__((packed)) activep4_malloc_res_t;
 
 typedef struct {
-    char        argname[20];
-    int         idx;
-    int         didx;
-    int         value_idx;
-} activep4_arg;
-
-typedef struct {
-    char        argname[20];
-    uint32_t    argval;
-} activep4_argval;
-
-typedef struct {
     int         stageIdx[NUM_STAGES];
     int         numStages;
     uint32_t    memStart[NUM_STAGES];
@@ -116,8 +106,8 @@ typedef struct {
 typedef struct {
     uint32_t    data[MAX_DATA];
     uint8_t     valid[MAX_DATA];
-    int         mem_start;
-    int         mem_end;
+    uint32_t    mem_start;
+    uint32_t    mem_end;
 } memory_stage_t;
 
 typedef struct {
@@ -142,9 +132,6 @@ typedef struct {
     uint16_t        pid;
     char            name[100];
     activep4_instr  code[MAXPROGLEN];
-    activep4_arg    args[MAXARGS];
-    int             num_args;
-    uint8_t         args_mapped;
     int             num_accesses;
     int             access_idx[NUM_STAGES];
     int             demand[NUM_STAGES];
@@ -152,6 +139,8 @@ typedef struct {
     int             iglim;
     active_mutant_t mutant;
 } activep4_def_t;
+
+/* Instruction set. */
 
 typedef struct {
     char        mnemonic[MNEMONIC_MAXLEN];
@@ -314,43 +303,11 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     #endif
 }
 
-static inline int read_active_args(activep4_def_t* ap4, char* arg_file) {
-    FILE* fp = fopen(arg_file, "r");
-    assert(fp != NULL);
-    char buf[50];
-    const char* tok;
-    char argname[50];
-    int i, argidx, dataidx, j, num_args = 0;
-    while( fgets(buf, 50, fp) > 0 ) {
-        for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
-            if(i == 0) strcpy(argname, tok);
-            else if(i == 1) argidx = atoi(tok);
-            else dataidx = atoi(tok);
-        }
-        ap4->args[num_args].idx = argidx;
-        ap4->args[num_args].didx = dataidx;
-        strcpy(ap4->args[num_args].argname, argname);
-        #ifdef DEBUG
-        printf("[ARG] %s %d %d\n", ap4->args[num_args].argname, ap4->args[num_args].idx,  ap4->args[num_args].didx);
-        #endif
-        num_args++;
-    }
-    ap4->num_args = num_args;
-    ap4->args_mapped = 0;
-    fclose(fp);
-    #ifdef DEBUG
-    printf("%d active program arguments read.\n", ap4->num_args);
-    #endif
-    return ap4->num_args;
-}
-
 static inline void read_active_function(activep4_def_t* ap4, char* active_program_dir, char* active_program_name) {
     char program_path[100], args_path[100], memidx_path[100];
     sprintf(program_path, "%s/%s.apo", active_program_dir, active_program_name);
-    sprintf(args_path, "%s/%s.args.csv", active_program_dir, active_program_name);
     sprintf(memidx_path, "%s/%s.memidx.csv", active_program_dir, active_program_name);
     read_active_program(ap4, program_path);
-    read_active_args(ap4, args_path);
     read_active_memaccess(ap4, memidx_path);
 }
 

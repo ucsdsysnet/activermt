@@ -30,6 +30,8 @@
 #include "./include/active.h"
 #include "./include/common.h"
 
+// #define DEBUG_HH
+
 #define CMS_HH_SIZE         2
 #define CMS_FILTER_SIZE     2
 #define KEYSPACE		    65536
@@ -115,7 +117,9 @@ int memory_consume_hh(memory_t* mem, void* context) {
         hh_ctxt->num_counts = num_counts;
         hh_ctxt->threshold_determined = 1;
         hh_ctxt->last_computed_threshold = rte_rdtsc_precise();
+        #ifdef DEBUG_HH
         printf("Threshold determined for top %d items (from %d counter values) = %d (max count %d)\n", hh_ctxt->top_k, num_counts, hh_ctxt->hh_threshold, hh_ctxt->filter_counts[0]);
+        #endif
     } else {
         int num_keys = 0;
         for(int i = 0; i < CMS_HH_SIZE; i++) {
@@ -131,7 +135,9 @@ int memory_consume_hh(memory_t* mem, void* context) {
         }
         hh_ctxt->num_hh = num_keys;
         hh_ctxt->last_computed_freq = rte_rdtsc_precise();
+        #ifdef DEBUG_HH
         printf("Number of HH items: %d\n", num_keys);
+        #endif
     }
     return 0; 
 }

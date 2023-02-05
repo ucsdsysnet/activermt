@@ -13,9 +13,11 @@ appnames = {
 }
 
 known_paths = {
-    'cacheread'     : '../../apps/cache/active',
-    'freqitem'      : '../../apps/scenario_distcache/active',
-    'cheetahlb-syn' : '../../apps/cheetahlb/active'
+    'cacheread'         : '../../apps/cache/active',
+    'freqitem'          : '../../apps/scenario_distcache/active',
+    'cheetahlb-syn'     : '../../apps/cheetahlb/active',
+    'cheetahlb-default' : '../../apps/cheetahlb/active',
+    'cheetahlb-nop'     : '../../apps/cheetahlb/active'
 }
 
 known_apps = list(known_paths.keys())

@@ -1,7 +1,7 @@
 #ifndef ACTIVE_H
 #define ACTIVE_H
 
-// #define DEBUG
+// #define DEBUG_ACTIVEPKT
 
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
@@ -10,8 +10,9 @@
 #include "types.h"
 #include "../../../headers/activep4.h"
 
-static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+static  __rte_always_inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	activep4_def_t* program = ctxt->programs[ctxt->current_pid];
+	assert(program != NULL);
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -31,14 +32,14 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	memset(mreq, 0, sizeof(activep4_malloc_req_t));
 	mreq->proglen = htons((uint16_t)program->proglen);
 	mreq->iglim = (uint8_t)program->iglim;
-	#ifdef DEBUG
-	printf("[DEBUG] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->programs[ctxt->current_pid]->num_accesses);
+	#ifdef DEBUG_ACTIVEPKT
+	printf("[DEBUG_ACTIVEPKT] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->programs[ctxt->current_pid]->num_accesses);
 	#endif
 	for(int i = 0; i < program->num_accesses; i++) {
 		mreq->mem[i] = program->access_idx[i];
 		mreq->dem[i] = program->demand[i];
 	}
-	#ifdef DEBUG
+	#ifdef DEBUG_ACTIVEPKT
 	for(int i = 0; i < 8; i++) printf("%d ", mreq->dem[i]);
 	printf("\n");
 	#endif
@@ -59,7 +60,7 @@ static inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+static  __rte_always_inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -92,7 +93,7 @@ static inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+static  __rte_always_inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -139,7 +140,7 @@ static inline void construct_reallocate_packet(struct rte_mbuf* mbuf, int port_i
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache, bool complete) {
+static  __rte_always_inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, activep4_def_t* memsync_cache, bool complete) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -192,7 +193,7 @@ static inline void construct_snapshot_packet(struct rte_mbuf* mbuf, int port_id,
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+static  __rte_always_inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
@@ -234,7 +235,7 @@ static inline void construct_heartbeat_packet(struct rte_mbuf* mbuf, int port_id
 	mbuf->data_len = mbuf->pkt_len;
 }
 
-static inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, uint32_t data, activep4_def_t* memset_cache) {
+static  __rte_always_inline void construct_memremap_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt, int stage_id, int mem_addr, uint32_t data, activep4_def_t* memset_cache) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
 	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);

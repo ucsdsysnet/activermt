@@ -929,7 +929,7 @@ class ActiveP4Controller:
             print(accessIdx)
             print(minDemand)
 
-        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
+        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=False)
 
         if fid != self.augment_fid:
             self.programDefs[fid] = activeFunc

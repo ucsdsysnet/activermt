@@ -36,3 +36,5 @@ apps/cache/clients/udpc/kvapp*.csv
 malloc/*.csv
 malloc/*.png
 clients/dpdk-client/*.csv
+
+apps/cache/clients/udpc/kvapp

@@ -6,8 +6,14 @@
 
 #include "../../../headers/activep4.h"
 
+// #define CTRL_MULTICORE
+// #define CTRL_PARALLEL
+#define STATS
+
 #define TEST_FLAG(x, y)		((x & y) > 0)
 
+#define NUM_RX_QUEUES		1
+#define NUM_TX_QUEUES		2
 #define RX_RING_SIZE 		1024
 #define TX_RING_SIZE 		1024
 #define PORT_PETH			0
@@ -102,5 +108,13 @@ typedef struct {
 	char*					payload;
 	int						payload_length;
 } inet_pkt_t;
+
+static int is_running;
+
+#ifdef CTRL_MULTICORE
+static struct rte_eth_dev_tx_buffer* tx_buffers[MAX_TX_BUFS];
+#else
+static struct rte_eth_dev_tx_buffer* buffer;
+#endif
 
 #endif

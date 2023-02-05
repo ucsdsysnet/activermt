@@ -209,7 +209,7 @@ int memory_reset_cache(memory_t* mem, void* context) {
 		if(mem_end < mem->sync_data[cache_ctxt->stage_id_key_1].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_key_1].mem_end;
 		if(mem_end < mem->sync_data[cache_ctxt->stage_id_value].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_value].mem_end;
 
-		int memory_size = mem_end - mem_start + 1;
+		uint32_t memory_size = mem_end - mem_start + 1;
 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] memory idx (%d,%d,%d) effective memory size: %d\n", cache_ctxt->stage_id_key_0, cache_ctxt->stage_id_key_1, cache_ctxt->stage_id_value, memory_size);
 
@@ -217,7 +217,7 @@ int memory_reset_cache(memory_t* mem, void* context) {
 		cache_ctxt->memory_size = memory_size;
 
 		return 0;
-	} 
+	}
 }
 
 void timer_cache(void* arg) {
