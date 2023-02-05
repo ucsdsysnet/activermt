@@ -18,8 +18,6 @@ lcore_control(void* arg) {
 
 	unsigned lcore_id = rte_lcore_id();
 
-	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Control thread running on socket %d\n", rte_socket_id());
-
 	#ifdef CTRL_MULTICORE
 	active_control_app_t* ctrlapp = (active_control_app_t*)arg;
 	active_control_t* ctrl = (active_control_t*)ctrlapp->ctrl;
@@ -38,7 +36,7 @@ lcore_control(void* arg) {
 	#ifdef CTRL_MULTICORE
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting controller for port %d on lcore %u app %d ... \n", PORT_PETH, lcore_id, ctrlapp->app_id);
 	#else
-	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting controller for port %d on lcore %u ... \n", ctrl->port_id, lcore_id);
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting controller for port %d on lcore %u (socket %d) ... \n", ctrl->port_id, lcore_id, rte_socket_id());
 	#endif
 
 	activep4_def_t memsync_cache[NUM_STAGES], memset_cache[NUM_STAGES];
@@ -50,14 +48,28 @@ lcore_control(void* arg) {
 
 	char tmpbuf[100];
 
-	struct rte_mempool* mempool = ctrl->mempool;
+	struct rte_mempool* mempool = NULL;
+
+	mempool = rte_pktmbuf_pool_create(
+		"MBUF_POOL_CONTROL",
+		NUM_MBUFS, 
+		MBUF_CACHE_SIZE, 
+		0,
+		RTE_MBUF_DEFAULT_BUF_SIZE, 
+		rte_socket_id()
+	);
+	if(mempool == NULL) {
+		is_running = 0;
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+	}
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Memory pool created for socket %d (control)\n", rte_socket_id());
 
 	while(is_running) {
 		now = rte_rdtsc_precise();
 		#ifndef CTRL_MULTICORE
 		for(int i = 0; i < ctrl->apps_ctxt->num_apps; i++) {
 			activep4_context_t* ctxt = &ctrl->apps_ctxt->ctxt[i];
-			active_control_state_t* ctrlstat = &ctrl->apps_ctxt->ctrl_status[i];
+			// active_control_state_t* ctrlstat = &ctrl->apps_ctxt->ctrl_status[i];
 		#endif
 			elapsed_us = (double)(now - ctxt->ctrl_ts_lastsent) * 1E6 / rte_get_tsc_hz();
 			if(!ctxt->is_active) continue;
@@ -79,7 +91,7 @@ lcore_control(void* arg) {
 					break;
 				case ACTIVE_STATE_REALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
-					struct rte_mbuf** mbufs;
+					/*struct rte_mbuf* mbufs[2];
 					if(rte_pktmbuf_alloc_bulk(mempool, mbufs, 2) == 0) {
 						construct_getalloc_packet(mbufs[0], ctrl->port_id, ctxt);
 						construct_snapshot_packet(mbufs[1], ctrl->port_id, ctxt, 0, 0, NULL, true);
@@ -88,8 +100,8 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
 						telemetry_allocation_start(ctxt);
-					} 
-					/*if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
+					}*/
+					if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
 						// construct_reallocate_packet(mbuf, ctrl->port_id, ctxt);
 						construct_getalloc_packet(mbuf, ctrl->port_id, ctxt);
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
@@ -102,7 +114,7 @@ lcore_control(void* arg) {
 						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 						ctxt->ctrl_ts_lastsent = now;
-					}*/
+					}
 					break;
 				case ACTIVE_STATE_ALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;

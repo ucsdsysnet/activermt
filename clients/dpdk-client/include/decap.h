@@ -50,7 +50,7 @@ active_decap_filter(
 				if(fid == apps_ctxt->ctxt[i].fid) ctxt = &apps_ctxt->ctxt[i];
 			}
 			if(ctxt == NULL) {
-				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Unable to extract app context!\n");
+				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Unable to get app context from active packet!\n", fid);
 				continue;
 			}
 			// Update control state.
@@ -113,7 +113,7 @@ active_decap_filter(
 					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
 						if(ap4data != NULL) {
 							int mem_addr = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MAR]);
-							int mem_data = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR]);
+							// int mem_data = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR]);
 							int stage_id = ntohl(ap4data->data[ACTIVE_DEFAULT_ARG_MBR2]);
 							ctxt->membuf.sync_data[stage_id].valid[mem_addr] = 1;	
 						} else {
@@ -148,6 +148,11 @@ active_decap_filter(
 							inet_pkt.hdr_tcp = (struct rte_tcp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));
 						}
 						ctxt->rx_handler((void*)ctxt, ap4ih, ap4data, ctxt->app_context, (void*)&inet_pkt);
+						for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
+							bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
+						}
+						pkts[k]->pkt_len -= offset;
+						pkts[k]->data_len -= offset;
 						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d Flags %x OFFSET %d PKTLEN %d IP dst %x\n", ctxt->fid, flags, offset, pkts[k]->pkt_len, inet_pkt.hdr_ipv4->dst_addr);
 					}
 					// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "pkt length %d\n", pkts[k]->pkt_len);
@@ -155,12 +160,8 @@ active_decap_filter(
 				default:
 					break;
 			}
-			
-			for(int i = 0; i < pkts[k]->pkt_len - sizeof(struct rte_ether_hdr) - offset; i++) {
-				bufptr[sizeof(struct rte_ether_hdr) + i] = bufptr[sizeof(struct rte_ether_hdr) + offset + i];
-			}
-			pkts[k]->pkt_len -= offset;
-			pkts[k]->data_len -= offset;
+
+			// assert(pkts[k]->pkt_len >= offset);
 		} else {
 			// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] Unknown packet: ");
 			// print_pktinfo(bufptr, pkts[k]->pkt_len);

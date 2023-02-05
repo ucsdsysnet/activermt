@@ -50,7 +50,7 @@ void shutdown_lb(int id, void* context) {}
 
 void active_tx_mux_lb(void* buf, void* context, int* pid) {
     
-    lb_context_t* lb_ctxt = (lb_context_t*)context;
+    // lb_context_t* lb_ctxt = (lb_context_t*)context;
     char* bufptr = (char*)buf;
 
     struct rte_ether_hdr* hdr_eth = (struct rte_ether_hdr*)bufptr;

@@ -251,10 +251,9 @@ static inline int read_active_program(activep4_def_t* ap4, char* prog_file) {
     int ap4_size = ftell(fp);
     rewind(fp);
     char fbuf[MAXFILESIZE];
-    int read = fread(fbuf, ap4_size, 1, fp);
+    assert(fread(fbuf, ap4_size, 1, fp) > 0);
     fclose(fp);
     int i = 0, j = 0;
-    uint16_t arg;
     #ifdef DEBUG
     printf("[Active Program]\n");
     #endif
@@ -276,7 +275,7 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     assert(fp != NULL);
     char buf[50];
     const char* tok;
-    int memidx[NUM_STAGES], i, iglim = -1;
+    int memidx[NUM_STAGES], i = 0, iglim = -1;
     if(fgets(buf, 50, fp) > 0) {
         for(i = 0, tok = strtok(buf, ","); tok && *tok; tok = strtok(NULL, ",\n"), i++) {
             memidx[i] = atoi(tok);
@@ -304,7 +303,7 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
 }
 
 static inline void read_active_function(activep4_def_t* ap4, char* active_program_dir, char* active_program_name) {
-    char program_path[100], args_path[100], memidx_path[100];
+    char program_path[100], memidx_path[100];
     sprintf(program_path, "%s/%s.apo", active_program_dir, active_program_name);
     sprintf(memidx_path, "%s/%s.memidx.csv", active_program_dir, active_program_name);
     read_active_program(ap4, program_path);

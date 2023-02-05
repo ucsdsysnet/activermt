@@ -100,7 +100,7 @@ void payload_parser_cache(void* inet_bufptr, activep4_data_t* ap4data, memory_t*
 	struct rte_ipv4_hdr* hdr_ipv4 = (struct rte_ipv4_hdr*)bufptr;
     if(hdr_ipv4->next_proto_id != IPPROTO_UDP) return;
 
-    struct rte_udp_hdr* hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
+    // struct rte_udp_hdr* hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ipv4_hdr));
     char* payload = bufptr + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
 
 	// int payload_length = 0;

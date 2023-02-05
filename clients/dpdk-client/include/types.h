@@ -117,4 +117,6 @@ static struct rte_eth_dev_tx_buffer* tx_buffers[MAX_TX_BUFS];
 static struct rte_eth_dev_tx_buffer* buffer;
 #endif
 
+static struct rte_mempool* mbuf_pool;
+
 #endif

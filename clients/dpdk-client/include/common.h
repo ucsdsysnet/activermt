@@ -371,17 +371,15 @@ active_client_init(char* config_filename, char* active_programs_config_filename,
 
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Number of sockets: %d\n", rte_socket_count());
 
-	unsigned pool_size = nb_ports * (NUM_MBUFS + 1) - 1;
-	ctrl.mempool = rte_pktmbuf_pool_create(
+	mbuf_pool = rte_pktmbuf_pool_create(
 		"MBUF_POOL",
-		// NUM_MBUFS * nb_ports, 
-		pool_size,
+		NUM_MBUFS, 
 		MBUF_CACHE_SIZE, 
 		0,
 		RTE_MBUF_DEFAULT_BUF_SIZE, 
 		rte_socket_id()
 	);
-	if (ctrl.mempool == NULL)
+	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Memory pool created for socket %d\n", rte_socket_id());
 
@@ -434,7 +432,7 @@ active_client_init(char* config_filename, char* active_programs_config_filename,
 	int ports[RTE_MAX_ETHPORTS];
 	RTE_ETH_FOREACH_DEV(portid) {
 		ports[portid] = portid;
-		if(port_init(portid, ctrl.mempool, &apps_ctxt) != 0)
+		if(port_init(portid, mbuf_pool, &apps_ctxt) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16"\n", portid);
 		#ifdef STATS
 		rte_eal_remote_launch(lcore_stats, (void*)&ports[portid], lcore_id);
