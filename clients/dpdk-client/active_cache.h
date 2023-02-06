@@ -149,6 +149,10 @@ void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[ERROR] cache arguments not present!\n");
 		return;
 	}
+	// RTS from switch.
+	uint16_t tmp = inet_pkt->hdr_udp->src_port;
+	inet_pkt->hdr_udp->src_port = inet_pkt->hdr_udp->dst_port;
+	inet_pkt->hdr_udp->dst_port = tmp;
 	uint32_t cached_value = ntohl(ap4args->data[ACTIVE_DEFAULT_ARG_RESULT]);
 	// uint32_t key = ntohl(ap4args->data[1]);
 	// uint32_t freq = ntohl(ap4args->data[3]);
