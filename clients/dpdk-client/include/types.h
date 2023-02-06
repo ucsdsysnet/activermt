@@ -115,6 +115,7 @@ static int is_running;
 static struct rte_eth_dev_tx_buffer* tx_buffers[MAX_TX_BUFS];
 #else
 static struct rte_eth_dev_tx_buffer* buffer;
+static uint64_t drop_counter;
 #endif
 
 static struct rte_mempool* mbuf_pool;

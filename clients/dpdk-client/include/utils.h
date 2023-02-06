@@ -183,4 +183,54 @@ static  __rte_always_inline void write_active_tx_stats(active_apps_t* apps) {
 	}
 }
 
+static int
+lcore_stats(void* arg) {
+	
+	unsigned lcore_id = rte_lcore_id();
+
+	int port_id = *((int*)arg);
+
+	active_dpdk_stats_t samples;
+	memset(&samples, 0, sizeof(active_dpdk_stats_t));
+
+	uint64_t last_ipackets = 0, last_opackets = 0;
+	
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Starting stats monitor for port %d on lcore %u ... \n", port_id, lcore_id);
+
+	uint64_t ts_ref = rte_rdtsc_precise();
+
+	while(is_running) {
+		struct rte_eth_stats stats = {0};
+		if(rte_eth_stats_get(port_id, &stats) == 0) {
+			uint64_t rx_pkts = stats.ipackets - last_ipackets;
+			uint64_t tx_pkts = stats.opackets - last_opackets;
+			last_ipackets = stats.ipackets;
+			last_opackets = stats.opackets;
+			if(samples.num_samples < MAX_STATS_SAMPLES) {
+				samples.ts[samples.num_samples] = (double)(rte_rdtsc_precise() - ts_ref) * 1E9 / rte_get_tsc_hz();
+				samples.rx_pkts[samples.num_samples] = rx_pkts;
+				samples.tx_pkts[samples.num_samples] = tx_pkts;
+				samples.num_samples++;
+			}
+			#ifdef DEBUG
+			if(rx_pkts > 0 || tx_pkts > 0)
+				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[STATS][%d] RX %lu pkts TX %lu pkts\n", port_id, rx_pkts, tx_pkts);
+			#endif
+		}
+		rte_delay_us_block(DELAY_SEC);
+	}
+
+	char filename[50];
+	sprintf(filename, "dpdk_ap4_stats_%d.csv", port_id);
+	FILE *fp = fopen(filename, "w");
+	if(fp == NULL) return -1;
+	for(int i = 0; i < samples.num_samples; i++) {
+		fprintf(fp, "%lu,%lu,%lu\n", samples.ts[i], samples.rx_pkts[i], samples.tx_pkts[i]);
+	}
+	fclose(fp);
+    rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[STATS] %u samples written to %s.\n", samples.num_samples, filename);
+	
+	return 0;
+}
+
 #endif
