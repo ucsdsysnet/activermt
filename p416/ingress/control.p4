@@ -1342,11 +1342,11 @@ action copy_mbr1_mbr2() {
     hdr.ih.flag_marked = 1;
 }*/
 
-action memfault() {
-    hdr.ih.flag_mfault = 1;
-    complete();
-    rts();
-}
+// action memfault() {
+//     hdr.ih.flag_mfault = 1;
+//     complete();
+//     rts();
+// }
 
 action min_mbr1_mbr2() {
     hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);
@@ -2243,7 +2243,6 @@ table instruction_0 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2343,7 +2342,6 @@ table instruction_1 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2443,7 +2441,6 @@ table instruction_2 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2543,7 +2540,6 @@ table instruction_3 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2643,7 +2639,6 @@ table instruction_4 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2743,7 +2738,6 @@ table instruction_5 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2843,7 +2837,6 @@ table instruction_6 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -2943,7 +2936,6 @@ table instruction_7 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -3043,7 +3035,6 @@ table instruction_8 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;
@@ -3143,7 +3134,6 @@ table instruction_9 {
         fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
-		memfault;
 		min_mbr1_mbr2;
 		min_mbr2_mbr1;
 		mbr1_equals_mbr2;

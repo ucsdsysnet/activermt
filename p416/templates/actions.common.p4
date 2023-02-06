@@ -18,11 +18,11 @@ action copy_mbr1_mbr2() {
     hdr.ih.flag_marked = 1;
 }*/
 
-action memfault() {
-    hdr.ih.flag_mfault = 1;
-    complete();
-    rts();
-}
+// action memfault() {
+//     hdr.ih.flag_mfault = 1;
+//     complete();
+//     rts();
+// }
 
 action min_mbr1_mbr2() {
     hdr.meta.mbr = (hdr.meta.mbr <= hdr.meta.mbr2 ? hdr.meta.mbr : hdr.meta.mbr2);

@@ -54,10 +54,10 @@ for i = 1:num_apps
     end
     hit_rate = rx_hits ./ rx_total;
     hr_mwa = conv(hit_rate, mwa_filter);
-%     yyaxis left;
-%     plot(ts_unique_sec, rx_rate_sec, '--square', 'Color', params_colors{i});
-%     hold on;
-%     yyaxis right;
+    yyaxis left;
+    plot(ts_unique_sec, rx_rate_sec, '--square', 'Color', params_colors{i});
+    hold on;
+    yyaxis right;
 %     scatter(ts_sec, hit_rate, 3, 'o', 'MarkerEdgeColor', colors_light{i});
 %     hold on;
 %     plot(ts_unique_sec, hit_rate_sec, '-square', 'Color', params_colors{i});
@@ -68,9 +68,9 @@ for i = 1:num_apps
 %     ylim([0 1.5]);
 end
 
-% yyaxis left;
-% ylabel('RX (Pkts/Sec)');
-% yyaxis right;
+yyaxis left;
+ylabel('RX (Pkts/Sec)');
+yyaxis right;
 ylabel('Hit Rate');
 % xlim([ts_min ts_max]);
 % xticks(0:0.1:ceil(max(ts_sec)));

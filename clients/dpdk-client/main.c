@@ -48,7 +48,7 @@ main(int argc, char** argv)
 			ctxt->memory_reset = memory_reset_cache;
 			ctxt->shutdown = shutdown_cache;
 			ctxt->timer = timer_cache;
-			ctxt->timer_interval_us = 1000000;
+			ctxt->timer_interval_us = 2000000;
 			ctxt->active_timer_enabled = true;
 			ctxt->active_heartbeat_enabled = true;
 			ctxt->active_tx_enabled = true;
