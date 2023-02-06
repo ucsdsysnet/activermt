@@ -1,7 +1,7 @@
 #ifndef ACTIVEP4_H
 #define ACTIVEP4_H
 
-// #define DEBUG
+// #define DEBUG_ACTIVEP4
 
 #define TRUE            1
 #define FALSE           0
@@ -254,13 +254,13 @@ static inline int read_active_program(activep4_def_t* ap4, char* prog_file) {
     assert(fread(fbuf, ap4_size, 1, fp) > 0);
     fclose(fp);
     int i = 0, j = 0;
-    #ifdef DEBUG
+    #ifdef DEBUG_ACTIVEP4
     printf("[Active Program]\n");
     #endif
     while(i < MAXPROGLEN && j < ap4_size) {
         code[i].flags = fbuf[j];
         code[i].opcode = fbuf[j + 1];
-        #ifdef DEBUG
+        #ifdef DEBUG_ACTIVEP4
         printf("%d,%d\n", code[i].flags, code[i].opcode);
         #endif
         i++;
@@ -287,17 +287,17 @@ static inline void read_active_memaccess(activep4_def_t* ap4, char* memidx_file)
     fclose(fp);
     ap4->num_accesses = i;
     ap4->iglim = iglim;
-    #ifdef DEBUG
+    #ifdef DEBUG_ACTIVEP4
     printf("[ACTIVEP4] Read program memory access pattern: %d stages (", ap4->num_accesses);
     #endif
     for(i = 0; i < ap4->num_accesses; i++) {
         ap4->access_idx[i] = memidx[i];
         ap4->demand[i] = 1; // default (elastic).
-        #ifdef DEBUG
+        #ifdef DEBUG_ACTIVEP4
         printf("%d,", memidx[i]);
         #endif
     }
-    #ifdef DEBUG
+    #ifdef DEBUG_ACTIVEP4
     printf(") ingress limit %d\n", iglim);
     #endif
 }
@@ -417,8 +417,8 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
 
     active_mutant_t* program = &ap4->mutant;
 
-    #ifdef DEBUG
-    printf("[DEBUG] program length=%d, %d num accesses.\n", ap4->proglen, ap4->num_accesses);
+    #ifdef DEBUG_ACTIVEP4
+    printf("[DEBUG_ACTIVEP4] program length=%d, %d num accesses.\n", ap4->proglen, ap4->num_accesses);
     #endif
 
     int allocation_map[MAXPROGLEN], allocIdx = 0, increase = 0, stage_idx, delta;
@@ -427,10 +427,10 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         if(allocIdx >= ap4->num_accesses) break;
         if(is_memaccess(instr_set, ap4->code[i].opcode)) {
             stage_idx = get_memory_stage_id(i);
-            #ifdef DEBUG
-            printf("[DEBUG] memaccess %d -> %d\n", i, access_idx_allocated[allocIdx]);
+            #ifdef DEBUG_ACTIVEP4
+            printf("[DEBUG_ACTIVEP4] memaccess %d -> %d\n", i, access_idx_allocated[allocIdx]);
             #endif
-            delta = access_idx_allocated[allocIdx] - stage_idx;
+            delta = access_idx_allocated[allocIdx] - stage_idx - increase;
             if(delta < 0) delta += (NUM_STAGES - NUM_STAGES_IG);
             increase += delta;
             allocation_map[i] = access_idx_allocated[allocIdx++]; // assumes ordered memory accesses.
@@ -460,7 +460,7 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         program->code[i] = ap4->code[i];
     }
 
-    #ifdef DEBUG
+    #ifdef DEBUG_ACTIVEP4
     printf("[PID %d] program size increased by %d, mutant:\n", ap4->pid, increase);
     for(int i = 0; i < program->proglen; i++) {
         printf("[%d]\t%d\n", program->code[i].flags, program->code[i].opcode);

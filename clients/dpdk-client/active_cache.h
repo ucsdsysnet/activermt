@@ -34,6 +34,7 @@
 
 #include "../../ref/uthash/include/uthash.h"
 
+// #define DEBUG_CACHE
 #define CLIENT_MONITORING
 
 #define MAX_SAMPLES_CACHE	100000
@@ -184,7 +185,16 @@ void active_rx_handler_cache(void* active_context, activep4_ih* ap4ih, activep4_
 
 int memory_consume_cache(memory_t* mem, void* context) { return 0; }
 
-int memory_invalidate_cache(memory_t* mem, void* context) { return 0; }
+int memory_invalidate_cache(memory_t* mem, void* context) { 
+
+	for(int i = 0; i < NUM_STAGES; i++) {
+		memset(mem->sync_data[i].data, 0, sizeof(uint32_t) * MAX_DATA);
+	}
+
+	rte_memcpy(mem->syncmap, mem->valid_stages, NUM_STAGES);
+
+	return 1; 
+}
 
 int memory_reset_cache(memory_t* mem, void* context) {
 
@@ -210,12 +220,12 @@ int memory_reset_cache(memory_t* mem, void* context) {
 		if(mem->sync_data[cache_ctxt->stage_id_value].mem_start > mem_start) mem_start = mem->sync_data[cache_ctxt->stage_id_value].mem_start;
 
 		uint32_t mem_end = mem->sync_data[cache_ctxt->stage_id_key_0].mem_end;
-		if(mem_end < mem->sync_data[cache_ctxt->stage_id_key_1].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_key_1].mem_end;
-		if(mem_end < mem->sync_data[cache_ctxt->stage_id_value].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_value].mem_end;
+		if(mem_end > mem->sync_data[cache_ctxt->stage_id_key_1].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_key_1].mem_end;
+		if(mem_end > mem->sync_data[cache_ctxt->stage_id_value].mem_end) mem_end = mem->sync_data[cache_ctxt->stage_id_value].mem_end;
 
 		uint32_t memory_size = mem_end - mem_start + 1;
 
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] memory idx (%d,%d,%d) effective memory size: %d\n", cache_ctxt->stage_id_key_0, cache_ctxt->stage_id_key_1, cache_ctxt->stage_id_value, memory_size);
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] memory idx (%d,%d,%d) effective memory size: %d, region start: %d\n", cache_ctxt->stage_id_key_0, cache_ctxt->stage_id_key_1, cache_ctxt->stage_id_value, memory_size, mem_start);
 
 		cache_ctxt->memory_start = mem_start;
 		cache_ctxt->memory_size = memory_size;
@@ -264,7 +274,9 @@ void timer_cache(void* arg) {
 			sum_freq += item->freq;
 			num_total++;
 		}
+		#ifdef DEBUG_CACHE
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "estimated hit rate: %f\n", estimated_hitrate * 1.0f / sum_freq);
+		#endif
 	}
 
 	rte_memcpy(ctxt->allocation.syncmap, ctxt->allocation.valid_stages, NUM_STAGES);
@@ -276,7 +288,9 @@ void timer_cache(void* arg) {
 		ctxt->status = ACTIVE_STATE_REMAPPING;
 	}
 
+	#ifdef DEBUG_CACHE
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, total items = %d, max frequency = %d\n", num_stored, num_total, max_freq);	
+	#endif
 }
 
 // void switch_context_cache(activep4_context_t* ctxt) {

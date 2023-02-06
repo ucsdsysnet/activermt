@@ -6,6 +6,8 @@ HR_PLOT_GRANULARITY = 10;
 
 num_apps = 4;
 
+colors_light = {[1.0000    0.4118    0.1608], [0.0745    0.6235    1.0000], [0.3922    0.8314    0.0745], [1.0000    0.0745    0.6510]};
+colors_dark = {[0.8510    0.3255    0.0980], [0    0.4471    0.7412], [0.4667    0.6745    0.1882], [0.6353    0.0784    0.1843]};
 params_colors = {'b', 'g', 'r', 'm'};
 
 ts_min = -1;
@@ -52,28 +54,33 @@ for i = 1:num_apps
     end
     hit_rate = rx_hits ./ rx_total;
     hr_mwa = conv(hit_rate, mwa_filter);
-    yyaxis left;
-    plot(ts_unique_sec, rx_rate_sec, '--square', 'Color', params_colors{i});
-    hold on;
-    yyaxis right;
-%     scatter(ts_sec, hit_rate, 3, 'o', 'MarkerEdgeColor', params_colors{i});
-    plot(ts_unique_sec, hit_rate_sec, '-x', 'Color', params_colors{i});
+%     yyaxis left;
+%     plot(ts_unique_sec, rx_rate_sec, '--square', 'Color', params_colors{i});
+%     hold on;
+%     yyaxis right;
+%     scatter(ts_sec, hit_rate, 3, 'o', 'MarkerEdgeColor', colors_light{i});
+%     hold on;
+%     plot(ts_unique_sec, hit_rate_sec, '-square', 'Color', params_colors{i});
 %     plot(ts_unique_custom / HR_PLOT_GRANULARITY, hit_rate_custom, '-o', 'MarkerSize', 3);
+%     hold on;
+    plot(ts_sec, hr_mwa(1:length(ts_sec)), '-', 'Color', colors_dark{i}, 'LineWidth', 2.5);
     hold on;
-%     plot(ts_sec, hr_mwa(1:length(ts_sec)), '--', 'Color', 'k', 'LineWidth', 2);
 %     ylim([0 1.5]);
 end
 
-yyaxis left;
-ylabel('RX (Pkts/Sec)');
-yyaxis right;
+% yyaxis left;
+% ylabel('RX (Pkts/Sec)');
+% yyaxis right;
 ylabel('Hit Rate');
 % xlim([ts_min ts_max]);
+% xticks(0:0.1:ceil(max(ts_sec)));
 xlabel('Time (sec)');
 % legend(sprintf('App %d', i));
+set(gca,'XMinorTick','on','YMinorTick','on');
 set(gca, 'FontSize', 16);
 grid on;
 
+% lgd = legend(cellstr(num2str(sort([1:num_apps, 1:num_apps])', 'App %-d')));
 lgd = legend(cellstr(num2str([1:num_apps]', 'App %-d')));
 lgd.Location = 'southeast';
 

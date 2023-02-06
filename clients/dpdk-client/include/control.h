@@ -285,7 +285,7 @@ lcore_control(void* arg) {
 					}
 					if(reset_memory_region(updated_region, ctxt)) {
 						get_rw_stages_str(ctxt, tmpbuf);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->fid, tmpbuf);
+						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->fid, tmpbuf);
 						while(remapping_in_progress) {
 							remapping_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
@@ -302,7 +302,7 @@ lcore_control(void* arg) {
 							}
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
-						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->fid);
+						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->fid);
 					} else {
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping reset ...\n", ctxt->fid);
 					}
