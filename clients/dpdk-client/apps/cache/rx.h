@@ -179,7 +179,8 @@ lcore_rx(void* arg) {
                             ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
                             rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] remap initiated.\n", fid);
                         }
-                        if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED)) {
+                        static uint16_t allowed_flags_rx_handler = AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_EOE | AP4FLAGMASK_FLAG_PRELOAD;
+                        if((flags | allowed_flags_rx_handler) == allowed_flags_rx_handler && TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
                             rx_update_state(cache, ap4data);
                         }
                         // rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "pkt length %d\n", pkts[k]->pkt_len);

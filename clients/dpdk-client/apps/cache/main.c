@@ -19,6 +19,7 @@
 #define ACTIVE_PROGRAM_CACHE    "cacheread"
 
 #define APP_IPV4_ADDR       0x0100000a
+#define APP_IPV4_DSTADDR    0x0100000a
 #define NUM_ACTIVE_PROGRAMS 1
 #define PORT_START			5678
 
@@ -171,7 +172,7 @@ main(int argc, char** argv)
         cache[i].keydist = keydist;
         cache[i].distsize = keydist_size;
         cache[i].ts_ref = ts_ref;
-		cache[i].ipv4_dstaddr = APP_IPV4_ADDR;
+		cache[i].ipv4_dstaddr = APP_IPV4_DSTADDR;
 		cache[i].app_port = PORT_START + i;
 
 		ctxt[i].instr_set = &instr_set;

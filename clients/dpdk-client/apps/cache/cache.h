@@ -36,6 +36,15 @@ typedef struct {
 } cache_stats_t;
 
 typedef struct {
+	uint32_t		addr;
+	uint64_t		key;
+	uint32_t		key_0;
+	uint32_t		key_1;
+	uint32_t		value;
+	UT_hash_handle	hh;
+} cache_debug_t;
+
+typedef struct {
 	uint64_t			ts_ref;
 	uint64_t			last_ts;
 	cache_stats_t		rx_stats[MAX_SAMPLES_CACHE];
@@ -46,6 +55,7 @@ typedef struct {
 	uint32_t			memory_start;
 	int					memory_size;
 	cache_item_t*		requested_items;
+	cache_debug_t*		debug;
 	uint8_t				timer_reset_trigger;
     uint64_t*           keydist;
     int                 distsize;
@@ -71,6 +81,15 @@ shutdown_cache(int id, void* context) {
 		fprintf(fp, "%lu,%u,%u\n", cache_ctxt->rx_stats[i].ts, cache_ctxt->rx_stats[i].rx_hits, cache_ctxt->rx_stats[i].rx_total);
 	}
 	fclose(fp);
+
+	#ifdef DEBUG_CACHE
+	sprintf(filename, "debug_invalid_objects_%d.csv", id);
+	fp = fopen(filename, "w");
+	for(cache_debug_t* item = cache_ctxt->debug; item != NULL; item = item->hh.next) {
+		fprintf(fp, "%lu,%u,%u,%u,%u\n", item->key, item->value, item->key_0, item->key_1, item->addr);
+	}
+	fclose(fp);
+	#endif
 }
 
 int 
@@ -258,8 +277,35 @@ rx_check_timer(cache_context_t* ctxt) {
 
 static __rte_always_inline void
 rx_update_state(cache_context_t* ctxt, activep4_data_t* args) {
+
+	if(args == NULL) {
+		printf("Error: arguments not present!\n");
+		return;
+	}
     
     uint32_t cached_value = ntohl(args->data[ACTIVE_DEFAULT_ARG_RESULT]);
+
+	#ifdef DEBUG_CACHE
+	if(cached_value == 0) {
+		uint32_t addr = ntohl(args->data[ACTIVE_DEFAULT_ARG_MAR]);
+		uint32_t key_0 = ntohl(args->data[ACTIVE_DEFAULT_ARG_MBR]);
+		uint32_t key_1 = ntohl(args->data[ACTIVE_DEFAULT_ARG_MBR2]);
+		uint64_t key = (uint64_t)key_0 << 32 | key_1;
+		cache_debug_t* item;
+		HASH_FIND_INT(ctxt->debug, &key, item);
+		if(item == NULL) {
+			item = (cache_debug_t*)rte_zmalloc(NULL, sizeof(cache_debug_t), 0);
+			item->addr = addr;
+			item->key = key;
+			item->key_0 = key_0;
+			item->key_1 = key_1;
+			item->value = cached_value;
+			HASH_ADD_INT(ctxt->debug, key, item);
+		}
+	} else {
+		// if(cached_value != 1) printf("Unexpected value at %u: %u\n", ntohl(args->data[ACTIVE_DEFAULT_ARG_MAR]), cached_value);
+	}
+	#endif
 
     if(cached_value != 0) ctxt->rx_stats[ctxt->num_samples].rx_hits++;
 	ctxt->rx_stats[ctxt->num_samples].rx_total++;

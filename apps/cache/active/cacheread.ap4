@@ -7,7 +7,7 @@ MBR_EQUALS_DATA_2
 CRET
 RTS
 MEM_READ
-MBR2_LOAD
-COPY_MBR_MBR2
 MBR_STORE
+NOP // normalize for switch traffic limiter.
+NOP
 RETURN
