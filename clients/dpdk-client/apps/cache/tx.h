@@ -10,7 +10,6 @@
 
 typedef struct {
     activep4_context_t* ctxt;
-    cache_context_t*    cache;
     int                 num_instances;
     int                 num_active;
     int                 port_id;
@@ -26,7 +25,7 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
     for(int i = 0; i < n; i++) {
         
         activep4_context_t* ctxt = &cfg->ctxt[current_fid];
-        cache_context_t* cache = &cfg->cache[current_fid];
+        cache_context_t* cache = (cache_context_t*)ctxt->app_context;
         
         struct rte_mbuf* mbuf = mbufs[i];
         
@@ -88,6 +87,8 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
         udph->dgram_len = htons(sizeof(struct rte_udp_hdr));
         udph->dgram_cksum = 0;
 
+        // char* payload = bufptr + offset + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
+
         mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + offset;
         mbuf->data_len = mbuf->pkt_len;
 
@@ -109,6 +110,8 @@ lcore_tx(void* arg) {
     const int qid = 0;
 
     while(is_running) {
+
+        // rte_delay_ms(1); continue;
 
         if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, BURST_SIZE) != 0) continue;
 

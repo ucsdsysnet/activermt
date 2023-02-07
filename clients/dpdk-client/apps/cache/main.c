@@ -9,6 +9,7 @@
 #include "cache.h"
 #include "rx.h"
 #include "tx.h"
+#include "control.h"
 
 // #define DEBUG_CACHE
 
@@ -17,8 +18,9 @@
 #define ACTIVE_DIR              "../../../../apps/cache/active"
 #define ACTIVE_PROGRAM_CACHE    "cacheread"
 
-#define APP_IPV4_ADDR       0x0a000001
+#define APP_IPV4_ADDR       0x0100000a
 #define NUM_ACTIVE_PROGRAMS 1
+#define TIMER_ITVL_CACHE_US 3000000
 
 static void 
 interrupt_handler(int sig) {
@@ -161,10 +163,13 @@ main(int argc, char** argv)
     read_active_function(&active_programs[0], ACTIVE_DIR, ACTIVE_PROGRAM_CACHE);
     strcpy(active_programs[0].name, ACTIVE_PROGRAM_CACHE);
 
+    uint64_t ts_ref = rte_rdtsc_precise();
+
     for(int i = 0; i < num_instances; i++) {
 
         cache[i].keydist = keydist;
         cache[i].distsize = keydist_size;
+        cache[i].ts_ref = ts_ref;
 
 		ctxt[i].instr_set = &instr_set;
 
@@ -182,12 +187,20 @@ main(int argc, char** argv)
 
 		ctxt[i].active_tx_enabled = true;
 		ctxt[i].active_heartbeat_enabled = true;
-		ctxt[i].active_timer_enabled = false;
-		ctxt[i].timer_interval_us = DEFAULT_TI_US;
+		ctxt[i].active_timer_enabled = true;
+		ctxt[i].timer_interval_us = TIMER_ITVL_CACHE_US;
 		ctxt[i].is_active = false;
 		ctxt[i].is_elastic = true;
-		ctxt[i].status = ACTIVE_STATE_TRANSMITTING;
+		ctxt[i].status = ACTIVE_STATE_INITIALIZING;
 		ctxt[i].ipv4_srcaddr = APP_IPV4_ADDR;
+
+        ctxt[i].app_context = (void*)&cache[i];
+
+        ctxt[i].memory_consume = memory_consume_cache;
+        ctxt[i].memory_invalidate = memory_invalidate_cache;
+        ctxt[i].memory_reset = memory_reset_cache;
+        ctxt[i].timer = timer_cache;
+        ctxt[i].shutdown = shutdown_cache;
 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for FID %d.\n", ctxt[i].fid);
 	}
@@ -223,9 +236,11 @@ main(int argc, char** argv)
 
     rx_config_t rx_config[RTE_MAX_ETHPORTS];
     tx_config_t tx_config[RTE_MAX_ETHPORTS];
+    control_config_t ctrl_config[RTE_MAX_ETHPORTS];
 
     memset(rx_config, 0, sizeof(rx_config));
     memset(tx_config, 0, sizeof(tx_config));
+    memset(ctrl_config, 0, sizeof(ctrl_config));
 
     unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
     assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
@@ -238,6 +253,12 @@ main(int argc, char** argv)
 		#ifdef STATS
 		rte_eal_remote_launch(lcore_stats, (void*)&ports[portid], lcore_id);
 		#endif
+        lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+        assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
+        ctrl_config[portid].ctxt = ctxt;
+        ctrl_config[portid].num_instances = num_instances;
+        ctrl_config[portid].port_id = portid;
+        rte_eal_remote_launch(lcore_control, (void*)&ctrl_config[portid], lcore_id);
         rx_config[portid].ctxt = ctxt;
         rx_config[portid].num_instances = num_instances;
         rx_config[portid].port_id = portid;
@@ -245,7 +266,6 @@ main(int argc, char** argv)
         assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
         rte_eal_remote_launch(lcore_rx, (void*)&rx_config[portid], lcore_id);
         tx_config[portid].ctxt = ctxt;
-        tx_config[portid].cache = cache;
         tx_config[portid].num_instances = num_instances;
         tx_config[portid].num_active = num_instances;
         tx_config[portid].port_id = portid;
@@ -254,7 +274,10 @@ main(int argc, char** argv)
         rte_eal_remote_launch(lcore_tx, (void*)&tx_config[portid], lcore_id);
 	}
 
-	// uint64_t ts_ref = rte_rdtsc_precise();
+    for(int i = 0; i < num_instances; i++) {
+        ctxt[i].is_active = true;
+        rte_delay_ms(1);
+    }
 
 	rte_eal_cleanup();
 
