@@ -177,7 +177,7 @@ timer_cache(void* arg) {
 
 	if(num_stored > 0) {
 		cache_ctxt->timer_reset_trigger = 1;
-		ctxt->status = ACTIVE_STATE_REMAPPING;
+		ctxt->status = ACTIVE_STATE_UPDATING;
 	}
 
 	#ifdef DEBUG_CACHE

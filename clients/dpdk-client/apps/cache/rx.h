@@ -138,6 +138,7 @@ lcore_rx(void* arg) {
                             // rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[SNAPACK] stage %d index %d flags %x\n", stage_id, mem_addr, flags);
                         }
                         break;
+                    case ACTIVE_STATE_UPDATING:
                     case ACTIVE_STATE_REMAPPING:
                         if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
                             if(ap4data != NULL) {
@@ -149,7 +150,7 @@ lcore_rx(void* arg) {
                                 rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[ERROR] unable to parse args!\n");
                             }
                         }
-                        break;
+                        if(ctxt->status != ACTIVE_STATE_UPDATING) break;
                     case ACTIVE_STATE_TRANSMITTING:
                         if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED) && ctxt->allocation.version == seq) {
                             ctxt->allocation.sync_version = seq;

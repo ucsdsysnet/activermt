@@ -30,9 +30,11 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
         struct rte_mbuf* mbuf = mbufs[i];
         
         char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+
+        int activate_packets = (ctxt->status == ACTIVE_STATE_TRANSMITTING || ctxt->status == ACTIVE_STATE_UPDATING);
         
         struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
-        eth->ether_type = (ctxt->status == ACTIVE_STATE_TRANSMITTING) ? htons(AP4_ETHER_TYPE_AP4) : htons(RTE_ETHER_TYPE_IPV4);
+        eth->ether_type = (activate_packets) ? htons(AP4_ETHER_TYPE_AP4) : htons(RTE_ETHER_TYPE_IPV4);
         
         struct rte_ether_addr eth_addr;
         if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
@@ -44,10 +46,10 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
 
         int offset = 0;
 
-        if(ctxt->status == ACTIVE_STATE_TRANSMITTING) {
+        if(activate_packets) {
             activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
             ap4ih->SIG = htonl(ACTIVEP4SIG);
-            ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_MARKED);
+            ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_PRELOAD);
             ap4ih->fid = htons(ctxt->fid);
             ap4ih->seq = 0;
             activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
@@ -72,9 +74,9 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
         iph->time_to_live = 64;
         iph->next_proto_id = IPPROTO_UDP;
         iph->hdr_checksum = 0;
-        if(ctxt->status == ACTIVE_STATE_TRANSMITTING) {
-            iph->src_addr = htonl(ctxt->ipv4_srcaddr);
-            iph->dst_addr = htonl(ctxt->ipv4_srcaddr);
+        if(activate_packets) {
+            iph->src_addr = ctxt->ipv4_srcaddr;
+            iph->dst_addr = ctxt->ipv4_srcaddr;
         } else {
             iph->src_addr = htonl(0x0a000001);
             iph->dst_addr = htonl(0x0a000002);
