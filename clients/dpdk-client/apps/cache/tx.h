@@ -16,22 +16,20 @@ typedef struct {
 } tx_config_t;
 
 static __rte_always_inline void
-construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
+construct_packets_bulk(tx_config_t* cfg, int appidx, struct rte_mbuf** mbufs, int n) {
 
     int port_id = cfg->port_id;
 
-    int current_fid = 0;
+    activep4_context_t* ctxt = &cfg->ctxt[appidx];
+    cache_context_t* cache = (cache_context_t*)ctxt->app_context;
     
     for(int i = 0; i < n; i++) {
-        
-        activep4_context_t* ctxt = &cfg->ctxt[current_fid];
-        cache_context_t* cache = (cache_context_t*)ctxt->app_context;
         
         struct rte_mbuf* mbuf = mbufs[i];
         
         char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 
-        int activate_packets = (ctxt->status == ACTIVE_STATE_TRANSMITTING || ctxt->status == ACTIVE_STATE_UPDATING);
+        int activate_packets = ctxt->is_active && (ctxt->status == ACTIVE_STATE_TRANSMITTING || ctxt->status == ACTIVE_STATE_UPDATING);
         
         struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
         eth->ether_type = (activate_packets) ? htons(AP4_ETHER_TYPE_AP4) : htons(RTE_ETHER_TYPE_IPV4);
@@ -74,18 +72,13 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
         iph->time_to_live = 64;
         iph->next_proto_id = IPPROTO_UDP;
         iph->hdr_checksum = 0;
-        if(activate_packets) {
-            iph->src_addr = ctxt->ipv4_srcaddr;
-            iph->dst_addr = ctxt->ipv4_srcaddr;
-        } else {
-            iph->src_addr = htonl(0x0a000001);
-            iph->dst_addr = htonl(0x0a000002);
-        }
+        iph->src_addr = ctxt->ipv4_srcaddr;
+        iph->dst_addr = cache->ipv4_dstaddr;
         iph->hdr_checksum = rte_ipv4_cksum(iph);
 
         struct rte_udp_hdr* udph = (struct rte_udp_hdr*)(bufptr + offset + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
-        udph->src_port = htons(9876);
-        udph->dst_port = htons(9877);
+        udph->src_port = htons(cache->app_port);
+        udph->dst_port = htons(cache->app_port);
         udph->dgram_len = htons(sizeof(struct rte_udp_hdr));
         udph->dgram_cksum = 0;
 
@@ -93,8 +86,6 @@ construct_packets_bulk(tx_config_t* cfg, struct rte_mbuf** mbufs, int n) {
 
         mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + offset;
         mbuf->data_len = mbuf->pkt_len;
-
-        current_fid = (current_fid + 1) % cfg->num_active;
     }
 }
 
@@ -115,15 +106,18 @@ lcore_tx(void* arg) {
 
         // rte_delay_ms(1); continue;
 
-        if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, BURST_SIZE) != 0) continue;
+        for(int i = 0; i < cfg->num_active; i++) {
 
-        construct_packets_bulk(cfg, mbufs, BURST_SIZE);
+            if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, BURST_SIZE) != 0) continue;
 
-        uint16_t nb_tx = rte_eth_tx_burst(port_id, qid, mbufs, BURST_SIZE);
-        if(unlikely(nb_tx < BURST_SIZE)) {
-            uint16_t buf;
-            for(buf = nb_tx; buf < BURST_SIZE; buf++)
-                rte_pktmbuf_free(mbufs[buf]);
+            construct_packets_bulk(cfg, i, mbufs, BURST_SIZE);
+
+            uint16_t nb_tx = rte_eth_tx_burst(port_id, qid, mbufs, BURST_SIZE);
+            if(unlikely(nb_tx < BURST_SIZE)) {
+                uint16_t buf;
+                for(buf = nb_tx; buf < BURST_SIZE; buf++)
+                    rte_pktmbuf_free(mbufs[buf]);
+            }
         }
     }
 

@@ -6,6 +6,8 @@
 #include "../../include/types.h"
 #include "cache.h"
 
+// #define DEBUG_RX
+
 typedef struct {
     activep4_context_t*     ctxt;
     int                     num_instances;
@@ -28,12 +30,13 @@ lcore_rx(void* arg) {
         rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Error during getting device (port %u)\n", port_id);
         exit(EXIT_FAILURE);
     }
+
     if(rte_eth_dev_socket_id(port_id) > 0 && rte_eth_dev_socket_id(port_id) != (int)rte_socket_id()) {
         printf("WARNING, port %u is on remote NUMA node to polling thread.\n\tPerformance will not be optimal.\n", port_id);
-    }
-    else {
+    } else {
         rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Port %d on local NUMA node.\n", port_id);
     }
+
     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Port %d Queues RX %d Tx %d\n", port_id, dev_info.nb_rx_queues, dev_info.nb_tx_queues);
 
     printf("Ctrl+C to exit ... \n");
@@ -56,7 +59,18 @@ lcore_rx(void* arg) {
             int offset = 0;
 
             if(ntohs(hdr_eth->ether_type) == RTE_ETHER_TYPE_IPV4) {
-			    // TODO unknown packet.
+			    struct rte_ipv4_hdr* ip4h = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr));
+                if(ip4h->next_proto_id == IPPROTO_UDP) {
+                    struct rte_udp_hdr* udph = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
+                    uint16_t dport = ntohs(udph->dst_port);
+                    for(int i = 0; i < num_instances; i++) {
+                        cache_context_t* cache = (cache_context_t*)ctxts[i].app_context;
+                        if(dport == cache->app_port) {
+                            rx_update_state_inactive(cache);
+                            break;
+                        }
+                    }
+                }
 		    } else if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
                 
                 activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
@@ -83,7 +97,9 @@ lcore_rx(void* arg) {
 
                 if(ctxt == NULL || cache == NULL) continue;
 
+                #ifdef DEBUG_RX
                 uint8_t current_state = ctxt->status;
+                #endif
 
                 switch(ctxt->status) {
                     case ACTIVE_STATE_INITIALIZING:
@@ -121,9 +137,8 @@ lcore_rx(void* arg) {
                                 else
                                     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] reallocation time %ld ns\n", fid, allocation_elapsed_ns);
                                 ctxt->telemetry.is_initializing = 0;
-                                #ifdef DEBUG
-                                rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] state %d\n", ctxt->status);
-                                #endif
+                                if(ctxt->on_allocation)
+                                    ctxt->on_allocation((void*)ctxt);
                             }
                         }
                         break;
@@ -173,9 +188,11 @@ lcore_rx(void* arg) {
                         break;
                 }
 
+                #ifdef DEBUG_RX
                 if(ctxt->status != current_state) {
                     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] state change %d -> %d\n", fid, current_state, ctxt->status);
                 }
+                #endif
             }
         }
 

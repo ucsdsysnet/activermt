@@ -13,6 +13,8 @@
 
 #include "../../../../headers/activep4.h"
 
+// #define DEBUG_CONTROL
+
 typedef struct {
 	activep4_context_t*		ctxt;
 	int						num_instances;
@@ -37,7 +39,9 @@ lcore_control(void* arg) {
 	uint64_t now, elapsed_us;
 	int snapshotting_in_progress = 0, remapping_in_progress = 0, invalidating_in_progress = 0;
 
+	#ifdef DEBUG_CONTROL
 	char tmpbuf[100];
+	#endif
 
 	struct rte_mempool* mempool = rte_pktmbuf_pool_create(
 		"MBUF_POOL_CONTROL",
@@ -61,7 +65,9 @@ lcore_control(void* arg) {
 			elapsed_us = (double)(now - ctxt->ctrl_ts_lastsent) * 1E6 / rte_get_tsc_hz();
 			if(!ctxt->is_active) continue;
 			struct rte_mbuf* mbuf = NULL;
+			#ifdef DEBUG_CONTROL
 			uint8_t current_state = ctxt->status;
+			#endif
 			switch(ctxt->status) {
 				case ACTIVE_STATE_INITIALIZING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
@@ -206,8 +212,10 @@ lcore_control(void* arg) {
 						ctrlstat->snapshotting_in_progress = 1;
 					}
 					#else
+					#ifdef DEBUG_CONTROL
 					get_rw_stages_str(ctxt, tmpbuf);
 					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshotting stages %s... \n", ctxt->fid, tmpbuf);
+					#endif
 					ctxt->allocation.sync_start_time = rte_rdtsc_precise();
 					// sync_memory_region(&ctxt->allocation, ctxt, memsync_cache, port_id, mempool);
 					snapshotting_in_progress = 1;
@@ -231,11 +239,15 @@ lcore_control(void* arg) {
 					rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
 					ctxt->allocation.sync_end_time = rte_rdtsc_precise();
 					consume_memory_objects(&ctxt->allocation, ctxt);
+					#ifdef DEBUG_CONTROL
 					uint64_t snapshot_time_ns = (double)(ctxt->allocation.sync_end_time - ctxt->allocation.sync_start_time) * 1E9 / rte_get_tsc_hz();
 					rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Snapshot complete after %lu ns w/ %d packets\n", ctxt->fid, snapshot_time_ns, num_sent);
+					#endif
 					if(ctxt->memory_invalidate(&ctxt->allocation, ctxt)) {
+						#ifdef DEBUG_CONTROL
 						get_rw_stages_str(ctxt, tmpbuf);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidating memory stages %s... \n", ctxt->fid, tmpbuf);
+						#endif
 						invalidating_in_progress = 1;
 						while(invalidating_in_progress) {
 							invalidating_in_progress = 0;
@@ -252,9 +264,13 @@ lcore_control(void* arg) {
 							}
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+						#ifdef DEBUG_CONTROL
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] invalidation complete.\n", ctxt->fid);
+						#endif
 					} else {
+						#ifdef DEBUG_CONTROL
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping invalidation ...\n", ctxt->fid);
+						#endif
 					}
 					if(ctxt->allocation.invalid)
 						ctxt->status = ACTIVE_STATE_REALLOCATING;
@@ -273,8 +289,10 @@ lcore_control(void* arg) {
 						updated_region->sync_data[k].mem_end = ctxt->allocation.sync_data[k].mem_end;
 					}
 					if(reset_memory_region(updated_region, ctxt)) {
+						#ifdef DEBUG_CONTROL
 						get_rw_stages_str(ctxt, tmpbuf);
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Resetting stages %s... \n", ctxt->fid, tmpbuf);
+						#endif
 						while(remapping_in_progress) {
 							remapping_in_progress = 0;
 							for(int i = 0; i < NUM_STAGES; i++) {
@@ -291,9 +309,13 @@ lcore_control(void* arg) {
 							}
 						}
 						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+						#ifdef DEBUG_CONTROL
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Reset complete.\n", ctxt->fid);
+						#endif
 					} else {
+						#ifdef DEBUG_CONTROL
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] skipping reset ...\n", ctxt->fid);
+						#endif
 					}
 					ctxt->status = ACTIVE_STATE_TRANSMITTING;
 					break;
@@ -318,9 +340,11 @@ lcore_control(void* arg) {
 					break;
 			}
 
+			#ifdef DEBUG_CONTROL
 			if(current_state != ctxt->status) {
 				rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] state change %d -> %d\n", ctxt->fid, current_state, ctxt->status);
 			}
+			#endif
 		}
 	}
 

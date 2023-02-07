@@ -20,7 +20,7 @@
 
 #define APP_IPV4_ADDR       0x0100000a
 #define NUM_ACTIVE_PROGRAMS 1
-#define TIMER_ITVL_CACHE_US 3000000
+#define PORT_START			5678
 
 static void 
 interrupt_handler(int sig) {
@@ -117,6 +117,7 @@ int
 main(int argc, char** argv)
 {
 	int num_instances = (argc > 1) ? atoi(argv[1]) : 1;
+	int stagger_interval_sec = (argc > 2) ? atoi(argv[2]) : 0;
 
     if(num_instances <= 0) print_usage(argv);
 
@@ -170,6 +171,8 @@ main(int argc, char** argv)
         cache[i].keydist = keydist;
         cache[i].distsize = keydist_size;
         cache[i].ts_ref = ts_ref;
+		cache[i].ipv4_dstaddr = APP_IPV4_ADDR;
+		cache[i].app_port = PORT_START + i;
 
 		ctxt[i].instr_set = &instr_set;
 
@@ -188,7 +191,7 @@ main(int argc, char** argv)
 		ctxt[i].active_tx_enabled = true;
 		ctxt[i].active_heartbeat_enabled = true;
 		ctxt[i].active_timer_enabled = true;
-		ctxt[i].timer_interval_us = TIMER_ITVL_CACHE_US;
+		ctxt[i].timer_interval_us = HH_ITVL_MIN_MS * 1E3;
 		ctxt[i].is_active = false;
 		ctxt[i].is_elastic = true;
 		ctxt[i].status = ACTIVE_STATE_INITIALIZING;
@@ -201,6 +204,7 @@ main(int argc, char** argv)
         ctxt[i].memory_reset = memory_reset_cache;
         ctxt[i].timer = timer_cache;
         ctxt[i].shutdown = shutdown_cache;
+		ctxt[i].on_allocation = on_allocation_cache;
 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for FID %d.\n", ctxt[i].fid);
 	}
@@ -267,7 +271,7 @@ main(int argc, char** argv)
         rte_eal_remote_launch(lcore_rx, (void*)&rx_config[portid], lcore_id);
         tx_config[portid].ctxt = ctxt;
         tx_config[portid].num_instances = num_instances;
-        tx_config[portid].num_active = num_instances;
+        tx_config[portid].num_active = 0;
         tx_config[portid].port_id = portid;
         lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
         assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
@@ -276,7 +280,10 @@ main(int argc, char** argv)
 
     for(int i = 0; i < num_instances; i++) {
         ctxt[i].is_active = true;
-        rte_delay_ms(1);
+		RTE_ETH_FOREACH_DEV(portid) {
+			tx_config[portid].num_active++;
+		}
+        rte_delay_ms(stagger_interval_sec * 1E3);
     }
 
 	rte_eal_cleanup();

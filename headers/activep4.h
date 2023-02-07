@@ -195,6 +195,7 @@ typedef struct {
     int                 (*memory_invalidate)(memory_t*, void*);
     int                 (*memory_reset)(memory_t*, void*);
     void                (*shutdown)(int, void*);
+    void                (*on_allocation)(void*);
 } activep4_context_t;
 
 static inline void print_active_program_bytes(char* buf, int buf_size) {

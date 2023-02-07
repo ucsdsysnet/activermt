@@ -10,11 +10,12 @@
 #include "../../../../ref/uthash/include/uthash.h"
 #include "../../../../headers/activep4.h"
 
-#define DEBUG_CACHE
+// #define DEBUG_CACHE
 
 #define MAX_SAMPLES_CACHE	100000
 #define STATS_ITVL_MS_CACHE	1
-#define HH_COMPUTE_ITVL_SEC	1
+#define HH_ITVL_MIN_MS		100
+#define HH_ITVL_MAX_MS		10000
 #define PAYLOAD_MINLENGTH	16
 #define MAX_CACHE_SIZE		100000
 
@@ -50,6 +51,7 @@ typedef struct {
     int                 distsize;
     int                 current_key_idx;
     uint32_t            ipv4_dstaddr;
+	uint16_t			app_port;
 } cache_context_t;
 
 int
@@ -131,6 +133,11 @@ timer_cache(void* arg) {
 	activep4_context_t* ctxt = (activep4_context_t*)arg;
 	cache_context_t* cache_ctxt = (cache_context_t*)ctxt->app_context;
 
+	if(ctxt->timer_interval_us < HH_ITVL_MAX_MS * 1E3) {
+		ctxt->timer_interval_us *= 2;
+		ctxt->timer_interval_us = (ctxt->timer_interval_us > HH_ITVL_MAX_MS * 1E3) ? HH_ITVL_MAX_MS * 1E3 : ctxt->timer_interval_us;
+	}
+
 	HASH_SORT(cache_ctxt->requested_items, compare_elements_cache);
 
 	memset(&ctxt->membuf, 0, sizeof(ctxt->membuf));
@@ -186,6 +193,14 @@ timer_cache(void* arg) {
 }
 
 void
+on_allocation_cache(void* arg) {
+
+	activep4_context_t* ctxt = (activep4_context_t*)arg;
+
+	ctxt->timer_interval_us = HH_ITVL_MIN_MS * 1E3;
+}
+
+void
 read_key_dist(char* filename, uint64_t* keydist, int* n) {
     FILE* fp = fopen(filename, "r");
     assert(fp != NULL);
@@ -230,14 +245,8 @@ tx_update_args(cache_context_t* ctxt, activep4_data_t* args) {
 }
 
 static __rte_always_inline void
-rx_update_state(cache_context_t* ctxt, activep4_data_t* args) {
-    
-    uint32_t cached_value = ntohl(args->data[ACTIVE_DEFAULT_ARG_RESULT]);
-
-    if(cached_value != 0) ctxt->rx_stats[ctxt->num_samples].rx_hits++;
-	ctxt->rx_stats[ctxt->num_samples].rx_total++;
-
-    uint64_t now = rte_rdtsc_precise();
+rx_check_timer(cache_context_t* ctxt) {
+	uint64_t now = rte_rdtsc_precise();
 	uint64_t elapsed_ms = (double)(now - ctxt->last_ts) * 1E3 / rte_get_tsc_hz();
 	if(elapsed_ms >= STATS_ITVL_MS_CACHE && ctxt->num_samples < MAX_SAMPLES_CACHE) {
 		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] cache hits %u total %u\n", ctxt->rx_stats[ctxt->num_samples].rx_hits, ctxt->rx_stats[ctxt->num_samples].rx_total);
@@ -245,6 +254,25 @@ rx_update_state(cache_context_t* ctxt, activep4_data_t* args) {
 		ctxt->rx_stats[ctxt->num_samples].ts = (double)(now - ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
 		ctxt->num_samples++;
 	}
+}
+
+static __rte_always_inline void
+rx_update_state(cache_context_t* ctxt, activep4_data_t* args) {
+    
+    uint32_t cached_value = ntohl(args->data[ACTIVE_DEFAULT_ARG_RESULT]);
+
+    if(cached_value != 0) ctxt->rx_stats[ctxt->num_samples].rx_hits++;
+	ctxt->rx_stats[ctxt->num_samples].rx_total++;
+
+	rx_check_timer(ctxt);
+}
+
+static __rte_always_inline void
+rx_update_state_inactive(cache_context_t* ctxt) {
+
+	ctxt->rx_stats[ctxt->num_samples].rx_total++;
+
+	rx_check_timer(ctxt);
 }
 
 #endif
