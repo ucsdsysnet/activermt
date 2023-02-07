@@ -1,17 +1,24 @@
 #include <signal.h>
+#include <rte_malloc.h>
 
 #include "../../include/types.h"
 #include "../../include/utils.h"
 #include "../../include/memory.h"
 #include "../../include/active.h"
 
+#include "cache.h"
 #include "rx.h"
 #include "tx.h"
-#include "cache.h"
 
 // #define DEBUG_CACHE
 
-#define INSTR_SET_PATH		"../../config/opcode_action_mapping.csv"
+#define KEYDIST_PATH            "../../../../apps/cache/clients/udpc/zipf_dist_a_1.1_n_100000.csv"
+#define INSTR_SET_PATH		    "../../../../config/opcode_action_mapping.csv"
+#define ACTIVE_DIR              "../../../../apps/cache/active"
+#define ACTIVE_PROGRAM_CACHE    "cacheread"
+
+#define APP_IPV4_ADDR       0x0a000001
+#define NUM_ACTIVE_PROGRAMS 1
 
 static void 
 interrupt_handler(int sig) {
@@ -127,6 +134,64 @@ main(int argc, char** argv)
 		rte_log_register_type_and_pick_level("AP4", RTE_LOG_INFO);
 	}
 
+    pnemonic_opcode_t instr_set;
+    memset(&instr_set, 0, sizeof(pnemonic_opcode_t));
+    read_opcode_action_map(INSTR_SET_PATH, &instr_set);
+
+    uint64_t* keydist = (uint64_t*)rte_zmalloc(NULL, MAX_CACHE_SIZE * sizeof(uint64_t), 0);
+    int keydist_size = 0;
+
+    read_key_dist(KEYDIST_PATH, keydist, &keydist_size);
+
+    activep4_context_t* ctxt = (activep4_context_t*)rte_zmalloc(NULL, num_instances * sizeof(activep4_context_t), 0);
+	if(ctxt == NULL) {
+		rte_exit(EXIT_FAILURE, "Unable to allocate memory for active context!\n");
+	}
+
+    cache_context_t* cache = (cache_context_t*)rte_zmalloc(NULL, num_instances * sizeof(cache_context_t), 0);
+    if(cache == NULL) {
+		rte_exit(EXIT_FAILURE, "Unable to allocate memory for cache context!\n");
+	}
+
+    activep4_def_t* active_programs = (activep4_def_t*)rte_zmalloc(NULL, NUM_ACTIVE_PROGRAMS * sizeof(activep4_def_t), 0);
+    if(active_programs == NULL) {
+        rte_exit(EXIT_FAILURE, "Unable to allocate memory for active programs!\n");
+    }
+
+    read_active_function(&active_programs[0], ACTIVE_DIR, ACTIVE_PROGRAM_CACHE);
+    strcpy(active_programs[0].name, ACTIVE_PROGRAM_CACHE);
+
+    for(int i = 0; i < num_instances; i++) {
+
+        cache[i].keydist = keydist;
+        cache[i].distsize = keydist_size;
+
+		ctxt[i].instr_set = &instr_set;
+
+		ctxt[i].num_programs = NUM_ACTIVE_PROGRAMS;
+		assert(ctxt[i].num_programs > 0);
+
+		ctxt[i].fid = i + 1;
+		ctxt[i].current_pid = 0;
+
+		ctxt[i].programs[0] = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+        ctxt[i].programs[0]->pid = 0;
+        rte_memcpy(ctxt[i].programs[0], &active_programs[0], sizeof(activep4_def_t));
+        rte_memcpy(ctxt[i].programs[0]->mutant.code, active_programs[0].code, sizeof(active_programs[0].code));
+        ctxt[i].programs[0]->mutant.proglen = active_programs[0].proglen;
+
+		ctxt[i].active_tx_enabled = true;
+		ctxt[i].active_heartbeat_enabled = true;
+		ctxt[i].active_timer_enabled = false;
+		ctxt[i].timer_interval_us = DEFAULT_TI_US;
+		ctxt[i].is_active = false;
+		ctxt[i].is_elastic = true;
+		ctxt[i].status = ACTIVE_STATE_TRANSMITTING;
+		ctxt[i].ipv4_srcaddr = APP_IPV4_ADDR;
+
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for FID %d.\n", ctxt[i].fid);
+	}
+
     uint16_t nb_ports;
 	uint16_t portid;
 
@@ -156,6 +221,12 @@ main(int argc, char** argv)
 	if(rte_eth_tx_buffer_set_err_callback(buffer, rte_eth_tx_buffer_count_callback, &drop_counter) < 0)
 		rte_exit(EXIT_FAILURE, "Cannot set error callback for TX buffer for control thread.");
 
+    rx_config_t rx_config[RTE_MAX_ETHPORTS];
+    tx_config_t tx_config[RTE_MAX_ETHPORTS];
+
+    memset(rx_config, 0, sizeof(rx_config));
+    memset(tx_config, 0, sizeof(tx_config));
+
     unsigned lcore_id = rte_get_next_lcore(rte_lcore_id(), 1, 0);
     assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
 
@@ -167,12 +238,20 @@ main(int argc, char** argv)
 		#ifdef STATS
 		rte_eal_remote_launch(lcore_stats, (void*)&ports[portid], lcore_id);
 		#endif
+        rx_config[portid].ctxt = ctxt;
+        rx_config[portid].num_instances = num_instances;
+        rx_config[portid].port_id = portid;
         lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
         assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
-        rte_eal_remote_launch(lcore_rx, (void*)&ports[portid], lcore_id);
+        rte_eal_remote_launch(lcore_rx, (void*)&rx_config[portid], lcore_id);
+        tx_config[portid].ctxt = ctxt;
+        tx_config[portid].cache = cache;
+        tx_config[portid].num_instances = num_instances;
+        tx_config[portid].num_active = num_instances;
+        tx_config[portid].port_id = portid;
         lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
         assert(rte_lcore_to_socket_id(lcore_id) == rte_socket_id());
-        rte_eal_remote_launch(lcore_tx, (void*)&ports[portid], lcore_id);
+        rte_eal_remote_launch(lcore_tx, (void*)&tx_config[portid], lcore_id);
 	}
 
 	// uint64_t ts_ref = rte_rdtsc_precise();

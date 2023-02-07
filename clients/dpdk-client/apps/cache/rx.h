@@ -5,10 +5,20 @@
 
 #include "../../include/types.h"
 
+typedef struct {
+    activep4_context_t*     ctxt;
+    int                     num_instances;
+    int                     port_id;
+} rx_config_t;
+
 static int
 lcore_rx(void* arg) {
 
-    int port_id = *((int*)arg);
+    rx_config_t* cfg = (rx_config_t*)arg;
+
+    int port_id = cfg->port_id;
+    // int num_instances = cfg->num_instances;
+    // activep4_context_t* ctxts = cfg->ctxt;
 
     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "RX thread running for port %d on lcore %d\n", port_id, rte_lcore_id());
 
