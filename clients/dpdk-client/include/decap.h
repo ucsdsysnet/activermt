@@ -92,6 +92,7 @@ active_decap_filter(
 							else
 								rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] reallocation time %ld ns\n", fid, allocation_elapsed_ns);
 							ctxt->telemetry.is_initializing = 0;
+							if(ctxt->on_allocation) ctxt->on_allocation((void*)ctxt);
 							#ifdef DEBUG
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[DEBUG] state %d\n", ctxt->status);
 							#endif
@@ -109,6 +110,7 @@ active_decap_filter(
 						// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[SNAPACK] stage %d index %d flags %x\n", stage_id, mem_addr, flags);
 					}
 					break;
+				case ACTIVE_STATE_UPDATING:
 				case ACTIVE_STATE_REMAPPING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_OPT_ARGS) && TEST_FLAG(flags, AP4FLAGMASK_FLAG_INITIATED)) {
 						if(ap4data != NULL) {
@@ -120,7 +122,7 @@ active_decap_filter(
 							rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[ERROR] unable to parse args!\n");
 						}
 					}
-					break;
+					if(ctxt->status != ACTIVE_STATE_UPDATING) break;
 				case ACTIVE_STATE_TRANSMITTING:
 					if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REMAPPED) && ctxt->allocation.version == seq) {
 						ctxt->allocation.sync_version = seq;
@@ -134,7 +136,8 @@ active_decap_filter(
 						ctxt->status = ACTIVE_STATE_SNAPSHOTTING;
 						rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] remap initiated.\n", fid);
 					}
-					if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_MARKED)) {
+					static uint16_t allowed_flags_rx_handler = AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_EOE | AP4FLAGMASK_FLAG_PRELOAD;
+					if((flags | allowed_flags_rx_handler) == allowed_flags_rx_handler && TEST_FLAG(flags, AP4FLAGMASK_FLAG_EOE)) {
 						inet_pkt.hdr_ipv4 = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset);
 						if(inet_pkt.hdr_ipv4->next_proto_id == IPPROTO_UDP) {
 							inet_pkt.hdr_udp = (struct rte_udp_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + offset + sizeof(struct rte_ipv4_hdr));

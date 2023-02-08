@@ -39,7 +39,8 @@
 
 #define MAX_SAMPLES_CACHE	100000
 #define STATS_ITVL_MS_CACHE	1
-#define HH_COMPUTE_ITVL_SEC	1
+#define HH_ITVL_MIN_US		100000
+#define HH_ITVL_MAX_US		10000000
 #define PAYLOAD_MINLENGTH	16
 #define MAX_CACHE_SIZE		100000
 
@@ -239,6 +240,13 @@ void timer_cache(void* arg) {
 	activep4_context_t* ctxt = (activep4_context_t*)arg;
 	cache_context_t* cache_ctxt = (cache_context_t*)ctxt->app_context;
 
+	if(ctxt->timer_interval_us == 0) {
+		ctxt->timer_interval_us = HH_ITVL_MIN_US;
+	} else if(ctxt->timer_interval_us < HH_ITVL_MAX_US) {
+		ctxt->timer_interval_us *= 2;
+		if(ctxt->timer_interval_us > HH_ITVL_MAX_US) ctxt->timer_interval_us = HH_ITVL_MAX_US;
+	}
+
 	HASH_SORT(cache_ctxt->requested_items, compare_elements_cache);
 
 	memset(&ctxt->membuf, 0, sizeof(ctxt->membuf));
@@ -285,12 +293,19 @@ void timer_cache(void* arg) {
 
 	if(num_stored > 0) {
 		cache_ctxt->timer_reset_trigger = 1;
-		ctxt->status = ACTIVE_STATE_REMAPPING;
+		ctxt->status = ACTIVE_STATE_UPDATING;
 	}
 
 	#ifdef DEBUG_CACHE
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, total items = %d, max frequency = %d\n", num_stored, num_total, max_freq);	
 	#endif
+}
+
+void on_allocation_cache(void* arg) {
+
+	activep4_context_t* ctxt = (activep4_context_t*)arg;
+
+	ctxt->timer_interval_us = HH_ITVL_MIN_US;
 }
 
 // void switch_context_cache(activep4_context_t* ctxt) {

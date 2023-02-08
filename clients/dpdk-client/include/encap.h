@@ -88,6 +88,7 @@ active_encap_filter(
 		update_active_tx_stats(ctxt->status, &apps_ctxt->stats[ctxt->id]);
 		#endif
 		switch(ctxt->status) {
+			case ACTIVE_STATE_UPDATING:
 			case ACTIVE_STATE_TRANSMITTING:
 				insert_active_program_headers(ctxt, pkts[i]);
 				break;

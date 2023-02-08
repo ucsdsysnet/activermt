@@ -274,6 +274,7 @@ lcore_control(void* arg) {
 						ctxt->status = ACTIVE_STATE_REMAPPING;
 					#endif
 					break;
+				case ACTIVE_STATE_UPDATING:
 				case ACTIVE_STATE_REMAPPING:
 					remapping_in_progress = 1;
 					memory_t* updated_region = &ctxt->membuf;
