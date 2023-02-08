@@ -31,6 +31,7 @@ class ActiveFunction:
         self.progLen = progLen
         self.minDemand = minDemand
         self.accessIdx = copy.deepcopy(accessIdx)
+        self.numUnique = len(self.accessIdx)
         # ensuring re-circulation cost does not increase.
         self.computeConstraints()
         if self.debug:
@@ -83,6 +84,19 @@ class ActiveFunction:
         radix = len(self.constrLB)
         current = np.copy(self.constrLB) if initial is None else initial
         tsEnumStart = time.time()
+        orig = [ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in self.constrLB ]
+        reuses = {}
+        idx = 0
+        for m in orig:
+            if m not in reuses:
+                reuses[m] = []
+            reuses[m].append(idx)
+            idx += 1
+        recircs = []
+        for m in reuses:
+            if len(reuses[m]) > 1:
+                recircs.append((m, reuses[m]))
+        self.numUnique = len(reuses.keys())
         while True:
             if callback is not None:
                 callback(np.copy(current))
@@ -100,7 +114,14 @@ class ActiveFunction:
         pruned = []
         for enum in self.enumeration:
             x = [ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in enum ]
-            if len(np.unique(x)) == len(x):
+            valid = True
+            # preserve recirculation-based accesses.
+            for r in recircs:
+                idx = r[1]
+                for i in range(1, len(idx)):
+                    if x[idx[i]] != x[idx[i - 1]]:
+                        valid = False
+            if len(np.unique(x)) == self.numUnique and valid:
                 pruned.append(enum)
         self.enumeration = pruned
         tsEnumEnd = time.time()
@@ -116,8 +137,8 @@ class ActiveFunction:
             transformed = []
             for enum in self.enumeration:
                 x = [ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in enum ]
-                if len(np.unique(x)) == len(x):
-                    transformed.append(x)
+                # if len(np.unique(x)) == self.numUnique:
+                transformed.append(np.unique(x))
             return transformed
         return self.enumeration
 
@@ -134,11 +155,11 @@ class Allocator:
     ALLOCATION_TYPE_MAXMINFAIR = 1
     NUM_STAGES = 20
     FID_AUGMENTATION = 253
+    WT_OVERFLOW = 1000000
 
     def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
         self.num_stages = self.NUM_STAGES
         self.max_occupancy = self.ALLOCATION_GRANULARITY
-        self.WT_OVERFLOW = 1000
         self.metric = metric
         self.optimize = optimize
         self.minimize = minimize

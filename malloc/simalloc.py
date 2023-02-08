@@ -181,7 +181,8 @@ active_base_dir = '../apps'
 paths_active_config = {
     'cache'     : '../apps/cache/active/cacheread',
     'cheetahlb' : '../apps/cheetahlb/active/cheetahlb-syn',
-    'freqitem'  : '../apps/scenario_distcache/active/freqitem'
+    # 'freqitem'  : '../apps/scenario_distcache/active/freqitem'
+    'freqitem'  : '../apps/cache/active/freqitem'
 }
 
 appCfg = {}
@@ -191,7 +192,7 @@ apps = [ 'cache', 'freqitem', 'cheetahlb' ]
 demands = {
     'cache'     : 1,
     'cheetahlb' : 4,
-    'freqitem'  : 8
+    'freqitem'  : 64
 }
 
 for app in apps:
@@ -260,7 +261,7 @@ logging.basicConfig(filename=os.path.join(BASE_PATH, 'logs/controller/alloc_%s.l
 expId = 1
 appname = 'cache'
 type = 'fixed'
-numRepeats = 100
+numRepeats = 1
 
 metric = Allocator.METRIC_COST
 optimize = True
@@ -325,9 +326,9 @@ custom = True
 if custom:
     print("[Custom Experiment]")
 
-    numApps = 64
+    numApps = 32
     type = 'fixed'
-    appname = 'cache'
+    appname = 'freqitem'
     optimize = True
     minimize = True
     ignoreIglim = False
