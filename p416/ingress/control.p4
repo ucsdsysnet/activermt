@@ -1134,7 +1134,7 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s0) crc_16_s0;
 
 CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
-    reversed    = true,
+    reversed    = false,
     msb         = false,
     extended    = true,
     init        = 0x0000,
@@ -1145,55 +1145,55 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s1) crc_16_s1;
 
 CRCPolynomial<bit<16>>(
     coeff       = 0x18005,
-    reversed    = true,
+    reversed    = false,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
+    init        = 0x800D,
     xor         = 0x0000
 ) crc_16_poly_s2;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s2) crc_16_s2;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
-    reversed    = true,
+    coeff       = 0x10589,
+    reversed    = false,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
-    xor         = 0x0000
+    init        = 0x0001,
+    xor         = 0x0001
 ) crc_16_poly_s3;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s3) crc_16_s3;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
+    coeff       = 0x13D65,
     reversed    = true,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
-    xor         = 0x0000
+    init        = 0xFFFF,
+    xor         = 0xFFFF
 ) crc_16_poly_s4;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s4) crc_16_s4;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
-    reversed    = true,
+    coeff       = 0x13D65,
+    reversed    = false,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
-    xor         = 0x0000
+    init        = 0xFFFF,
+    xor         = 0xFFFF
 ) crc_16_poly_s5;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s5) crc_16_s5;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
-    reversed    = true,
+    coeff       = 0x11021,
+    reversed    = false,
     msb         = false,
     extended    = true,
     init        = 0x0000,
-    xor         = 0x0000
+    xor         = 0xFFFF
 ) crc_16_poly_s6;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s6) crc_16_s6;
@@ -1203,29 +1203,29 @@ CRCPolynomial<bit<16>>(
     reversed    = true,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
-    xor         = 0x0000
+    init        = 0xFFFF,
+    xor         = 0xFFFF
 ) crc_16_poly_s7;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s7) crc_16_s7;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
+    coeff       = 0x11021,
     reversed    = true,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
+    init        = 0xFFFF,
     xor         = 0x0000
 ) crc_16_poly_s8;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s8) crc_16_s8;
 
 CRCPolynomial<bit<16>>(
-    coeff       = 0x18005,
+    coeff       = 0x11021,
     reversed    = true,
     msb         = false,
     extended    = true,
-    init        = 0x0000,
+    init        = 0x554D,
     xor         = 0x0000
 ) crc_16_poly_s9;
 
@@ -1374,6 +1374,10 @@ action copy_inc_mbr() {
 
 action copy_hash_data_mbr() {
     hdr.meta.hash_data_0 = hdr.meta.mbr;
+}
+
+action copy_hash_data_mbr2() {
+    hdr.meta.hash_data_1 = hdr.meta.mbr2;
 }
 
 action bit_and_mar_mbr() {
@@ -2250,6 +2254,7 @@ table instruction_0 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2349,6 +2354,7 @@ table instruction_1 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2448,6 +2454,7 @@ table instruction_2 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2547,6 +2554,7 @@ table instruction_3 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2646,6 +2654,7 @@ table instruction_4 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2745,6 +2754,7 @@ table instruction_5 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2844,6 +2854,7 @@ table instruction_6 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -2943,6 +2954,7 @@ table instruction_7 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -3042,6 +3054,7 @@ table instruction_8 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;
@@ -3141,6 +3154,7 @@ table instruction_9 {
 		copy_mbr_mar;
 		copy_inc_mbr;
 		copy_hash_data_mbr;
+		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
 		mar_add_mbr;
 		mar_add_mbr2;

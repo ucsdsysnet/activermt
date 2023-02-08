@@ -32,7 +32,19 @@ class ActiveP4Generator:
             'egress'        : 'templates/control.egress.p4'
         }
         self.crc_16_params = {
-            'crc_16'        : ('0x18005', 'true', '0x0000', '0x0000')
+            'crc_16'            : ('0x18005', 'true', '0x0000', '0x0000'),
+            'crc_16_buypass'    : ('0x18005', 'false', '0x0000', '0x0000'),
+            'crc_16_dds_110'    : ('0x18005', 'false', '0x800D', '0x0000'),
+            'crc_16_dect'       : ('0x10589', 'false', '0x0001', '0x0001'),
+            'crc_16_dnp'        : ('0x13D65', 'true', '0xFFFF', '0xFFFF'),
+            'crc_16_en_13757'   : ('0x13D65', 'false', '0xFFFF', '0xFFFF'),
+            'crc_16_genibus'    : ('0x11021', 'false', '0x0000', '0xFFFF'),
+            'crc_16_maxim'      : ('0x18005', 'true', '0xFFFF', '0xFFFF'),
+            'crc_16_mcrf4xx'    : ('0x11021', 'true', '0xFFFF', '0x0000'),
+            'crc_16_riello'     : ('0x11021', 'true', '0x554D', '0x0000'),
+            'crc_16_t10_dif'    : ('0x18BB7', 'false', '0x0000', '0x0000'),
+            'crc_16_teledisk'   : ('0x1A097', 'false', '0x0000', '0x0000'),
+            'crc_16_usb'        : ('0x18005', 'true', '0x0000', '0xFFFF')
         }
         self.registers = ('mar', 'mbr', 'mbr2')
         self.readonly = ('mar', 'mbr2')

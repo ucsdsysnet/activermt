@@ -43,10 +43,12 @@ class ActiveProgram:
             self.MNEMONICS[opcode] = pnemonic
         self.LOAD_INSTR = [ 'MAR_LOAD', 'MBR_LOAD', 'MBR2_LOAD' ]
         self.regex_data = re.compile('DATA_([0-9])')
-        self.reg_load = {
-            'MAR'   : None,
-            'MBR'   : None,
-            'MBR2'  : None
+        self.regex_register = re.compile('(MAR|MBR2|MBR)')
+        self.reg_load = {}
+        self.access_write = {
+            'MAR'   : [ 'HASH' ],
+            'MBR'   : [ 'MIN', 'MAX', 'LOAD_QDELAY', 'LOAD_QUEUE' ],
+            'MBR2'  : [ 'REVMIN' ]
         }
         self.program = []
         self.args = {}
@@ -59,33 +61,34 @@ class ActiveProgram:
         self.referenced_regs = set()
         for i in range(0, len(program)):
             opcode = program[i][0]
+            reg = self.regex_register.findall(opcode)
+            reg = reg[0] if len(reg) > 0 else None
+            if reg is None:
+                for r in self.access_write:
+                    if opcode in self.access_write[r]:
+                        reg = r
+                        break
             if 'MEM' in opcode:
                 self.memidx.append(i)
-            elif opcode in self.LOAD_INSTR:
-                reg = opcode.split('_')[0]
-                arg = program[i][1] if len(program[i]) > 1 else None
-                referenced = reg in self.referenced_regs
-                self.reg_load[reg] = (i, arg, referenced)
+            elif reg is not None:
+                if 'LOAD' in opcode and reg not in self.reg_load:
+                    arg = program[i][1] if len(program[i]) > 1 else None
+                    referenced = reg in self.referenced_regs
+                    self.reg_load[reg] = (i, arg, referenced)
+                self.referenced_regs.add(reg)
             if program[i][0] in self.IG_ONLY:
                 self.iglim = i if i > self.iglim else self.iglim
-            for reg in self.reg_load:
-                if reg in opcode:
-                    self.referenced_regs.add(reg)
+        # print(self.reg_load)
         program.reverse()
-        memIdx = None
         buffer = []
-        for i in range(0, len(program)):
-            opcode = program[i][0]
-            # if '_LOAD_' in opcode:
-            #     data_reg = re.search('DATA_([0-9])', opcode).group(1)
-            #     didx = int(data_reg)
-            #     if didx not in self.data_idx:
-            #         self.data_idx.append(didx)
-            if 'MEM' in opcode:
-                memIdx = len(program) - i - 1
-            elif 'ADDR' in opcode and memIdx is not None:
-                opcode = "%s_%d" % (opcode, memIdx)
-            program[i][0] = opcode
+        # memIdx = None
+        # for i in range(0, len(program)):
+        #     opcode = program[i][0]
+        #     if 'MEM' in opcode:
+        #         memIdx = len(program) - i - 1
+        #     elif 'ADDR' in opcode and memIdx is not None:
+        #         opcode = "%s_%d" % (opcode, memIdx)
+        #     program[i][0] = opcode
         for i in range(0, len(program)):
             opcode = program[i][0]
             param_1 = program[i][1] if len(program[i]) > 1 else None
@@ -99,24 +102,6 @@ class ActiveProgram:
                     label = self.labels[':%s' % param_1[1:]]
                 elif param_1[0] == '$':
                     argname = param_1[1:]
-                    # if argname not in self.args:
-                    #     self.args[argname] = {
-                    #         'idx'   : [],
-                    #         'didx'  : None,
-                    #         'bulk'  : False
-                    #     }
-                    # if opcode in self.LOAD_INSTR:
-                    #     if self.args[argname]['didx'] is None:
-                    #         while self.num_data in self.data_idx:
-                    #             self.num_data = self.num_data + 1
-                    #         self.args[argname]['didx'] = self.num_data
-                    #         self.data_idx.append(self.num_data)
-                    #     # opcode = '%s_DATA_%d' % (opcode, self.args[argname]['didx'])
-                    #     opcode = '%s_DATA_%d' % (opcode, self.LOAD_INSTR.index(opcode))
-                    # elif '_BULK_WRITE' in opcode:
-                    #     self.args[argname]['bulk'] = True
-                    #     self.args[argname]['didx'] = 0
-                    # self.args[argname]['idx'].append(len(program) - i - 1)
             if param_2 is not None:    
                 if param_2[0] == ':':
                     self.labels[param_2] = 1
@@ -136,10 +121,12 @@ class ActiveProgram:
         if optimize:
             self.memidx = []
             idx = 0
+            skipped = set()
             for instr in buffer:
                 pnemonic = self.MNEMONICS[instr.opcode]
                 reg = pnemonic.split('_LOAD')[0] if '_LOAD' in pnemonic else pnemonic
-                if reg in self.reg_load and not self.reg_load[reg][2]:
+                if reg in self.reg_load and not self.reg_load[reg][2] and reg not in skipped:
+                    skipped.add(reg)
                     print("[Optimization] Skipping %s ..." % pnemonic)
                     continue
                 if 'MEM' in pnemonic:
@@ -148,6 +135,15 @@ class ActiveProgram:
                 idx += 1
         else:
             self.program = buffer
+        memIdx = None
+        for k in range(0, len(self.program)):
+            i = len(self.program) - k - 1
+            opcode = self.MNEMONICS[self.program[i].opcode]
+            if 'MEM' in opcode:
+                memIdx = i
+            elif 'ADDR' in opcode and memIdx is not None:
+                opcode = "%s_%d" % (opcode, memIdx)
+                self.program[i].opcode = self.OPCODES[opcode]
 
     def compileToTarget(self, num_stages_ig, num_stages_eg):
         if len(self.memidx) == 0:

@@ -45,6 +45,7 @@ COPY_MBR_MBR2,copy_mbr1_mbr2
 COPY_MAR_MBR,copy_mar_mbr
 COPY_MBR_MAR,copy_mbr_mar
 COPY_HASHDATA_MBR,copy_hash_data_mbr
+COPY_HASHDATA_MBR2,copy_hash_data_mbr2
 MEM_WRITE,memory_write_s#
 MEM_READ,memory_read_s#
 MEM_INCREMENT,memory_increment_s#

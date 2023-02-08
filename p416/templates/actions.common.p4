@@ -52,6 +52,10 @@ action copy_hash_data_mbr() {
     hdr.meta.hash_data_0 = hdr.meta.mbr;
 }
 
+action copy_hash_data_mbr2() {
+    hdr.meta.hash_data_1 = hdr.meta.mbr2;
+}
+
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
 }
