@@ -80,8 +80,8 @@ set(gca,'XMinorTick','on','YMinorTick','on');
 set(gca, 'FontSize', 16);
 grid on;
 
-% lgd = legend(cellstr(num2str(sort([1:num_apps, 1:num_apps])', 'App %-d')));
-lgd = legend(cellstr(num2str([1:num_apps]', 'App %-d')));
+lgd = legend(cellstr(num2str([1:num_apps, 1:num_apps]', 'App %-d')));
+% lgd = legend(cellstr(num2str([1:num_apps]', 'App %-d')));
 lgd.Location = 'southeast';
 
 saveas(gcf, sprintf('kv_hits_misses_n%d.png', num_apps));
