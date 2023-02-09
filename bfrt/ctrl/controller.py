@@ -813,45 +813,10 @@ class ActiveP4Controller:
         self.allocationChangeInProgress = None
         logging.info("[FID %d] allocation change complete.", baseFID)
 
-    """def allocatorRandomized(self, constr):
-
-        numAccesses = len(constr)
-        stageWiseAlloc = np.sum(self.allocation, axis=0)
-        alloc = stageWiseAlloc > np.zeros(self.num_stages_total)
-
-        constrLB = np.zeros(numAccesses)
-        constrUB = np.zeros(numAccesses)
-        constrMS = np.zeros(numAccesses)
-
-        for i in range(0, numAccesses):
-            constrLB[i] = constr[i][0]
-            constrUB[i] = constr[i][1]
-            constrMS[i] = constr[i][2]
-
-        A = np.zeros((numAccesses, numAccesses))
-        A[0, 0] = 1
-        for i in range(1, numAccesses):
-            A[i, i-1] = -1
-            A[i, i] = 1
-        
-        numTrialsOuter = 0
-        numTrialsInner = 0
-        allocationValid = False
-        for i in range(0, self.max_iter):
-            isValid = False
-            numTrialsOuter = numTrialsOuter + 1
-            while not isValid:
-                memIdx = np.random.randint(0, self.num_stages_total - 1, numAccesses)
-                sep = np.transpose(np.matmul(A, np.transpose(memIdx)))
-                isValid = np.all(memIdx >= constrLB) and np.all(memIdx <= constrUB) and np.all(sep >= constrMS)
-                numTrialsInner = numTrialsInner + 1
-            if not np.any(alloc[memIdx]):
-                allocationValid = True
-                break
-        
-        return (memIdx, allocationValid, numTrialsOuter, numTrialsInner)"""
-
     def deallocate(self, fid):
+
+        if fid not in self.active:
+            return
 
         logging.info("[FID %d] deallocating ...", fid)
 
@@ -861,17 +826,9 @@ class ActiveP4Controller:
         self.removeVaddrEntries(fid)
 
         for stageId in range(0, self.num_stages_egress):
-            # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Egress)
-            # if fid in entries:
-            #     for entry in entries[fid]:
-            #         entry.remove()
             self.removeMemoryAccessEntries(stageId, 'Egress', fid)
 
         for stageId in range(0, self.num_stages_ingress):
-            # entries = self.fetchMemoryAccessEntries(stageId, self.p4.Ingress)
-            # if fid in entries:
-            #     for entry in entries[fid]:
-            #         entry.remove()
             self.removeMemoryAccessEntries(stageId, 'Ingress', fid)
             allocs = self.fetchAllocationTableEntries(stageId)
             if fid in allocs:
@@ -879,6 +836,10 @@ class ActiveP4Controller:
                     entry.remove()
 
         allocreqs = self.p4.Ingress.allocation.dump(return_ents=True)
+
+        if allocreqs is None:
+            return
+
         for entry in allocreqs:
             afid = entry.key.get(b'hdr.ih.fid')
             if afid == fid:
@@ -1039,18 +1000,6 @@ class ActiveP4Controller:
             igLim = digest['iglim']
             accessIdx = []
             minDemand = []
-            # self.digestMutex.acquire()
-            if fid in self.active or fid in self.enqueued:
-                # TODO allocation modification requires computation of request hash.
-                continue
-            if fid == 255:
-                th = threading.Thread(target=self.resetAllocation)
-                th.start()
-                continue
-            """if fid == 254:
-                usage = self.getMemoryUsage(2, (0, 65535))
-                print("Usage[2]:", usage)
-                continue"""
             isAllocationRequest = False
             for i in range(0, self.max_constraints):
                 memIdx = digest['mem_%d' % i]
@@ -1061,6 +1010,20 @@ class ActiveP4Controller:
                     isAllocationRequest = True
                 else:
                     break
+            # self.digestMutex.acquire()
+            if fid == 255:
+                th = threading.Thread(target=self.resetAllocation)
+                th.start()
+                continue
+            if (fid in self.active or fid in self.enqueued) and isAllocationRequest:
+                # TODO allocation modification requires computation of request hash.
+                continue
+            if fid not in self.active and not isAllocationRequest:
+                continue
+            """if fid == 254:
+                usage = self.getMemoryUsage(2, (0, 65535))
+                print("Usage[2]:", usage)
+                continue"""
             self.allocationRequests.put({
                 'fid'       : fid,
                 'progLen'   : progLen,
@@ -1127,10 +1090,13 @@ class ActiveP4Controller:
         print("Starting monitor ... ")
         while self.watchdog:
             req = self.allocationRequests.get()
-            if req['allocate']:
+            if req['allocate'] and req['fid'] not in self.active:
                 self.allocate(req['fid'], req['progLen'], req['igLim'], req['accessIdx'], req['minDemand'])
-            else:
+            elif not req['allocate'] and req['fid'] in self.active:
                 self.deallocate(req['fid'])
+                self.active.remove(req['fid'])
+            else:
+                continue
             while req['fid'] in self.queue:
                 now = time.time()
                 if now >= (self.remoteDrainStartTs + self.REALLOCATION_TIMEOUT_SEC):
