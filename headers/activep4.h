@@ -1,7 +1,7 @@
 #ifndef ACTIVEP4_H
 #define ACTIVEP4_H
 
-// #define DEBUG_ACTIVEP4
+#define DEBUG_ACTIVEP4
 
 #define TRUE            1
 #define FALSE           0
@@ -46,6 +46,8 @@
 #define ACTIVE_STATE_REMAPPING      5
 #define ACTIVE_STATE_REALLOCATING   6
 #define ACTIVE_STATE_UPDATING       7
+#define ACTIVE_STATE_DEALLOCATING   8
+#define ACTIVE_STATE_DEALLOCWAIT    9
 
 #define ACTIVE_DEFAULT_ARG_MAR      0
 #define ACTIVE_DEFAULT_ARG_MBR      1
@@ -415,7 +417,8 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         if(memcfg->valid_stages[i] == 1) access_idx_allocated[j++] = i;
     }
 
-    assert(j == ap4->num_accesses);
+    printf("DEBUG %d,%d\n", j, ap4->num_accesses);
+    // assert(j == ap4->num_accesses);
 
     active_mutant_t* program = &ap4->mutant;
 

@@ -107,6 +107,18 @@ lcore_rx(void* arg) {
                             ctxt->status = ACTIVE_STATE_ALLOCATING;
                         }
                         break;
+                    case ACTIVE_STATE_DEALLOCATING:
+                        if(TEST_FLAG(flags, AP4FLAGMASK_FLAG_REQALLOC)) {
+                            rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] deallocation initiated.\n", fid);
+                            ctxt->status = ACTIVE_STATE_DEALLOCWAIT;
+                        }
+                        break;
+                    case ACTIVE_STATE_DEALLOCWAIT:
+                        if(!TEST_FLAG(flags, AP4FLAGMASK_FLAG_ALLOCATED)) {
+                            rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] deallocation complete.\n", fid);
+                            ctxt->status = ACTIVE_STATE_TRANSMITTING;
+                        }
+                        break;
                     case ACTIVE_STATE_REALLOCATING:
                         // rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] FID %d STATE %d Flags %x\n", ctxt->fid, ctxt->status, flags);
                     case ACTIVE_STATE_ALLOCATING:

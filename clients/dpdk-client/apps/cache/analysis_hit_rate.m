@@ -1,7 +1,7 @@
 clear;
 clc;
 
-NUM_APPS = 4;
+NUM_APPS = 1;
 
 figure;
 

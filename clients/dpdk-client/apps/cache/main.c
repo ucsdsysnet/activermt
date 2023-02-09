@@ -7,21 +7,47 @@
 #include "../../include/active.h"
 
 #include "cache.h"
+#include "monitor.h"
 #include "rx.h"
 #include "tx.h"
 #include "control.h"
+#include "common.h"
 
-// #define DEBUG_CACHE
+#define DEBUG_CACHE
 
 #define KEYDIST_PATH            "../../../../apps/cache/clients/udpc/zipf_dist_a_1.1_n_100000.csv"
 #define INSTR_SET_PATH		    "../../../../config/opcode_action_mapping.csv"
 #define ACTIVE_DIR              "../../../../apps/cache/active"
 #define ACTIVE_PROGRAM_CACHE    "cacheread"
+#define ACTIVE_PROGRAM_MONITOR	"freqitem"
 
 #define APP_IPV4_ADDR       0x0100000a
 #define APP_IPV4_DSTADDR    0x0100000a
-#define NUM_ACTIVE_PROGRAMS 1
+#define NUM_ACTIVE_PROGRAMS 2
 #define PORT_START			5678
+
+void
+context_switch_cache(activep4_context_t* ctxt) {
+	ctxt->memory_consume = memory_consume_cache;
+	ctxt->memory_invalidate = memory_invalidate_cache;
+	ctxt->memory_reset = memory_reset_cache;
+	ctxt->timer = timer_cache;
+	ctxt->on_allocation = on_allocation_cache;
+	ctxt->timer_interval_us = HH_ITVL_MIN_MS * 1E3;
+	ctxt->current_pid = PID_CACHEREAD;
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] context switched to program %s\n", ctxt->fid, ctxt->programs[ctxt->current_pid]->name);
+}
+
+void
+context_switch_monitor(activep4_context_t* ctxt) {
+	ctxt->memory_consume = memory_consume_monitor;
+	ctxt->memory_invalidate = memory_invalidate_monitor;
+	ctxt->memory_reset = memory_reset_monitor;
+	ctxt->timer = timer_monitor;
+	ctxt->on_allocation = NULL;
+	ctxt->current_pid = PID_FREQITEM;
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] context switched to program %s\n", ctxt->fid, ctxt->programs[ctxt->current_pid]->name);
+}
 
 static void 
 interrupt_handler(int sig) {
@@ -162,8 +188,11 @@ main(int argc, char** argv)
         rte_exit(EXIT_FAILURE, "Unable to allocate memory for active programs!\n");
     }
 
-    read_active_function(&active_programs[0], ACTIVE_DIR, ACTIVE_PROGRAM_CACHE);
-    strcpy(active_programs[0].name, ACTIVE_PROGRAM_CACHE);
+    read_active_function(&active_programs[PID_CACHEREAD], ACTIVE_DIR, ACTIVE_PROGRAM_CACHE);
+    strcpy(active_programs[PID_CACHEREAD].name, ACTIVE_PROGRAM_CACHE);
+
+	read_active_function(&active_programs[PID_FREQITEM], ACTIVE_DIR, ACTIVE_PROGRAM_MONITOR);
+    strcpy(active_programs[PID_FREQITEM].name, ACTIVE_PROGRAM_MONITOR);
 
     uint64_t ts_ref = rte_rdtsc_precise();
 
@@ -181,18 +210,20 @@ main(int argc, char** argv)
 		assert(ctxt[i].num_programs > 0);
 
 		ctxt[i].fid = i + 1;
-		ctxt[i].current_pid = 0;
+		ctxt[i].current_pid = PID_FREQITEM;
 
-		ctxt[i].programs[0] = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
-        ctxt[i].programs[0]->pid = 0;
-        rte_memcpy(ctxt[i].programs[0], &active_programs[0], sizeof(activep4_def_t));
-        rte_memcpy(ctxt[i].programs[0]->mutant.code, active_programs[0].code, sizeof(active_programs[0].code));
-        ctxt[i].programs[0]->mutant.proglen = active_programs[0].proglen;
+		for(int j = 0; j < NUM_ACTIVE_PROGRAMS; j++) {
+			ctxt[i].programs[j] = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
+			ctxt[i].programs[j]->pid = j;
+			rte_memcpy(ctxt[i].programs[j], &active_programs[j], sizeof(activep4_def_t));
+			rte_memcpy(ctxt[i].programs[j]->mutant.code, active_programs[j].code, sizeof(active_programs[j].code));
+			ctxt[i].programs[j]->mutant.proglen = active_programs[j].proglen;
+		}
 
 		ctxt[i].active_tx_enabled = true;
 		ctxt[i].active_heartbeat_enabled = true;
 		ctxt[i].active_timer_enabled = true;
-		ctxt[i].timer_interval_us = HH_ITVL_MIN_MS * 1E3;
+		ctxt[i].timer_interval_us = DEFAULT_TI_US;
 		ctxt[i].is_active = false;
 		ctxt[i].is_elastic = true;
 		ctxt[i].status = ACTIVE_STATE_INITIALIZING;
@@ -200,14 +231,14 @@ main(int argc, char** argv)
 
         ctxt[i].app_context = (void*)&cache[i];
 
-        ctxt[i].memory_consume = memory_consume_cache;
-        ctxt[i].memory_invalidate = memory_invalidate_cache;
-        ctxt[i].memory_reset = memory_reset_cache;
-        ctxt[i].timer = timer_cache;
         ctxt[i].shutdown = shutdown_cache;
-		ctxt[i].on_allocation = on_allocation_cache;
+		context_switch_monitor(&ctxt[i]);
+		// context_switch_cache(&ctxt[i]);
 
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "ActiveP4 context initialized with defaults for FID %d.\n", ctxt[i].fid);
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] ActiveP4 context initialized with programs:\n", ctxt[i].fid);
+		for(int j = 0; j < NUM_ACTIVE_PROGRAMS; j++) {
+			rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] %d. %s\n", ctxt[i].fid, j + 1, active_programs[j].name);
+		}
 	}
 
     uint16_t nb_ports;

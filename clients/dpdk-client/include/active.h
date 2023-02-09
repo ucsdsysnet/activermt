@@ -60,6 +60,56 @@ static  __rte_always_inline void construct_reqalloc_packet(struct rte_mbuf* mbuf
 	mbuf->data_len = mbuf->pkt_len;
 }
 
+static  __rte_always_inline void construct_dealloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
+	activep4_def_t* program = ctxt->programs[ctxt->current_pid];
+	assert(program != NULL);
+	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;
+	eth->ether_type = htons(AP4_ETHER_TYPE_AP4);
+	struct rte_ether_addr eth_addr;
+	if(rte_eth_macaddr_get(port_id, &eth_addr) < 0) {
+		printf("Unable to get device MAC address!\n");
+		return;
+	}
+	rte_memcpy(&eth->dst_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
+	activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+	ap4ih->SIG = htonl(ACTIVEP4SIG);
+	ap4ih->flags = htons(AP4FLAGMASK_FLAG_REQALLOC);
+	ap4ih->fid = htons(ctxt->fid);
+	ap4ih->seq = 0;
+	activep4_malloc_req_t* mreq = (activep4_malloc_req_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+	memset(mreq, 0, sizeof(activep4_malloc_req_t));
+	mreq->proglen = htons((uint16_t)program->proglen);
+	mreq->iglim = (uint8_t)program->iglim;
+	#ifdef DEBUG_ACTIVEPKT
+	printf("[DEBUG_ACTIVEPKT] FID %d reqalloc %d accesses: demands ", ctxt->fid, ctxt->programs[ctxt->current_pid]->num_accesses);
+	#endif
+	for(int i = 0; i < program->num_accesses; i++) {
+		mreq->mem[i] = program->access_idx[i];
+		mreq->dem[i] = 0;
+	}
+	#ifdef DEBUG_ACTIVEPKT
+	for(int i = 0; i < 8; i++) printf("%d ", mreq->dem[i]);
+	printf("\n");
+	#endif
+	struct rte_ipv4_hdr* iph = (struct rte_ipv4_hdr*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t));
+	iph->version = 4;
+	iph->ihl = 5;
+	iph->type_of_service = 0;
+	iph->total_length = htons(sizeof(struct rte_ipv4_hdr));
+	iph->packet_id = 0;
+	iph->fragment_offset = 0;
+	iph->time_to_live = 64;
+	iph->next_proto_id = 0;
+	iph->hdr_checksum = 0;
+	iph->src_addr = ctxt->ipv4_srcaddr;
+	iph->dst_addr = ctxt->ipv4_srcaddr;
+	iph->hdr_checksum = rte_ipv4_cksum(iph);
+	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_malloc_req_t) + sizeof(struct rte_ipv4_hdr);
+	mbuf->data_len = mbuf->pkt_len;
+}
+
 static  __rte_always_inline void construct_getalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
 	struct rte_ether_hdr* eth = (struct rte_ether_hdr*)bufptr;

@@ -83,6 +83,16 @@ lcore_control(void* arg) {
 					//rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Initializing ... \n");
 					#endif
 					break;
+				case ACTIVE_STATE_DEALLOCATING:
+					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
+					if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
+						construct_dealloc_packet(mbuf, port_id, ctxt);
+						rte_eth_tx_buffer(PORT_PETH, qid, buffer, mbuf);
+						rte_eth_tx_buffer_flush(PORT_PETH, qid, buffer);
+						ctxt->ctrl_ts_lastsent = now;
+						telemetry_allocation_start(ctxt);
+					}
+					break;
 				case ACTIVE_STATE_REALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 					/*struct rte_mbuf* mbufs[2];
@@ -110,6 +120,7 @@ lcore_control(void* arg) {
 						ctxt->ctrl_ts_lastsent = now;
 					}
 					break;
+				case ACTIVE_STATE_DEALLOCWAIT:
 				case ACTIVE_STATE_ALLOCATING:
 					if(elapsed_us < CTRL_SEND_INTVL_US) continue;
 					if((mbuf = rte_pktmbuf_alloc(mempool)) != NULL) {
