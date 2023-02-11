@@ -93,6 +93,8 @@ timer_monitor(void* arg) {
         cache_ctxt->timer_ctxswtch_trigger = 1;
         ctxt->status = ACTIVE_STATE_DEALLOCATING;
         ctxt->timer_interval_us = 1000;
+        uint64_t now = (double)(rte_rdtsc_precise() - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
+        rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[MONITOR] context switch init %lu ms.\n", now);
     } else if(cache_ctxt->timer_ctxswtch_trigger) {
         if(ctxt->status == ACTIVE_STATE_TRANSMITTING) {
             cache_ctxt->timer_ctxswtch_trigger = 0;
