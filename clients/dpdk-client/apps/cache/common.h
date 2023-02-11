@@ -61,6 +61,12 @@ typedef struct {
     uint8_t             timer_snapshot_trigger;
     uint8_t             timer_deallocate_trigger;
     uint8_t             timer_ctxswtch_trigger;
+	int					monitor_stgid_threshold;
+	int					monitor_stgid_key_0;
+	int					monitor_stgid_key_1;
+	uint8_t				frequent_item_monitor;
+	cache_item_t*		frequent_items;
+	int					num_frequent_items;
 } cache_context_t;
 
 void context_switch_cache(activep4_context_t*);

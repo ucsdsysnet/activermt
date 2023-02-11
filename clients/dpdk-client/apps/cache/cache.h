@@ -12,7 +12,7 @@
 
 #include "common.h"
 
-// #define DEBUG_CACHE
+#define DEBUG_CACHE
 
 int
 compare_elements_cache(const void * a, const void * b) {
@@ -111,39 +111,61 @@ timer_cache(void* arg) {
 
 	memset(&ctxt->membuf, 0, sizeof(ctxt->membuf));
 
-	int num_stored = 0, num_total = 0, max_freq = 0, estimated_hitrate = 0, sum_freq = 0;
+	uint32_t num_stored = 0, num_total = 0, max_freq = 0, estimated_hitrate = 0, sum_freq = 0;
 
 	uint8_t bloom[MAX_CACHE_SIZE];
 	memset(bloom, 0, MAX_CACHE_SIZE);
 
-	cache_item_t* item;
+	if(!cache_ctxt->frequent_item_monitor) {
+		cache_item_t* item;
+		for(item = cache_ctxt->requested_items; item != NULL && num_stored < cache_ctxt->memory_size; item = item->hh.next) {
+			// estimated_hitrate += item->freq;
+			max_freq = (item->freq > max_freq) ? item->freq : max_freq;
+			// uint32_t paddr = cache_ctxt->memory_start + item->vaddr % cache_ctxt->memory_size;
+			uint64_t key = item->key;
+			uint32_t key_0 = key >> 32;
+			uint32_t key_1 = key & 0xFFFFFFFF;
+			assert(key_0 > 0 || key_1 > 0);
+			uint32_t vaddr = rte_hash_crc_8byte(key, 0);
+			uint32_t paddr = cache_ctxt->memory_start + vaddr % cache_ctxt->memory_size;
+			if(bloom[paddr]) continue;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_key_0].data[paddr] = key_0;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_key_1].data[paddr] = key_1;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = 1;
+			num_stored++;
+			bloom[paddr] = 1;
+			estimated_hitrate += item->freq;
+			// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "storing item %lu freq %d\n", key, item->freq);
+		}
 
-	for(item = cache_ctxt->requested_items; item != NULL && num_stored < cache_ctxt->memory_size; item = item->hh.next) {
-		// estimated_hitrate += item->freq;
-		max_freq = (item->freq > max_freq) ? item->freq : max_freq;
-		// uint32_t paddr = cache_ctxt->memory_start + item->vaddr % cache_ctxt->memory_size;
-		uint32_t paddr = item->paddr;
-		if(bloom[paddr]) continue;
-		uint64_t key = item->key;
-		uint32_t key_0 = key >> 32;
-		uint32_t key_1 = key & 0xFFFFFFFF;
-		assert(key_0 > 0 || key_1 > 0);
-		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_0].data[paddr] = key_0;
-		ctxt->membuf.sync_data[cache_ctxt->stage_id_key_1].data[paddr] = key_1;
-		ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = 1;
-		num_stored++;
-		bloom[paddr] = 1;
-		estimated_hitrate += item->freq;
-		// rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "storing item %lu freq %d\n", key, item->freq);
-	}
-
-	if(num_stored > 0) {
-		for(item = cache_ctxt->requested_items; item != NULL; item = item->hh.next) {
-			sum_freq += item->freq;
-			num_total++;
+		if(num_stored > 0) {
+			for(item = cache_ctxt->requested_items; item != NULL; item = item->hh.next) {
+				sum_freq += item->freq;
+				num_total++;
+			}
+			#ifdef DEBUG_CACHE
+			rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "estimated hit rate: %f\n", estimated_hitrate * 1.0f / sum_freq);
+			#endif
+		}
+	} else {
+		for(int i = 0; i < cache_ctxt->num_frequent_items; i++) {
+			cache_item_t* item = &cache_ctxt->frequent_items[i];
+			uint64_t key = item->key;
+			uint32_t key_0 = key >> 32;
+			uint32_t key_1 = key & 0xFFFFFFFF;
+			assert(key_0 > 0 || key_1 > 0);
+			uint32_t vaddr = rte_hash_crc_8byte(key, 0);
+			uint32_t paddr = cache_ctxt->memory_start + vaddr % cache_ctxt->memory_size;
+			if(bloom[paddr]) continue;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_key_0].data[paddr] = key_0;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_key_1].data[paddr] = key_1;
+			ctxt->membuf.sync_data[cache_ctxt->stage_id_value].data[paddr] = 1;
+			num_stored++;
+			bloom[paddr] = 1;
+			estimated_hitrate += item->freq;
 		}
 		#ifdef DEBUG_CACHE
-		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "estimated hit rate: %f\n", estimated_hitrate * 1.0f / sum_freq);
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "storing %d items from monitor.\n", num_stored);
 		#endif
 	}
 
@@ -157,7 +179,7 @@ timer_cache(void* arg) {
 	}
 
 	#ifdef DEBUG_CACHE
-	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, total items = %d, max frequency = %d\n", num_stored, num_total, max_freq);	
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "Frequent items = %d, total items = %d, max frequency = %u\n", num_stored, num_total, max_freq);	
 	#endif
 }
 
@@ -165,8 +187,14 @@ void
 on_allocation_cache(void* arg) {
 
 	activep4_context_t* ctxt = (activep4_context_t*)arg;
+	cache_context_t* cache_ctxt = (cache_context_t*)ctxt->app_context;
 
 	ctxt->timer_interval_us = HH_ITVL_MIN_MS * 1E3;
+
+	if(cache_ctxt->frequent_item_monitor) {
+		uint64_t now = (double)(rte_rdtsc_precise() - cache_ctxt->ts_ref) * 1E3 / rte_get_tsc_hz();
+		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[CACHE] context switch complete after %lu ms.\n", now);
+	}
 }
 
 void
@@ -201,7 +229,7 @@ tx_update_args(cache_context_t* ctxt, activep4_data_t* args) {
     args->data[1] = htonl(key_0);
     args->data[2] = htonl(key_1);
 
-    cache_item_t* item;
+	cache_item_t* item;
 	HASH_FIND_INT(ctxt->requested_items, &key, item);
 	if(item == NULL) {
 		item = (cache_item_t*)rte_zmalloc(NULL, sizeof(cache_item_t), 0);

@@ -25,6 +25,7 @@
 #define APP_IPV4_DSTADDR    0x0100000a
 #define NUM_ACTIVE_PROGRAMS 2
 #define PORT_START			5678
+#define DEMAND_HH			128
 
 void
 context_switch_cache(activep4_context_t* ctxt) {
@@ -46,6 +47,9 @@ context_switch_monitor(activep4_context_t* ctxt) {
 	ctxt->timer = timer_monitor;
 	ctxt->on_allocation = NULL;
 	ctxt->current_pid = PID_FREQITEM;
+	int demand[NUM_STAGES];
+	memset(demand, DEMAND_HH, NUM_STAGES * sizeof(int));
+	set_memory_demand_per_stage(ctxt, demand);
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] context switched to program %s\n", ctxt->fid, ctxt->programs[ctxt->current_pid]->name);
 }
 
@@ -203,6 +207,7 @@ main(int argc, char** argv)
         cache[i].ts_ref = ts_ref;
 		cache[i].ipv4_dstaddr = APP_IPV4_DSTADDR;
 		cache[i].app_port = PORT_START + i;
+		cache[i].frequent_item_monitor = 1;
 
 		ctxt[i].instr_set = &instr_set;
 
@@ -223,7 +228,7 @@ main(int argc, char** argv)
 		ctxt[i].active_tx_enabled = true;
 		ctxt[i].active_heartbeat_enabled = true;
 		ctxt[i].active_timer_enabled = true;
-		ctxt[i].timer_interval_us = DEFAULT_TI_US;
+		ctxt[i].timer_interval_us = 2 * DEFAULT_TI_US;
 		ctxt[i].is_active = false;
 		ctxt[i].is_elastic = true;
 		ctxt[i].status = ACTIVE_STATE_INITIALIZING;
@@ -234,6 +239,17 @@ main(int argc, char** argv)
         ctxt[i].shutdown = shutdown_cache;
 		context_switch_monitor(&ctxt[i]);
 		// context_switch_cache(&ctxt[i]);
+
+		// TODO debug
+		// int memsize = 65536;
+		// activep4_def_t* prog = ctxt[i].programs[PID_FREQITEM];
+		// for(int j = 0; j < prog->num_accesses; j++) {
+		// 	ctxt[i].allocation.valid_stages[prog->access_idx[i]] = 1;
+		// 	ctxt[i].allocation.sync_data[prog->access_idx[i]].mem_start = 0;
+		// 	ctxt[i].allocation.sync_data[prog->access_idx[i]].mem_end = memsize - 1;
+		// }
+		// cache[i].memory_start = 0;
+		// cache[i].memory_size = memsize;
 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] ActiveP4 context initialized with programs:\n", ctxt[i].fid);
 		for(int j = 0; j < NUM_ACTIVE_PROGRAMS; j++) {
