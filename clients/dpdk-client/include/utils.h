@@ -155,7 +155,7 @@ static __rte_always_inline void telemetry_allocation_start(activep4_context_t* c
 	}
 }
 
-static  __rte_always_inline void update_active_tx_stats(int status, active_app_stats_t* stats) {
+static __rte_always_inline void update_active_tx_stats(int status, active_app_stats_t* stats) {
 	stats->tx_total[stats->num_samples]++;
 	if(status == ACTIVE_STATE_TRANSMITTING) {
 		stats->tx_active[stats->num_samples]++;
@@ -169,7 +169,7 @@ static  __rte_always_inline void update_active_tx_stats(int status, active_app_s
 	}
 }
 
-static  __rte_always_inline void write_active_tx_stats(active_apps_t* apps) {
+static __rte_always_inline void write_active_tx_stats(active_apps_t* apps) {
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[INFO] writing active TX stats ... \n");
 	for(int i = 0; i < apps->num_apps; i++) {
 		if(apps->stats[i].num_samples == 0) continue;
@@ -183,7 +183,7 @@ static  __rte_always_inline void write_active_tx_stats(active_apps_t* apps) {
 	}
 }
 
-static int
+static __rte_unused int
 lcore_stats(void* arg) {
 	
 	unsigned lcore_id = rte_lcore_id();
