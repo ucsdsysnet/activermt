@@ -227,6 +227,10 @@ class Allocator:
             utility += utilAcrossStages
         return (utility * 1.0 / len(utilityByFunc))
 
+    # occupancy = number of active applications.
+    def getOccupancy(self):
+        return len(self.activeFuncs.keys())
+
     # utilization = fraction of total memory blocks used.
     def getUtilization(self):
         utilization = 0.0

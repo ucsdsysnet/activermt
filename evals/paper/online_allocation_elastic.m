@@ -10,7 +10,7 @@ PARAM_NUMAPPS = 128;
 PARAM_NUMEXP = 100;
 
 % Bitmap format: allocation time, utilization, fairness, reallocations
-graphs = [0 1 1 1];
+graphs = [0 0 1 0];
 
 % Allocation time.
 if graphs(1) == 1
@@ -134,17 +134,29 @@ if graphs(3) == 1
     end
 
     allocated_proportions(allocated_proportions == 0) = NaN;
+    allocated_proportions = allocated_proportions';
+
+    prop_lb = min(allocated_proportions, [], 1);
+    prop_ub = max(allocated_proportions, [], 1);
+    prop_avg = nanmean(allocated_proportions, 1);
+
+    err_neg = prop_avg - prop_lb;
+    err_pos = prop_ub - prop_avg;
 
     figure;
     yyaxis left;
-    boxplot(allocated_proportions');
+%     boxplot(allocated_proportions');
+    errorbar(1:PARAM_NUMAPPS, prop_avg, err_neg, err_pos);
+    hold on;
+    set(gca, 'YScale', 'log');
     ylabel('Allocated Memory Blocks');
     yyaxis right;
     plot(fairness, '-o');
     ylabel('Fairness Measure');
     xlabel('Allocation #');
+    set(gca, 'FontSize', 16);
     grid on;
-    set(gcf, 'Position', get(0, 'Screensize'));
+%     set(gcf, 'Position', get(0, 'Screensize'));
     saveas(gcf, sprintf('%s/online_fairness_d%d_n%d.png', OUTPUT_PATH, PARAM_GRANULARITY, PARAM_NUMAPPS));
 end
 

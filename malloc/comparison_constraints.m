@@ -213,11 +213,7 @@ end
 if graphs(4) == 1
     figure;
     for i = 1:length(compare_params_constraints)
-        if i == 1
-            yyaxis left;
-        else
-            yyaxis right;
-        end
+        utildata = zeros(PARAM_NUMREPS, PARAM_NUMAPPS);
         for j = 1:PARAM_NUMREPS
             data_utilization = readtable(sprintf( ...
                 'stats_g%d_n%d_%s_%s_%s/%d/utilization.csv', ...
@@ -230,15 +226,25 @@ if graphs(4) == 1
             ));
             utilization = data_utilization{ : , 1};
             utilization(utilization == 0) = NaN;
-            plot(utilization, param_markers{i});
-            hold on;
+            utildata( j , : ) = utilization;
         end
+        util_ub = max(utildata, [], 1);
+        util_lb = min(utildata, [], 1);
+        util_avg = mean(utildata, 1);
+        err_neg = util_avg - util_lb;
+        err_pos = util_ub - util_avg;
+%         X = [1:PARAM_NUMAPPS;1:PARAM_NUMAPPS];
+%         X = X(:)';
+%         Y = [util_lb; util_ub];
+%         Y = Y(:)';
+%         fill(X, Y, colors_light{i});
+        errorbar(1:PARAM_NUMAPPS, util_avg, err_neg, err_pos);
+        hold on;
     end
-    yyaxis left;
-    ylabel('Utilization (least-constrained)');
-    yyaxis right;
-    ylabel('Utilization (most-constrained)');
+    ylabel('Utilization');
     xlabel('App #');
+    lgd = legend(labels_constraints);
+    lgd.Location = 'southeast';
     set(gca, 'FontSize', 16);
     grid on;
     
