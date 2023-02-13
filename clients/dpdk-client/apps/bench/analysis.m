@@ -1,17 +1,25 @@
 clear;
 clc;
 
-data = readtable('results_allocation_times.csv');
+data_client = readtable('results_allocation_times.csv');
+data_controller = readtable('results_controller.csv');
 
-FID = data{ : , 1};
-time_ns = data{ : , 2};
+FID = data_client{ : , 1};
+allocation_time_ns = data_client{ : , 2};
+snapshot_time_ns = data_client{ : , 3};
 
-time_ms = time_ns / 1E6;
+allocation_time_ms = allocation_time_ns / 1E6;
+snapshot_time_ms = snapshot_time_ns / 1E6;
 
 figure;
-plot(FID, time_ms, '-square');
+% plot(FID, allocation_time_ms, '-square');
+plot(data_controller{ : , 1}, data_controller{ : , 2}, '-square');
+hold on;
+plot(FID, snapshot_time_ms, '-x');
+ylabel('Total Time (ms)');
 xlabel('FID');
-ylabel('Allocation Time (ms)');
+lgd = legend('Allocation', 'Snapshot');
+lgd.Location = 'northwest';
 set(gca, 'FontSize', 16);
 grid on;
 

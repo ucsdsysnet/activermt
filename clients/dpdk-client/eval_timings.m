@@ -1,8 +1,8 @@
 clear;
 clc;
 
-data_allocations = readtable('activep4_allocations.csv');
-data_snapshots = readtable('activep4_snapshots.csv');
+data_allocations = readtable('evals/activep4_allocations.csv');
+data_snapshots = readtable('evals/activep4_snapshots.csv');
 
 apps_allocations = data_allocations{ : , 1};
 allocation_times_ms = data_allocations{ : , 2} / 1E6;
@@ -28,7 +28,7 @@ lgd = legend('Allocation', 'Snapshot');
 lgd.Location = 'northwest';
 set(gca, 'FontSize', 16);
 grid on;
-saveas(gcf, sprintf('allocation_snapshot_timings_n%d.png', num_apps));
+saveas(gcf, sprintf('allocation_snapshot_timings_n%d_v2.png', num_apps));
 
 % swdata = readtable('allocation_times_controller.csv');
 % swapps = swdata{ : , 1};

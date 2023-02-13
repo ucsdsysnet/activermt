@@ -660,7 +660,54 @@ class Allocator:
 
     def enqueueAllocation(self, allocation, allocationMap):
         allocationMatrix = self.computeAllocationMatrix(allocationMap)
-        changes = self.computeChanges(allocationMap)
+
+        # mod
+        comparison = {}
+        for i in range(0, self.num_stages):
+            for k in range(0, self.max_occupancy):
+                fid = self.allocationMatrix[k, i]
+                if fid > 0:
+                    assert not (self.getMinDemand(fid, i) > 1 and fid != allocationMatrix[k, i])
+                    if self.getMinDemand(fid, i) == 1:
+                        if fid not in comparison:
+                            comparison[fid] = {
+                                'old'   : set(),
+                                'new'   : set()
+                            }
+                        comparison[fid]['old'].add((i, k))
+        for i in range(0, self.num_stages):
+            for k in range(0, self.max_occupancy):
+                fid = allocationMatrix[k, i]
+                if fid > 0:
+                    if self.getMinDemand(fid, i) == 1:
+                        if fid not in comparison:
+                            continue
+                        comparison[fid]['new'].add((i, k))
+        
+        diff = {}
+        for fid in comparison:
+            removed = comparison[fid]['old'].difference(comparison[fid]['new'])
+            added = comparison[fid]['new'].difference(comparison[fid]['old'])
+            if len(removed) > 0 or len(added) > 0:
+                diff[fid] = (removed, added)
+
+        # mapping from FID to (old_stage,new_stage,is_resized)
+        changes = {}
+        for fid in diff:
+            removed = diff[fid][0]
+            #added = diff[fid][1]
+            affected_stages = set()
+            for r in removed:
+                stage_id = r[0]
+                affected_stages.add(stage_id)
+            for stage_id in affected_stages:
+                if fid not in changes:
+                    changes[fid] = []
+                changes[fid].append((stage_id, stage_id, True))
+
+        # print(changes)
+        
+        # changes = self.computeChanges(allocationMap)
         if allocationMatrix is None:
             self.resetQueue()
             return (None, None)
@@ -704,7 +751,9 @@ class Allocator:
                 self.queue['revAllocationMap'][fid].append(i)
         self.queue['allocationMatrix'] = copy.deepcopy(allocationMatrix)
 
-        return (updatedChanges, remaps)
+        # print(remaps.keys())
+
+        return (changes, remaps)
 
     def applyQueuedAllocation(self):
         if self.queue['fid'] is None:

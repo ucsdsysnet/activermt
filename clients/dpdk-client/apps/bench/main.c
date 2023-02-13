@@ -13,6 +13,7 @@
 #include "control.h"
 
 #define DEBUG_BENCH
+#define SIMULATE_ARRIVALS
 
 #define INSTR_SET_PATH		        "../../../../config/opcode_action_mapping.csv"
 #define ACTIVE_DIR_CACHE            "../../../../apps/cache/active"
@@ -26,7 +27,7 @@
 #define NUM_ACTIVE_PROGRAMS         3
 #define MAX_CONCURRENT				100
 #define POISSON_LAMBDA				1
-#define ARRIVAL_DELAY_MS			2000
+#define ARRIVAL_DELAY_MS			5000
 
 #define PID_CACHEREAD               0
 #define PID_FREQITEM                1
@@ -296,17 +297,22 @@ main(int argc, char** argv)
 	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[MAIN] starting experiment for %d ticks ... \n", duration_ticks);
 
     uint16_t fid = 1;
+
+	#ifdef SIMULATE_ARRIVALS
 	int idx = 0;
+	#endif
 
     for(int i = 0; i < duration_ticks && is_running; i++) {
 
 		rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[MAIN] tick %d\n", i);
 
+		#ifdef SIMULATE_ARRIVALS
+
         unsigned num_arrivals = poisson(POISSON_LAMBDA);
         unsigned num_departures = poisson(POISSON_LAMBDA);
 
-		if(num_arrivals > 1) num_arrivals = 1;
-		if(num_departures > 1) num_departures = 1;
+		// if(num_arrivals > 1) num_arrivals = 1;
+		// if(num_departures > 1) num_departures = 1;
 
 		#ifdef DEBUG_BENCH
 		printf("[DEBUG] arrivals %u departures %u\n", num_arrivals, num_departures);
@@ -325,6 +331,8 @@ main(int argc, char** argv)
 			}
         }
 
+		rte_delay_ms(500);
+
         for(int j = 0; j < num_arrivals; j++) {
             int pid = rand() % NUM_ACTIVE_PROGRAMS;
 			for(int n = 0; ctxt[idx].is_active && n < MAX_CONCURRENT; idx = (idx + 1) % MAX_CONCURRENT, n++);
@@ -337,6 +345,17 @@ main(int argc, char** argv)
 				idx = (idx + 1) % MAX_CONCURRENT;
 			}
         }
+
+		#else
+
+		if(i >= MAX_CONCURRENT) break;
+
+		int pid = rand() % NUM_ACTIVE_PROGRAMS;
+		activate_application(&ctxt[i], active_programs, pid, fid);
+		ctrl_config.num_active++;
+		fid++;
+
+		#endif
 
 		rte_delay_ms(ARRIVAL_DELAY_MS);
 	}

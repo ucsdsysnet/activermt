@@ -73,7 +73,8 @@ class ActiveP4Controller:
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
-        self.vaddr_support = True
+        self.vaddr_support = False
+        self.least_constrained = False
         self.num_stages_ingress = 10
         self.num_stages_egress = 10
         self.max_constraints = 8
@@ -84,6 +85,10 @@ class ActiveP4Controller:
         self.recirculation_enabled = True
         self.base_path = basePath
         logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
+        self.debug_dir = os.path.join(self.base_path, 'debug')
+        if os.path.exists(self.debug_dir):
+            os.removedirs(self.debug_dir)
+        os.makedirs(self.debug_dir)
         self.customInstructionSet = custom
         self.opcode_action = {}
         self.opcode_pnemonic = {}
@@ -657,6 +662,10 @@ class ActiveP4Controller:
         if fid == self.augment_fid:
             logging.info("[FID %d] committing augmented allocation ...", self.allocationChangeInProgress)
             self.completeAugmentedAllocation()
+        allocation_matrix = self.allocator.allocationMatrix
+        with open(os.path.join(self.debug_dir, "allocmatrix_%d.csv" % fid), "w") as f:
+            f.write("\n".join([ ",".join([ str(x) for x in y ]) for y in allocation_matrix ]))
+            f.close()
 
     def updateAllocation(self, fid, allocation, remaps):
 
@@ -890,7 +899,10 @@ class ActiveP4Controller:
             print(accessIdx)
             print(minDemand)
 
-        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=False)
+        if self.least_constrained:
+            igLim = -1
+
+        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=self.least_constrained)
 
         if fid != self.augment_fid:
             self.programDefs[fid] = activeFunc
