@@ -22,7 +22,7 @@ param_markers = {'--square', '-x'};
 param_colors = {'r', 'b', 'g', 'k'};
 
 % reallocations, utilization, time, utilization (random)
-graphs = [0 0 0 1];
+graphs = [0 0 1 0];
 
 if graphs(1) == 1
     figure;
@@ -134,7 +134,7 @@ if graphs(3) == 1
     L = cell(1, length(compare_params_constraints) * length(compare_params_workloads));
     num_wl = length(compare_params_workloads);
     num_constr = length(compare_params_constraints);
-    grouped_data = zeros(num_wl * num_constr, PARAM_NUMAPPS * PARAM_NUMREPS);
+    grouped_data = zeros(num_constr, num_wl, PARAM_NUMAPPS * PARAM_NUMREPS);
     for k = 1:length(compare_params_workloads)
         for i = 1:length(compare_params_constraints)
             data = zeros(PARAM_NUMAPPS, PARAM_NUMREPS);
@@ -154,7 +154,7 @@ if graphs(3) == 1
             data(data == 0) = NaN;
     
             allocation_time = mean(data, 2);
-            grouped_data((k - 1)*2+i, : ) = reshape(data, [PARAM_NUMAPPS*PARAM_NUMREPS, 1]);
+            grouped_data(i, k, : ) = reshape(data, [PARAM_NUMAPPS*PARAM_NUMREPS, 1]);
         
 %             plot(allocation_time, param_markers{i}, "Color", param_colors{k});
 %             hold on;
@@ -162,14 +162,44 @@ if graphs(3) == 1
             L((k-1)*length(compare_params_constraints)+i) = cellstr(sprintf('%s (%s)', labels_workloads{k}, compare_params_constraints{i}));
         end
     end
+
+%     Y_avg = zeros(length(compare_params_constraints), length(compare_params_workloads));
+%     Y_lb = zeros(length(compare_params_constraints), length(compare_params_workloads));
+%     Y_ub = zeros(length(compare_params_constraints), length(compare_params_workloads));
+% 
+%     for i = 1:length(compare_params_workloads)
+%         for j = 1:length(compare_params_constraints)
+%             Y_avg(j, i) = nanmean(grouped_data((i - 1)*2+j, :));
+%             Y_lb(j, i) = min(grouped_data((i - 1)*2+j, :));
+%             Y_ub(j, i) = max(grouped_data((i - 1)*2+j, :));
+%         end
+%     end
+% 
+%     Y_neg = Y_avg - Y_lb;
+%     Y_pos = Y_ub - Y_avg;
+    
+%     figure;
+%     for i = 1:length(compare_params_constraints)
+%         errorbar(1:length(compare_params_workloads), Y_avg(i, : ), Y_neg(i, : ), Y_pos(i, : ), 'LineWidth', 2);
+%         hold on;
+%     end
     
     figure;
-    boxplot(grouped_data');
+    plotstyles_constr = {'compact', 'traditional'};
+    for i = 1:num_constr
+        X = reshape(grouped_data(i, :, :), [num_wl, PARAM_NUMAPPS * PARAM_NUMREPS]);
+        boxplot(X', 'PlotStyle', plotstyles_constr{i});
+        hold on;
+        Xm = nanmedian(X, 2);
+        plot(Xm, 'LineWidth', 1.5);
+        hold on;
+    end
     ylabel('Computation Time (ms)');
-    xticklabels(L);
+    xticklabels(labels_workloads);
 %     xlabel('App #');
 %     lgd = legend(L);
-%     lgd.Location = 'northwest';
+    lgd = legend(labels_constraints);
+    lgd.Location = 'northwest';
     set(gca, 'FontSize', 16);
     grid on;
     

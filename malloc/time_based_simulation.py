@@ -5,6 +5,8 @@ import sys
 import random
 import numpy as np
 
+from multiprocessing import Process
+
 from allocator import *
 
 BASE_PATH = os.environ['ACTIVEP4_SRC'] if 'ACTIVEP4_SRC' in os.environ else os.getcwd()
@@ -36,25 +38,41 @@ analysisTypes = ['fit', 'duration']
 def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocTime, enumTime, utilization, isOnline=True):
     logging.info("[%d] %s,%s,%d,%d,%f,%f,%f,%f", expId, appname, ('ONLINE' if isOnline else 'OFFLINE'), numApps, cost, elapsedTime, allocTime, enumTime, utilization)
 
-def simAllocation(expId, appCfg, allocator, departures=False, online=True, debug=False, outputDir=None, allowFilling=False, durationTicks=60, arrivalRate=1, departureRate=1):
+def simAllocation(expId, appCfg, allocator, departures=False, online=True, debug=False, outputDir=None, allowFilling=False, durationTicks=60, arrivalRate=1, departureRate=1, wl='random'):
     rng = np.random.default_rng()
     DEPARTURE_RATE = departureRate
     ARRIVAL_RATE = arrivalRate
     apps = list(appCfg.keys())
+    elastic_apps = []
+    inelastic_apps = []
+    is_elastic = {}
+    for app in appCfg:
+        is_elastic[app] = (1 in appCfg[app]['mindemand'])
+        if is_elastic[app]:
+            elastic_apps.append(app)
+        else:
+            inelastic_apps.append(app)
     iter = 0
     costs = np.zeros(durationTicks, dtype=np.uint32)
     allocationTime = np.zeros(durationTicks)
     enumerationSizes = np.zeros(durationTicks, dtype=np.uint32)
     utilByIter = np.zeros(durationTicks, dtype=np.float64)
     occupancy = np.zeros(durationTicks, dtype=np.uint16)
+    failures = np.zeros(durationTicks, dtype=np.uint16)
+    elasticity = np.zeros(durationTicks, dtype=np.uint16)
     allocated = []
     allocated_appnames = []
+    allocated_apps = {}
+    arrivals = []
     numDepartures = 0
     mutants = {}
     stageIds = []
     allocatedBlocks = []
     allocMatrices = []
     for t in range(0, durationTicks):
+        num_failed = 0
+        num_elastic = 0
+        new_fids = []
         if departures:
             nd = rng.poisson(lam=DEPARTURE_RATE)
             while nd > 0 and len(allocated) > 0:
@@ -68,7 +86,12 @@ def simAllocation(expId, appCfg, allocator, departures=False, online=True, debug
                     print("deallocated", depfid)
         numQueued = rng.poisson(lam=ARRIVAL_RATE)
         while numQueued > 0:
-            appname = apps[random.randint(0, len(apps) - 1)]
+            if wl == 'elastic':
+                appname = elastic_apps[random.randint(0, len(elastic_apps) - 1)] if len(elastic_apps) > 1 else elastic_apps[0]
+            elif wl == 'inelastic':
+                appname = inelastic_apps[random.randint(0, len(inelastic_apps) - 1)] if len(inelastic_apps) > 1 else inelastic_apps[0]
+            else:
+                appname = apps[random.randint(0, len(apps) - 1)]
             accessIdx = np.transpose(np.array(appCfg[appname]['idx'], dtype=np.uint32))
             progLen = appCfg[appname]['applen']
             igLim = appCfg[appname]['iglim']
@@ -94,30 +117,41 @@ def simAllocation(expId, appCfg, allocator, departures=False, online=True, debug
                 for sid in blocks:
                     numBlocks += len(blocks[sid])
                 allocatedBlocks.append(numBlocks)
-                allocMatrices.append(copy.deepcopy(allocator.allocationMatrix))
+                # allocMatrices.append(copy.deepcopy(allocator.allocationMatrix))
                 costs[t] = numChanges
                 allocationTime[t] = allocTime
                 enumerationSizes[t] = activeFunc.getEnumerationSize()
                 allocated.append(fid)
-                allocated_appnames.append(appname)
+                allocated_appnames.append("%d,%s" % (fid, appname))
+                allocated_apps[fid] = appname
+                new_fids.append(fid)
                 iter += 1
                 if debug:
                     print("allocated", fid, "app", appname)
             else:
-                stageIds.append("")
-                allocatedBlocks.append(None)
-                allocMatrices.append(None)
+                num_failed += 1
                 if debug:
                     print("allocation failed for", appname, "seq", iter)
             numQueued -= 1
+        for x in allocated:
+            appname = allocated_apps[x]
+            if is_elastic[appname]:
+                num_elastic += 1
+        elasticity[t] = num_elastic
         utilByIter[t] = allocator.getUtilization()
         occupancy[t] = allocator.getOccupancy()
+        failures[t] = num_failed
+        allocMatrices.append(copy.deepcopy(allocator.allocationMatrix))
+        arrivals.append(",".join([ str(x) for x in new_fids ]))
     stats = {
         'enumsizes'     : enumerationSizes,
         'alloctime'     : allocationTime,
         'costs'         : costs,
         'utilization'   : utilByIter,
         'occupancy'     : occupancy,
+        'failures'      : failures,
+        'elasticity'    : elasticity,
+        'arrivals'      : arrivals,
         'datalen'       : iter,
         'allocmatrix'   : allocator.allocationMatrix,
         'allocated'     : allocated,
@@ -128,7 +162,7 @@ def simAllocation(expId, appCfg, allocator, departures=False, online=True, debug
     if iter == 0:
         return (0, 0, {})
     # write stats.
-    statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames', 'stages', 'numblocks', 'occupancy']
+    statkeys = ['enumsizes', 'alloctime', 'costs', 'utilization', 'appnames', 'stages', 'numblocks', 'occupancy', 'failures', 'elasticity', 'arrivals']
     if outputDir is not None:
         statdir = os.path.join(os.getcwd(), outputDir, str(expId))
         if not os.path.exists(statdir):
@@ -165,18 +199,34 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
 
 def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, debug=False, allowFilling=False, durationTicks=60, arrivalRate=1, departureRate=1):
     results = []
-    param_workload = appname if w != 'random' else w
+    # param_workload = appname if w != 'random' else w
+    param_workload = w if w in ['random', 'elastic', 'inelastic'] else 'random'
     param_fit = 'ff' if not optimize else ('wf' if minimize else 'bf')
     param_constr = 'lc' if allowFilling else 'mc'
     outputDirName = "timesimulation_stats_g%d_t%d_%s_%s_%s_a%d" % (Allocator.ALLOCATION_GRANULARITY, durationTicks, param_workload, param_fit, param_constr, arrivalRate)
     if os.path.exists(os.path.join(os.getcwd(), outputDirName)):
         raise Exception("Stats directory already exists! Remove/rename existing directory.")
+    threads = []
     for k in range(0, numRepeats):
+        kwargs = {
+            'departures'    : departures,
+            'debug'         : debug,
+            'outputDir'     : outputDirName,
+            'allowFilling'  : allowFilling,
+            'durationTicks' : durationTicks,
+            'arrivalRate'   : arrivalRate,
+            'departureRate' : departureRate,
+            'wl'            : w
+        }
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
+        proc = Process(target=simAllocation, args=(k, appCfg, allocator,), kwargs=kwargs)
+        proc.start()
+        threads.append(proc)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
-        result = simAllocation(k, appCfg, allocator, departures=departures, debug=debug, outputDir=outputDirName, allowFilling=allowFilling, durationTicks=durationTicks, arrivalRate=arrivalRate, departureRate=departureRate)
-        results.append(result)
-    return results
+        # result = simAllocation(k, appCfg, allocator, departures=departures, debug=debug, outputDir=outputDirName, allowFilling=allowFilling, durationTicks=durationTicks, arrivalRate=arrivalRate, departureRate=departureRate, wl=w)
+        # results.append(result)
+    return threads
+    # return results
 
 # read application configurations.
 
@@ -228,9 +278,10 @@ if custom:
 elif analysis_type == 'duration':
     print("[Online Duration Based Simulation]")
 
-    duration_ticks = 100
+    duration_ticks = 1000
     numRepeats = 10
-    type = 'random'
+    # types: random, elastic, inelastic
+    # type = 'inelastic'
 
     includeDepartures = True
     optimize = True
@@ -238,18 +289,24 @@ elif analysis_type == 'duration':
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     
-    params_constraints = [False]
+    param_types = ['random', 'elastic', 'inelastic']
+    params_constraints = [True, False]
     params_arrival_factor = 2
 
+    threads = []
     for c in params_constraints:
-        ignoreIglim = c
-        allowFilling = ignoreIglim
-        if ignoreIglim:
-            for app in appCfg:
-                appCfg[app]['iglim'] = -1
-        print("Running analysis with parameters: optimize=%s, minimize=%s, workload=random, granularity=%d, ticks=%d, constrained=%s, arrival_factor=%d" % (str(optimize), str(minimize), Allocator.ALLOCATION_GRANULARITY, duration_ticks, 'least' if allowFilling else 'most', params_arrival_factor))
-        results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, w=type, debug=False, departures=includeDepartures, allowFilling=allowFilling, durationTicks=duration_ticks, arrivalRate=params_arrival_factor)
-
+        for type in param_types:
+            ignoreIglim = c
+            allowFilling = ignoreIglim
+            if ignoreIglim:
+                for app in appCfg:
+                    appCfg[app]['iglim'] = -1
+            print("Running analysis with parameters: workload=%s optimize=%s, minimize=%s, granularity=%d, ticks=%d, constrained=%s, arrival_factor=%d" % (type, str(optimize), str(minimize), Allocator.ALLOCATION_GRANULARITY, duration_ticks, 'least' if allowFilling else 'most', params_arrival_factor))
+            # results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, w=type, debug=False, departures=includeDepartures, allowFilling=allowFilling, durationTicks=duration_ticks, arrivalRate=params_arrival_factor)
+            th = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, w=type, debug=False, departures=includeDepartures, allowFilling=allowFilling, durationTicks=duration_ticks, arrivalRate=params_arrival_factor)
+            threads += th
+    for proc in threads:
+        proc.join()
 elif analysis_type == 'fit':
     workloads = appCfg.keys()
     workloads.append('random')
