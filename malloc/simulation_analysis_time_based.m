@@ -7,7 +7,7 @@ PARAM_GRANULARITY = 368;
 PARAM_DURATION = 1000;
 PARAM_FIT = 'wf';
 PARAM_NUMREPS = 10;
-PARAM_WL = 'random';
+PARAM_WL = 'inelastic';
 PARAM_ARRIVAL_RATE = 2;
 
 params_constraints = {'lc', 'mc'};
@@ -18,7 +18,7 @@ param_colors = {'r', 'b', 'g', 'm'};
 labels_constraints = {'least-constr', 'most-constr'};
 
 % utilization, occupancy, reallocations, failures, fairness.
-graphs = [0 1 0 0 0];
+graphs = [0 0 1 0 0];
 
 if graphs(1) == 1
     figure;
@@ -205,13 +205,21 @@ if graphs(3) == 1
 %         p = fill(X1, Y1, param_colors{c + 1}, 'EdgeColor', 'none');
 %         p.FaceAlpha = 0.4;
 %         hold on;
-        plot(1:PARAM_DURATION, cost_avg_total * 100, '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
-        hold on;
+%         plot(1:PARAM_DURATION, cost_avg_total * 100, '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
+%         hold on;
 
 %         p = fill(X2, Y2, param_colors{c + 2}, 'EdgeColor', 'none');
 %         p.FaceAlpha = 0.4;
 %         hold on;
-        plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
+%         plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
+%         hold on;
+
+        mwa_total = conv(cost_avg_total, mwa_filter) * 100;
+        mwa_elastic = conv(cost_avg_elastic, mwa_filter) * 100;
+
+        plot(1:PARAM_DURATION, mwa_total(1:PARAM_DURATION), '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
+        hold on;
+        plot(1:PARAM_DURATION, mwa_elastic(1:PARAM_DURATION), '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
         hold on;
 
 %         mwa = conv(cost_avg, mwa_filter);
@@ -230,7 +238,8 @@ if graphs(3) == 1
     lgd = legend({'least-constr (all)', 'least-constr (elastic)', 'most-constr (all)', 'most-constr (elastic)'});
 %     lgd = legend(labels_constraints);
 %     lgd.Location = 'southeast';
-    lgd.Location = 'northwest';
+    lgd.Location = 'northeast';
+    lgd.FontSize = 12;
     set(gca, 'FontSize', 16);
     grid on;
     
