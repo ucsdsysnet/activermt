@@ -7,7 +7,8 @@ import numpy as np
 from multiprocessing import Process
 
 params_constr = ['lc', 'mc']
-params_wl = ['random', 'elastic', 'inelastic']
+# params_wl = ['random', 'elastic', 'inelastic']
+params_wl = ['random']
 
 wl = sys.argv[1] if len(sys.argv) > 1 else 'random'
 wl = wl if wl in params_wl else 'random'

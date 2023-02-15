@@ -286,17 +286,30 @@ class Allocator:
         numAccesses = len(memIdx)
         for i in range(0, numAccesses):
             idx = memIdx[i]
-            largest_cluster = self.max_occupancy - self.elastic_offset[idx]
-            if len(self.fragmentation[idx]) > 0 and self.fragmentation[idx][0][1] > largest_cluster:
-                largest_cluster = self.fragmentation[idx][0][1]
-            if largest_cluster < activeFunc.minDemand[i]:
-                return -1
             cost = 0
+            num_elastic = 0
+            # min requirements.
             for fid in self.allocationMap[idx]:
                 cost += self.getMinDemand(fid, idx)
+                if self.getMinDemand(fid, idx) == 1:
+                    num_elastic += 1
             cost += activeFunc.minDemand[i]
             if cost > self.max_occupancy:
                 return -1
+            # separate logic for elastic/inelastic.
+            if activeFunc.minDemand[i] == 1:
+                elastic_region = self.max_occupancy - self.elastic_offset[idx]
+                if num_elastic > elastic_region:
+                    return -1
+                cost = num_elastic * (self.max_occupancy * 1.0 / elastic_region)
+            else:
+                largest_cluster = self.max_occupancy - self.elastic_offset[idx]
+                if (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
+                    return -1
+                if len(self.fragmentation[idx]) > 0 and self.fragmentation[idx][0][1] > largest_cluster:
+                    largest_cluster = self.fragmentation[idx][0][1]
+                if largest_cluster < activeFunc.minDemand[i]:
+                    return -1
             sumcost += cost
         return sumcost
 
@@ -566,14 +579,15 @@ class Allocator:
                             self.fragmentation[i][fragIdx] = (self.fragmentation[i][fragIdx][0] + demand, self.fragmentation[i][fragIdx][1] - demand)
                     numInelastic += 1
             remaining = self.max_occupancy - self.elastic_offset[i]
-            for frag in self.fragmentation[i]:
-                remaining += frag[1]
+            # for frag in self.fragmentation[i]:
+            #     remaining += frag[1]
             # allocate number of blocks for elastic apps.
             elasticBlocks = remaining
             numBlocks = {}
             clusters = {}
             app_fids = []
-            fragments = copy.deepcopy(self.fragmentation[i])
+            # fragments = copy.deepcopy(self.fragmentation[i])
+            fragments = []
             if numElastic > 0:
                 if self.allocation_type == self.ALLOCATION_TYPE_MAXMINFAIR:
                     # max-min fairness.

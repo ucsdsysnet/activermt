@@ -289,7 +289,8 @@ elif analysis_type == 'duration':
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     
-    param_types = ['random', 'elastic', 'inelastic']
+    # param_types = ['random', 'elastic', 'inelastic']
+    param_types = ['random']
     params_constraints = [True, False]
     params_arrival_factor = 2
 

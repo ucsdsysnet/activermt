@@ -7,8 +7,15 @@ PARAM_GRANULARITY = 368;
 PARAM_DURATION = 1000;
 PARAM_FIT = 'wf';
 PARAM_NUMREPS = 10;
-PARAM_WL = 'inelastic';
+PARAM_WL = 'random';
 PARAM_ARRIVAL_RATE = 2;
+
+EWMA_ALPHA = 0.6;
+EWMA_FILTER = ones(1, 10);
+for i = 2:10
+    EWMA_FILTER(i) = EWMA_FILTER(i - 1) * 2;
+end
+EWMA_FILTER = EWMA_FILTER / sum(EWMA_FILTER);
 
 params_constraints = {'lc', 'mc'};
 
@@ -18,7 +25,7 @@ param_colors = {'r', 'b', 'g', 'm'};
 labels_constraints = {'least-constr', 'most-constr'};
 
 % utilization, occupancy, reallocations, failures, fairness.
-graphs = [0 0 1 0 0];
+graphs = [0 1 0 0 0];
 
 if graphs(1) == 1
     figure;
@@ -67,6 +74,7 @@ if graphs(1) == 1
     xlabel('Time Interval');
     lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
     lgd.Location = 'southeast';
+    lgd.FontSize = 12;
     set(gca, 'FontSize', 16);
     grid on;
     
@@ -124,7 +132,7 @@ if graphs(2) == 1
         X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y1 = [occ_lb',fliplr(occ_ub')];
 
-        yyaxis left;
+%         yyaxis left;
         p = fill(X1, Y1, param_colors{i}, 'EdgeColor', 'none');
         p.FaceAlpha = 0.4;
     
@@ -133,18 +141,19 @@ if graphs(2) == 1
         plot(1:PARAM_DURATION, occ_avg, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
         hold on;
         
-        yyaxis right;
-        Yf = mean(failures, 2);
-        plot(Yf, param_markers{i}, 'LineWidth', 2, 'Color', 'k');
-        hold on;
+%         yyaxis right;
+%         Yf = mean(failures, 2);
+%         plot(Yf, param_markers{i}, 'LineWidth', 2, 'Color', 'k');
+%         hold on;
     end
     
-    yyaxis left;
+%     yyaxis left;
     ylabel('Concurrency (# active apps)');
-    yyaxis right;
-    ylabel('Cumulative failed allocations');
+%     yyaxis right;
+%     ylabel('Cumulative failed allocations');
     xlabel('Time Interval');
-    lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)', 'least-constr (avg)', 'most-constr (avg)'});
+%     lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)', 'least-constr (avg)', 'most-constr (avg)'});
+    lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
 %     lgd.Location = 'southeast';
     lgd.Location = 'northwest';
     lgd.FontSize = 12;
@@ -214,12 +223,15 @@ if graphs(3) == 1
 %         plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
 %         hold on;
 
-        mwa_total = conv(cost_avg_total, mwa_filter) * 100;
-        mwa_elastic = conv(cost_avg_elastic, mwa_filter) * 100;
+%         emwa_total = conv(cost_avg_total, EWMA_FILTER) * 100;
+%         emwa_elastic = conv(cost_avg_elastic, EWMA_FILTER) * 100;
 
-        plot(1:PARAM_DURATION, mwa_total(1:PARAM_DURATION), '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
-        hold on;
-        plot(1:PARAM_DURATION, mwa_elastic(1:PARAM_DURATION), '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
+%         emwa_total = ewma(cost_avg_total, EWMA_ALPHA) * 100;
+        emwa_elastic = ewma(cost_avg_elastic, EWMA_ALPHA) * 100;
+
+%         plot(1:PARAM_DURATION, emwa_total(1:PARAM_DURATION), '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
+%         hold on;
+        plot(1:PARAM_DURATION, emwa_elastic(1:PARAM_DURATION), '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
         hold on;
 
 %         mwa = conv(cost_avg, mwa_filter);
@@ -235,8 +247,8 @@ if graphs(3) == 1
     ylabel('Reallocations (%)');
     xlabel('Time Interval');
     xlim([1, PARAM_DURATION]);
-    lgd = legend({'least-constr (all)', 'least-constr (elastic)', 'most-constr (all)', 'most-constr (elastic)'});
-%     lgd = legend(labels_constraints);
+%     lgd = legend({'least-constr (all)', 'least-constr (elastic)', 'most-constr (all)', 'most-constr (elastic)'});
+    lgd = legend(labels_constraints);
 %     lgd.Location = 'southeast';
     lgd.Location = 'northeast';
     lgd.FontSize = 12;
@@ -286,6 +298,7 @@ if graphs(4) == 1
     ylabel('SUM(failures)');
     lgd = legend(labels_constraints);
     lgd.Location = 'northwest';
+    lgd.FontSize = 12;
     set(gca, 'FontSize', 16);
     grid on;
     
@@ -340,6 +353,7 @@ if graphs(5) == 1 && strcmp(PARAM_WL, 'inelastic') == 0
 %     lgd = legend(labels_constraints);
     lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
     lgd.Location = 'southeast';
+    lgd.FontSize = 12;
     set(gca, 'FontSize', 16);
     grid on;
     
