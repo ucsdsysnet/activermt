@@ -4,7 +4,7 @@ import re
 import sys
 import json
 
-LOGFILE = '../../../../logs/controller/controller-asic.log'
+LOGFILE = 'controller-asic-diff.log'
 OUTFILE = 'asic_log.json'
 CSVFILE = 'results_controller.csv'
 
@@ -22,6 +22,7 @@ apps = {}
 
 current_fid = None
 
+pos = 0
 for line in log:
     fid = re.findall("\[FID ([0-9]+)\]", line)
     if len(fid) == 0:
