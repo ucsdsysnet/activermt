@@ -3,6 +3,7 @@ clc;
 
 SOURCE_DIR = './evals/mi_100ms_n_4_itvl_5_sec';
 NUM_APPS = 4;
+ALPHA = 0.01;
 
 figure;
 
@@ -26,6 +27,16 @@ for i = 1:NUM_APPS
     hit_rate = hits ./ total;
     hr_mwa = conv(hit_rate, mwa_filter);
     total_mwa = conv(total, mwa_filter);
+    ewma_hr = zeros(size(hit_rate));
+    ewma_hr(1) = hit_rate(1);
+    for k = 2:length(hit_rate)
+        ewma_hr(k) = ALPHA * hit_rate(k) + (1-ALPHA)*ewma_hr(k-1);
+    end
+    ewma_total = zeros(size(total));
+    ewma_total(1) = total(1);
+    for k = 2:length(total)
+        ewma_total(k) = ALPHA * total(k) + (1-ALPHA)*ewma_total(k-1);
+    end
     Xq = floor(X);
     Xu = unique(Xq);
     Rx = zeros(1, length(Xu));
@@ -36,10 +47,12 @@ for i = 1:NUM_APPS
 %     scatter(X, hit_rate, 3, colors_light{i});
 %     hold on;
     yyaxis left;
-    plot(X, hr_mwa(1:length(X)), '-', 'Color', colors_dark{i}, 'LineWidth', 2);
+%     plot(X, hr_mwa(1:length(X)), '-', 'Color', colors_dark{i}, 'LineWidth', 2);
+    plot(X, ewma_hr, '-', 'Color', colors_dark{i}, 'LineWidth', 2);
     hold on;
     yyaxis right;
-    plot(Xu, Rx , '--square', 'Color', colors_light{i}, 'LineWidth', 2);
+%     plot(Xu, Rx , '--square', 'Color', colors_light{i}, 'LineWidth', 2);
+    plot(X, ewma_total/1e3, '--', 'Color', colors_light{i}, 'LineWidth', 2);
     hold on;
 end
 
@@ -56,7 +69,7 @@ end
 yyaxis left;
 ylabel('Hit Rate');
 yyaxis right;
-ylabel('RX Pkts/sec');
+ylabel('RX KPkts');
 xlabel('Time (sec)');
 legend_params = [1:NUM_APPS,1:NUM_APPS];
 lgd = legend(cellstr(num2str(legend_params', 'App %-d')));

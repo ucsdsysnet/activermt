@@ -1,7 +1,8 @@
 #ifndef ACTIVEP4_H
 #define ACTIVEP4_H
 
-#define DEBUG_ACTIVEP4
+// #define DEBUG_ACTIVEP4
+// #define RECIRC_ENABLED
 
 #define TRUE            1
 #define FALSE           0
@@ -18,6 +19,7 @@
 #define AP4_DATA_LEN    4
 #define MAX_MEMACCESS   8
 #define NUM_STAGES_IG   10
+#define NUM_STAGES_EG   10
 #define NUM_STAGES      20
 // #define MAX_DATA        65536
 #define MAX_DATA        94208
@@ -363,6 +365,13 @@ static inline activep4_def_t* construct_memsync_program(int fid, int stageId, pn
     add_instruction(&cache[stageId], instr_set, "EOF"); i++;
     cache[stageId].proglen = i;
     // cache[stageId].fid = fid;
+    #ifdef DEBUG_ACTIVEP4
+    printf("[MEMSYNC PROGRAM]\n");
+    activep4_def_t* program = &cache[stageId];
+    for(int j = 0; j < i; j++) {
+        printf("[%d]\t%d\n", program->code[j].flags, program->code[j].opcode);
+    }
+    #endif
     return &cache[stageId];
 }
 
@@ -402,11 +411,34 @@ static inline void construct_nop_program(activep4_def_t* program, pnemonic_opcod
 
 static inline int get_memory_stage_id(int idx) {
     if(idx < NUM_STAGES) return idx;
-    int num_stages_eg = NUM_STAGES - NUM_STAGES_IG;
-    return (idx - NUM_STAGES_IG) % num_stages_eg + NUM_STAGES_IG;
+    return (idx - NUM_STAGES_IG) % NUM_STAGES_EG + NUM_STAGES_IG;
 }
 
+/*
+memcfg contains a set of memory stages not necessarily in order of accesses.
+ap4 contains order of accesses and number of accesses.
+task is to find a program that can be assigned the set of memory stages.
+*/
 static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, int NOP_OPCODE, pnemonic_opcode_t* instr_set) {
+
+    // int min_distance[NUM_STAGES];
+    int access_idx_normalized[NUM_STAGES];
+    for(int i = 0; i < ap4->num_accesses; i++) {
+        access_idx_normalized[i] = (ap4->access_idx[i] < NUM_STAGES_IG) ? ap4->access_idx[i] : ap4->access_idx[i] % NUM_STAGES_EG + NUM_STAGES_IG;
+        // min_distance[i] = (i == 0) ? ap4->access_idx[i] : ap4->access_idx[i] - ap4->access_idx[i - 1];
+    }
+
+    int original = 1;
+    for(int i = 0; i < ap4->num_accesses; i++) {
+        if(memcfg->valid_stages[access_idx_normalized[i]] == 0) original = 0;
+    }
+
+    if(original) {
+        #ifdef DEBUG_ACTIVEP4
+        printf("[DEBUG_ACTIVEP4] Program mutation not required.\n");
+        #endif
+        return;
+    }
     
     int access_idx_allocated[NUM_STAGES], block_start, block_end, offset;
 
@@ -417,8 +449,73 @@ static inline void mutate_active_program(activep4_def_t* ap4, memory_t* memcfg, 
         if(memcfg->valid_stages[i] == 1) access_idx_allocated[j++] = i;
     }
 
-    printf("DEBUG %d,%d\n", j, ap4->num_accesses);
-    // assert(j == ap4->num_accesses);
+    #ifdef RECIRC_ENABLED
+
+    // for(int i = 0; i < ap4->num_accesses; i++) printf("%d ", access_idx_normalized[i]);
+    // printf("\n");
+
+    uint8_t unique_accesses[NUM_STAGES];
+    memset(unique_accesses, 0, NUM_STAGES);
+    for(int i = 0; i < ap4->num_accesses; i++) {
+        int idx = access_idx_normalized[i];
+        unique_accesses[idx] = 1;
+    }
+    int num_unique_accesses = 0;
+    for(int i = 0; i < NUM_STAGES; i++) num_unique_accesses += unique_accesses[i];
+
+    assert(j == num_unique_accesses);
+
+    int access_idx[NUM_STAGES];
+    int assigned[NUM_STAGES];
+
+    memcpy(assigned, access_idx_allocated, j * sizeof(int));
+
+    // 1. assign allocated stages to memory accesses.
+    for(int k = 0; k < j; k++) {
+        int init = assigned[k];
+        access_idx[0] = init;
+        assigned[k] = -1;
+        for(int i = 1; i < ap4->num_accesses; i++) {
+            int mindist = min_distance[i];
+            for(int m = k + 1; m != k; m = (m + 1)%j) {
+                if(assigned[m] != -1);
+            }
+        }
+    }
+
+    int access_repeats[NUM_STAGES];
+    memset(access_repeats, -1, sizeof(access_repeats));
+    for(int i = 0; i < ap4->num_accesses; i++) {
+        for(int j = 0; j < i; j++) {
+            int rep_idx_last = -1;
+            if(access_idx_normalized[j] == access_idx_normalized[i]) {
+                rep_idx_last = j;
+            }
+            if(rep_idx_last >= 0) access_repeats[rep_idx_last] = i;
+        }
+    }
+
+    // for(int i = 0; i < ap4->num_accesses; i++) printf("%d ", access_repeats[i]);
+    // printf("\n");
+
+    int access_idx_expanded[NUM_STAGES], idx = 0;
+    uint8_t filled[NUM_STAGES];
+    memset(filled, 0, NUM_STAGES);
+    for(int i = 0; i < j; i++) {
+        if(filled[idx]) idx++;
+        access_idx_expanded[idx] = access_idx_allocated[i];
+        if(access_repeats[idx] >= 0) {
+            access_idx_expanded[access_repeats[idx]] = access_idx_allocated[i];
+            filled[access_repeats[idx]] = 1;
+        }
+        idx++;
+    }
+
+    // for(int i = 0; i < ap4->num_accesses; i++) printf("%d ", access_idx_expanded[i]);
+    // printf("\n");
+    #else
+    assert(j == ap4->num_accesses);
+    #endif
 
     active_mutant_t* program = &ap4->mutant;
 
@@ -485,6 +582,19 @@ static inline void set_memory_demand(activep4_context_t* ctxt, int demand) {
     else ctxt->is_elastic = 1;
     for(int i = 0; i < ctxt->programs[ctxt->current_pid]->num_accesses; i++)
         ctxt->programs[ctxt->current_pid]->demand[i] = demand;
+}
+
+static inline void set_memory_demand_per_stage(activep4_context_t* ctxt, int* demand) {
+    int is_elastic = 1;
+    for(int i = 0; i < ctxt->programs[ctxt->current_pid]->num_accesses; i++) {
+        ctxt->programs[ctxt->current_pid]->demand[i] = demand[i];
+        if(demand[i] > 1) is_elastic = 0;
+    }
+    ctxt->is_elastic = is_elastic;
+}
+
+static inline void set_memory_allocation(activep4_context_t* ctxt, memory_t* allocation) {
+    memcpy(&ctxt->allocation, allocation, sizeof(memory_t));
 }
 
 #endif

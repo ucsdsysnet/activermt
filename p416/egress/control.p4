@@ -1409,38 +1409,46 @@ action mbr_store() {
     hdr.data.data_3 = hdr.meta.mbr;
 }
 
-action mbr_store_extended_data_0() {
-    hdr.extended_data[0].data = hdr.meta.mbr;
-    // hdr.extended_data[0].setValid();
+action mbr_store_alt() {
+    hdr.data.data_1 = hdr.meta.mbr;
 }
 
-action mbr_store_extended_data_1() {
-    hdr.extended_data[1].data = hdr.meta.mbr;
+action mbr_store_alt_2() {
+    hdr.data.data_2 = hdr.meta.mbr;
 }
 
-action mbr_store_extended_data_2() {
-    hdr.extended_data[2].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_0() {
+//     hdr.extended_data[0].data = hdr.meta.mbr;
+//     // hdr.extended_data[0].setValid();
+// }
 
-action mbr_store_extended_data_3() {
-    hdr.extended_data[3].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_1() {
+//     hdr.extended_data[1].data = hdr.meta.mbr;
+// }
 
-action mbr_store_extended_data_4() {
-    hdr.extended_data[4].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_2() {
+//     hdr.extended_data[2].data = hdr.meta.mbr;
+// }
 
-action mbr_store_extended_data_5() {
-    hdr.extended_data[5].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_3() {
+//     hdr.extended_data[3].data = hdr.meta.mbr;
+// }
 
-action mbr_store_extended_data_6() {
-    hdr.extended_data[6].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_4() {
+//     hdr.extended_data[4].data = hdr.meta.mbr;
+// }
 
-action mbr_store_extended_data_7() {
-    hdr.extended_data[7].data = hdr.meta.mbr;
-}
+// action mbr_store_extended_data_5() {
+//     hdr.extended_data[5].data = hdr.meta.mbr;
+// }
+
+// action mbr_store_extended_data_6() {
+//     hdr.extended_data[6].data = hdr.meta.mbr;
+// }
+
+// action mbr_store_extended_data_7() {
+//     hdr.extended_data[7].data = hdr.meta.mbr;
+// }
 // action mar_load_d0() {
 //     hdr.meta.mar = hdr.data.data_0 & 0xFFFFF;
 // }
@@ -2222,14 +2230,8 @@ table instruction_0 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2298,14 +2300,8 @@ table instruction_1 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2374,14 +2370,8 @@ table instruction_2 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2450,14 +2440,8 @@ table instruction_3 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2526,14 +2510,8 @@ table instruction_4 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2602,14 +2580,8 @@ table instruction_5 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2678,14 +2650,8 @@ table instruction_6 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2754,14 +2720,8 @@ table instruction_7 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2830,14 +2790,8 @@ table instruction_8 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;
@@ -2906,14 +2860,8 @@ table instruction_9 {
 		mbr_load;
 		mbr2_load;
 		mbr_store;
-		mbr_store_extended_data_0;
-		mbr_store_extended_data_1;
-		mbr_store_extended_data_2;
-		mbr_store_extended_data_3;
-		mbr_store_extended_data_4;
-		mbr_store_extended_data_5;
-		mbr_store_extended_data_6;
-		mbr_store_extended_data_7;
+		mbr_store_alt;
+		mbr_store_alt_2;
 		mbr_equals_d0;
 		mbr_equals_d1;
 		mbr_equals_d2;

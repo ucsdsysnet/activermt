@@ -25,7 +25,7 @@ param_colors = {'r', 'b', 'g', 'm'};
 labels_constraints = {'least-constr', 'most-constr'};
 
 % utilization, occupancy, reallocations, failures, fairness.
-graphs = [0 1 0 0 0];
+graphs = [0 0 1 0 0];
 
 if graphs(1) == 1
     figure;
@@ -193,23 +193,23 @@ if graphs(3) == 1
         end
 
         reallocations_pct_elastic(isnan(reallocations_pct_elastic)) = 0;
-        reallocations_pct_total(isnan(reallocations_pct_total)) = 0;
+%         reallocations_pct_total(isnan(reallocations_pct_total)) = 0;
     
-        cost_avg_total = mean(reallocations_pct_total, 2);
-        cost_lb_total = min(reallocations_pct_total, [], 2);
-        cost_ub_total = max(reallocations_pct_total, [], 2);
+%         cost_avg_total = mean(reallocations_pct_total, 2);
+%         cost_lb_total = min(reallocations_pct_total, [], 2);
+%         cost_ub_total = max(reallocations_pct_total, [], 2);
 
         cost_avg_elastic = mean(reallocations_pct_elastic, 2);
         cost_lb_elastic = min(reallocations_pct_elastic, [], 2);
         cost_ub_elastic = max(reallocations_pct_elastic, [], 2);
 
-        X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
-        Y1 = [cost_lb_total',fliplr(cost_ub_total')];
+%         X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
+%         Y1 = [cost_lb_total',fliplr(cost_ub_total')];
 
         X2 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y2 = [cost_lb_elastic',fliplr(cost_ub_elastic')];
 
-        c = 2 * (i - 1);
+%         c = 2 * (i - 1);
 
 %         p = fill(X1, Y1, param_colors{c + 1}, 'EdgeColor', 'none');
 %         p.FaceAlpha = 0.4;
@@ -217,10 +217,10 @@ if graphs(3) == 1
 %         plot(1:PARAM_DURATION, cost_avg_total * 100, '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
 %         hold on;
 
-%         p = fill(X2, Y2, param_colors{c + 2}, 'EdgeColor', 'none');
-%         p.FaceAlpha = 0.4;
-%         hold on;
-%         plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{c + 2}, 'LineWidth', 1.5);
+        p = fill(X2, Y2 * 100, param_colors{i}, 'EdgeColor', 'none');
+        p.FaceAlpha = 0.4;
+        hold on;
+%         plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
 %         hold on;
 
 %         emwa_total = conv(cost_avg_total, EWMA_FILTER) * 100;
@@ -248,7 +248,8 @@ if graphs(3) == 1
     xlabel('Time Interval');
     xlim([1, PARAM_DURATION]);
 %     lgd = legend({'least-constr (all)', 'least-constr (elastic)', 'most-constr (all)', 'most-constr (elastic)'});
-    lgd = legend(labels_constraints);
+    lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
+%     lgd = legend(labels_constraints);
 %     lgd.Location = 'southeast';
     lgd.Location = 'northeast';
     lgd.FontSize = 12;

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import random
+import numpy as np
 
 from allocator import *
 
@@ -13,8 +14,9 @@ def logAllocation(expId, appname, numApps, allocation, cost, elapsedTime, allocT
 dbg_changes = {}
 dbg_allocmatrix = {}
 dbg_allocmap = {}"""
-def simAllocation(expId, appCfg, allocator, sequence, departures=False, departureFID='random', departureProb=0.0, online=True, debug=False, outputDir=None):
+def simAllocation(expId, appCfg, allocator, sequence, departures=False, departureFID='random', departureProb=0.0, online=True, debug=False, outputDir=None, allowFilling=False):
     # global dbg_seq, dbg_changes, dbg_allocmatrix, dbg_allocmap
+    # rng = np.random.default_rng()
     iter = 0
     sumCost = 0
     sumTime = 0
@@ -39,15 +41,24 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         if debug:
             print("")
             print("Iteration", iter, "App", appname)
-        if departures and len(allocated) > 0 and random.random() < departureProb:
-            if departureFID == 'random':
-                candidate = random.randint(0, len(allocated) - 1)
-                depfid = allocated[candidate]
-            else:
-                depfid = allocated[0]
-            allocator.deallocate(depfid)
-            allocated.remove(depfid)
-            numDepartures += 1
+        # if departures and len(allocated) > 0 and random.random() < departureProb:
+        #     if departureFID == 'random':
+        #         candidate = random.randint(0, len(allocated) - 1)
+        #         depfid = allocated[candidate]
+        #     else:
+        #         depfid = allocated[0]
+        #     allocator.deallocate(depfid)
+        #     allocated.remove(depfid)
+        #     numDepartures += 1
+        # if departures and len(allocated) > 0:
+        #     nd = rng.poisson(lam=1)
+        #     while nd > 0:
+        #         candidate = random.randint(0, len(allocated) - 1)
+        #         depfid = allocated[candidate]
+        #         allocator.deallocate(depfid)
+        #         allocated.remove(depfid)
+        #         numDepartures += 1
+        #         nd -= 1
         i += 1
         if appname in failed:
             continue
@@ -57,7 +68,7 @@ def simAllocation(expId, appCfg, allocator, sequence, departures=False, departur
         minDemand = appCfg[appname]['mindemand']
         fid = iter + 1
         tsBegin = time.time()
-        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True)
+        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=allowFilling)
         (allocation, cost, utilization, allocTime, overallAlloc, allocationMap) = allocator.computeAllocation(activeFunc, online=online)
         """if i in dbg_seq and not np.all(np.equal(allocation, dbg_seq[i])):
             print("Error!")
@@ -190,9 +201,9 @@ appCfg = {}
 apps = [ 'cache', 'freqitem', 'cheetahlb' ]
 
 demands = {
-    'cache'     : 1,
-    'cheetahlb' : 4,
-    'freqitem'  : 64
+    'cache'     : 1,    # elastic
+    'cheetahlb' : 2,    # inelastic (512 entries)
+    'freqitem'  : 16    # inelastic (error rate 0.1%)
 }
 
 for app in apps:
@@ -294,11 +305,12 @@ def generateSequence(appCfg, type='fixed', appname='cache', appSeqLen=100):
         i += 1
     return sequence
 
-def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None, seqLen=256):
+def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w='random', departures=False, departureFID='random', departureProb=0.0, expId=0, debug=False, fixedSequence=None, seqLen=256, allowFilling=False):
     results = []
     param_workload = appname if w != 'random' else w
     param_fit = 'ff' if not optimize else ('wf' if minimize else 'bf')
-    outputDirName = "stats_g%d_n%d_%s_%s" % (Allocator.ALLOCATION_GRANULARITY, seqLen, param_workload, param_fit)
+    param_constr = 'lc' if allowFilling else 'mc'
+    outputDirName = "stats_g%d_n%d_%s_%s_%s" % (Allocator.ALLOCATION_GRANULARITY, seqLen, param_workload, param_fit, param_constr)
     if os.path.exists(os.path.join(os.getcwd(), outputDirName)):
         raise Exception("Stats directory already exists! Remove/rename existing directory.")
     for k in range(0, numRepeats):
@@ -308,7 +320,7 @@ def runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=None, w=
             sequence = fixedSequence
         allocator = Allocator(metric=metric, optimize=optimize, minimize=minimize)
         # result = (totalCost, utilization, utility, avgTime, numAllocated, numDepartures, stats)
-        result = simAllocation(k, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb, debug=False, outputDir=outputDirName)
+        result = simAllocation(k, appCfg, allocator, sequence, departures=departures, departureFID=departureFID, departureProb=departureProb, debug=False, outputDir=outputDirName, allowFilling=allowFilling)
         results.append(result[:6])
     # if debug:
     #     print(result[6]['allocmatrix'])
@@ -326,19 +338,21 @@ custom = True
 if custom:
     print("[Custom Experiment]")
 
-    numApps = 32
+    numApps = 4
     type = 'fixed'
-    appname = 'freqitem'
+    appname = 'cache'
+    includeDepartures = False
     optimize = True
     minimize = True
     ignoreIglim = False
+    allowFilling = ignoreIglim
     metric = Allocator.METRIC_COST
     granularity = Allocator.ALLOCATION_GRANULARITY
     if ignoreIglim:
         for app in appCfg:
             appCfg[app]['iglim'] = -1
-    print("Running analysis with parameters: optimize=%s, minimize=%s, workload=%s, granularity=%d, numapps=%d" % (str(optimize), str(minimize), (appname if type == 'fixed' else type), Allocator.ALLOCATION_GRANULARITY, numApps))
-    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=False, departureProb=0.25)
+    print("Running analysis with parameters: optimize=%s, minimize=%s, workload=%s, granularity=%d, numapps=%d, constrained=%s" % (str(optimize), str(minimize), (appname if type == 'fixed' else type), Allocator.ALLOCATION_GRANULARITY, numApps, 'least' if allowFilling else 'most'))
+    results = runAnalysis(appCfg, metric, optimize, minimize, numRepeats, appname=appname, w=type, debug=True, seqLen=numApps, departures=includeDepartures, departureProb=0.25, allowFilling=allowFilling)
     # writeResults(results, "allocation_%s.csv" % paramStr)
 else:
     workloads = appCfg.keys()

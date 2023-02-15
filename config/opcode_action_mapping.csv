@@ -100,3 +100,5 @@ ADDR_MASK_19,addr_mask_apply
 ADDR_OFFSET_19,addr_offset_apply
 ADDR_MASK,NULL
 ADDR_OFFSET,NULL
+MBR_STORE_ALT,mbr_store_alt
+MBR_STORE_ALT2,mbr_store_alt_2

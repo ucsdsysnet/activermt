@@ -39,4 +39,7 @@ malloc/*.csv
 malloc/*.png
 clients/dpdk-client/*.csv
 
+malloc/stats*
+malloc/timesim*
+
 apps/cache/clients/udpc/kvapp
