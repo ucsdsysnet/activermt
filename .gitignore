@@ -12,6 +12,7 @@ clients/dpdk-client/build/
 local/
 sde
 malloc/stats/
+debug/
 
 CMake*
 bf_drivers*

@@ -106,6 +106,8 @@ control Ingress(
 
     // GENERATED: TABLES
 
+    <generated-loader-defs>
+
     <generated-tables>
 
     // resource monitoring
@@ -268,6 +270,7 @@ control Ingress(
             quota_recirc.apply();
             update_pkt_count_ap4();
         } else bypass_egress();
+        <generated-loaders>
         <generated-ctrlflow>
         <generated-malloc>
         if(hdr.ipv4.isValid()) {

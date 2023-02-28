@@ -2229,6 +2229,454 @@ action hash_s9() {
 
     // GENERATED: TABLES
 
+    action load_instr_0(bit<8> opcode, bit<1> goto) {
+    hdr.instr[0].opcode = opcode;
+    hdr.instr[0].goto = goto;
+}
+
+table loader_0 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_0;
+    }
+}
+
+action load_instr_1(bit<8> opcode, bit<1> goto) {
+    hdr.instr[1].opcode = opcode;
+    hdr.instr[1].goto = goto;
+}
+
+table loader_1 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_1;
+    }
+}
+
+action load_instr_2(bit<8> opcode, bit<1> goto) {
+    hdr.instr[2].opcode = opcode;
+    hdr.instr[2].goto = goto;
+}
+
+table loader_2 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_2;
+    }
+}
+
+action load_instr_3(bit<8> opcode, bit<1> goto) {
+    hdr.instr[3].opcode = opcode;
+    hdr.instr[3].goto = goto;
+}
+
+table loader_3 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_3;
+    }
+}
+
+action load_instr_4(bit<8> opcode, bit<1> goto) {
+    hdr.instr[4].opcode = opcode;
+    hdr.instr[4].goto = goto;
+}
+
+table loader_4 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_4;
+    }
+}
+
+action load_instr_5(bit<8> opcode, bit<1> goto) {
+    hdr.instr[5].opcode = opcode;
+    hdr.instr[5].goto = goto;
+}
+
+table loader_5 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_5;
+    }
+}
+
+action load_instr_6(bit<8> opcode, bit<1> goto) {
+    hdr.instr[6].opcode = opcode;
+    hdr.instr[6].goto = goto;
+}
+
+table loader_6 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_6;
+    }
+}
+
+action load_instr_7(bit<8> opcode, bit<1> goto) {
+    hdr.instr[7].opcode = opcode;
+    hdr.instr[7].goto = goto;
+}
+
+table loader_7 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_7;
+    }
+}
+
+action load_instr_8(bit<8> opcode, bit<1> goto) {
+    hdr.instr[8].opcode = opcode;
+    hdr.instr[8].goto = goto;
+}
+
+table loader_8 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_8;
+    }
+}
+
+action load_instr_9(bit<8> opcode, bit<1> goto) {
+    hdr.instr[9].opcode = opcode;
+    hdr.instr[9].goto = goto;
+}
+
+table loader_9 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_9;
+    }
+}
+
+action load_instr_10(bit<8> opcode, bit<1> goto) {
+    hdr.instr[10].opcode = opcode;
+    hdr.instr[10].goto = goto;
+}
+
+table loader_10 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_10;
+    }
+}
+
+action load_instr_11(bit<8> opcode, bit<1> goto) {
+    hdr.instr[11].opcode = opcode;
+    hdr.instr[11].goto = goto;
+}
+
+table loader_11 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_11;
+    }
+}
+
+action load_instr_12(bit<8> opcode, bit<1> goto) {
+    hdr.instr[12].opcode = opcode;
+    hdr.instr[12].goto = goto;
+}
+
+table loader_12 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_12;
+    }
+}
+
+action load_instr_13(bit<8> opcode, bit<1> goto) {
+    hdr.instr[13].opcode = opcode;
+    hdr.instr[13].goto = goto;
+}
+
+table loader_13 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_13;
+    }
+}
+
+action load_instr_14(bit<8> opcode, bit<1> goto) {
+    hdr.instr[14].opcode = opcode;
+    hdr.instr[14].goto = goto;
+}
+
+table loader_14 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_14;
+    }
+}
+
+action load_instr_15(bit<8> opcode, bit<1> goto) {
+    hdr.instr[15].opcode = opcode;
+    hdr.instr[15].goto = goto;
+}
+
+table loader_15 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_15;
+    }
+}
+
+action load_instr_16(bit<8> opcode, bit<1> goto) {
+    hdr.instr[16].opcode = opcode;
+    hdr.instr[16].goto = goto;
+}
+
+table loader_16 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_16;
+    }
+}
+
+action load_instr_17(bit<8> opcode, bit<1> goto) {
+    hdr.instr[17].opcode = opcode;
+    hdr.instr[17].goto = goto;
+}
+
+table loader_17 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_17;
+    }
+}
+
+action load_instr_18(bit<8> opcode, bit<1> goto) {
+    hdr.instr[18].opcode = opcode;
+    hdr.instr[18].goto = goto;
+}
+
+table loader_18 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_18;
+    }
+}
+
+action load_instr_19(bit<8> opcode, bit<1> goto) {
+    hdr.instr[19].opcode = opcode;
+    hdr.instr[19].goto = goto;
+}
+
+table loader_19 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_19;
+    }
+}
+
+action load_instr_20(bit<8> opcode, bit<1> goto) {
+    hdr.instr[20].opcode = opcode;
+    hdr.instr[20].goto = goto;
+}
+
+table loader_20 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_20;
+    }
+}
+
+action load_instr_21(bit<8> opcode, bit<1> goto) {
+    hdr.instr[21].opcode = opcode;
+    hdr.instr[21].goto = goto;
+}
+
+table loader_21 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_21;
+    }
+}
+
+action load_instr_22(bit<8> opcode, bit<1> goto) {
+    hdr.instr[22].opcode = opcode;
+    hdr.instr[22].goto = goto;
+}
+
+table loader_22 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_22;
+    }
+}
+
+action load_instr_23(bit<8> opcode, bit<1> goto) {
+    hdr.instr[23].opcode = opcode;
+    hdr.instr[23].goto = goto;
+}
+
+table loader_23 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_23;
+    }
+}
+
+action load_instr_24(bit<8> opcode, bit<1> goto) {
+    hdr.instr[24].opcode = opcode;
+    hdr.instr[24].goto = goto;
+}
+
+table loader_24 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_24;
+    }
+}
+
+action load_instr_25(bit<8> opcode, bit<1> goto) {
+    hdr.instr[25].opcode = opcode;
+    hdr.instr[25].goto = goto;
+}
+
+table loader_25 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_25;
+    }
+}
+
+action load_instr_26(bit<8> opcode, bit<1> goto) {
+    hdr.instr[26].opcode = opcode;
+    hdr.instr[26].goto = goto;
+}
+
+table loader_26 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_26;
+    }
+}
+
+action load_instr_27(bit<8> opcode, bit<1> goto) {
+    hdr.instr[27].opcode = opcode;
+    hdr.instr[27].goto = goto;
+}
+
+table loader_27 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_27;
+    }
+}
+
+action load_instr_28(bit<8> opcode, bit<1> goto) {
+    hdr.instr[28].opcode = opcode;
+    hdr.instr[28].goto = goto;
+}
+
+table loader_28 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_28;
+    }
+}
+
+action load_instr_29(bit<8> opcode, bit<1> goto) {
+    hdr.instr[29].opcode = opcode;
+    hdr.instr[29].goto = goto;
+}
+
+table loader_29 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_29;
+    }
+}
+
+action load_instr_30(bit<8> opcode, bit<1> goto) {
+    hdr.instr[30].opcode = opcode;
+    hdr.instr[30].goto = goto;
+}
+
+table loader_30 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_30;
+    }
+}
+
+action load_instr_31(bit<8> opcode, bit<1> goto) {
+    hdr.instr[31].opcode = opcode;
+    hdr.instr[31].goto = goto;
+}
+
+table loader_31 {
+    key = {
+        hdr.ih.opt_data : exact;
+    }
+    actions = {
+        load_instr_31;
+    }
+}
+
     
 
 table instruction_0 {
@@ -3331,6 +3779,38 @@ table allocation_9 {
             quota_recirc.apply();
             update_pkt_count_ap4();
         } else bypass_egress();
+        loader_0.apply();
+		loader_1.apply();
+		loader_2.apply();
+		loader_3.apply();
+		loader_4.apply();
+		loader_5.apply();
+		loader_6.apply();
+		loader_7.apply();
+		loader_8.apply();
+		loader_9.apply();
+		loader_10.apply();
+		loader_11.apply();
+		loader_12.apply();
+		loader_13.apply();
+		loader_14.apply();
+		loader_15.apply();
+		loader_16.apply();
+		loader_17.apply();
+		loader_18.apply();
+		loader_19.apply();
+		loader_20.apply();
+		loader_21.apply();
+		loader_22.apply();
+		loader_23.apply();
+		loader_24.apply();
+		loader_25.apply();
+		loader_26.apply();
+		loader_27.apply();
+		loader_28.apply();
+		loader_29.apply();
+		loader_30.apply();
+		loader_31.apply();
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
 		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
