@@ -1,3 +1,5 @@
+<generated-third-party-macros>
+
 control Ingress(
     inout ingress_headers_t                          hdr,
     inout ig_metadata_t                              meta,
@@ -243,9 +245,14 @@ control Ingress(
         }
     }
 
+    // Third-Party
+
+    <third-party-ig-defs>
+
     // control flow
 
     apply {
+        <third-party-ig-cf>
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.flag_preload == 1) {

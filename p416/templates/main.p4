@@ -17,14 +17,14 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 
 #define RESUBMIT_TYPE_DEFAULT   1
 
-#define MAX_INSTRUCTIONS        32
+#define MAX_INSTRUCTIONS        <max-instructions>
 #define MAX_EXTENDED_DATA       8
 #define MAX_TCP_OPTIONS         10
-#define CONST_SALT              4660
+#define CONST_SALT              <salt>
 #define MAX_RECIRCULATIONS      10
-#define NUM_IG_STAGES           5
-#define NUM_EG_STAGES           10
-#define NUM_STAGES              15
+#define NUM_IG_STAGES           <ig-stages>
+#define NUM_EG_STAGES           <eg-stages>
+#define NUM_STAGES              <total-stages>
 
 #define EG_STAGE_OFFSET(X)      X + NUM_IG_STAGES
 

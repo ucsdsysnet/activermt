@@ -1,3 +1,5 @@
+<generated-third-party-macros>
+
 control Egress(
     inout egress_headers_t                             hdr,
     inout eg_metadata_t                                meta,
@@ -100,10 +102,15 @@ control Egress(
             set_mirror;
         }
     }
+
+    // Third-Party
+
+    <third-party-eg-defs>
     
     // control flow
     
     apply {
+        <third-party-eg-cf>
         mirror_cfg.apply();
         hdr.meta.eg_timestamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
         hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;

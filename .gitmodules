@@ -31,3 +31,6 @@
 [submodule "ref/uthash"]
 	path = ref/uthash
 	url = git@github.com:troydhanson/uthash.git
+[submodule "ref/tutorials"]
+	path = ref/tutorials
+	url = git@github.com:p4lang/tutorials.git
