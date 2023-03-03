@@ -31,6 +31,7 @@ ANNOTATION_TP_DEFS_EG       = '<third-party-eg-defs>'
 ANNOTATION_TP_CF_IG         = '<third-party-ig-cf>'
 ANNOTATION_TP_CF_EG         = '<third-party-eg-cf>'
 ANNOTATION_TP_MACROS        = '<generated-third-party-macros>'
+ANNOTATION_TP_METADATA      = '<third-party-metadata>'
 
 class ActiveP4Generator:
 
@@ -43,6 +44,7 @@ class ActiveP4Generator:
         self.truncate = truncate
         self.paths = {
             'main'          : 'templates/main.p4',
+            'metadata'      : 'templates/metadata.p4',
             'actions'       : 'templates/actions.p4',
             'common-actions': 'templates/actions.common.p4',
             'data-actions'  : 'templates/actions.data.p4',
@@ -119,6 +121,24 @@ class ActiveP4Generator:
             f.close()
 
         return (ig_block_defs, ig_block_cf, eg_block_defs, eg_block_cf, macro_block)
+
+    def getGeneratedMetadata(self):
+        p4code = None
+        third_party_metadata = ""
+        if self.third_party is not None:
+            metadata_path = os.path.join('third-party', self.third_party, 'meta.p4')
+            if os.path.exists(metadata_path):
+                with open(metadata_path) as f:
+                    contents = f.read()
+                    meta_start = contents.index('<metadata>') + len('<metadata>')
+                    meta_end = contents.index('</metadata>')
+                    third_party_metadata = contents[meta_start:meta_end]
+                    f.close()
+        with open(self.paths['metadata']) as f:
+            p4code = f.read()
+            p4code = p4code.replace(ANNOTATION_TP_METADATA, third_party_metadata)
+            f.close()
+        return p4code
 
     def getGeneratedMain(self):
         p4code = None
@@ -304,6 +324,10 @@ generator = ActiveP4Generator(truncate=True, third_party=third_party_app, ig_sta
 
 with open('active.p4', 'w') as f:
     f.write(generator.getGeneratedMain())
+    f.close()
+
+with open('metadata.p4', 'w') as f:
+    f.write(generator.getGeneratedMetadata())
     f.close()
 
 with open('ingress/control.p4', 'w') as f:

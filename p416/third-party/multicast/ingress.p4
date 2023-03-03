@@ -1,6 +1,6 @@
 control SwitchIngress(
         inout header_t hdr,
-        inout metadata_t ig_md,
+        inout metadata_t meta,
         in ingress_intrinsic_metadata_t ig_intr_md,
         in ingress_intrinsic_metadata_from_parser_t ig_prsr_md,
         inout ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md,
@@ -8,7 +8,7 @@ control SwitchIngress(
 
     // <control-def>
     action set_ifid(bit<32> ifid) {
-        ig_md.ifid = ifid;
+        meta.ifid = ifid;
         // Set the destination port to an invalid value
         ig_tm_md.ucast_egress_port = 9w0x1ff;
     }
@@ -30,14 +30,14 @@ control SwitchIngress(
     action set_src_ifid_md(ReplicationId_t rid, bit<9> yid, bit<16> brid, bit<13> hash1, bit<13> hash2) {
         ig_tm_md.rid = rid;
         ig_tm_md.level2_exclusion_id = yid;
-        ig_md.brid = brid;
+        meta.brid = brid;
         ig_tm_md.level1_mcast_hash = hash1;
         ig_tm_md.level2_mcast_hash = hash2;
     }
 
     table  ing_src_ifid {
         key = {
-            ig_md.ifid : exact;
+            meta.ifid : exact;
         }
 
         actions = {
@@ -48,7 +48,7 @@ control SwitchIngress(
     }
 
     action flood() {
-        ig_tm_md.mcast_grp_a = ig_md.brid;
+        ig_tm_md.mcast_grp_a = meta.brid;
     }
 
     action l2_switch(PortId_t port) {
@@ -56,13 +56,13 @@ control SwitchIngress(
     }
 
     action route(bit<16> vrf) {
-        ig_md.l3 = 1;
-        ig_md.vrf = vrf;
+        meta.l3 = 1;
+        meta.vrf = vrf;
     }
 
     table ing_dmac {
         key = {
-            ig_md.brid   : exact;
+            meta.brid   : exact;
             hdr.ethernet.dst_addr : exact;
         }
 
@@ -85,7 +85,7 @@ control SwitchIngress(
 
     table ing_ipv4_mcast {
         key = {
-            ig_md.vrf   : exact;
+            meta.vrf   : exact;
             hdr.ipv4.src_addr : ternary;
             hdr.ipv4.dst_addr : ternary;
         }
@@ -103,7 +103,7 @@ control SwitchIngress(
         ing_port.apply();
         ing_src_ifid.apply();
         ing_dmac.apply();
-        if (ig_md.l3 == 1) {
+        if (meta.l3 == 1) {
             ing_ipv4_mcast.apply();
         }
         // </control-flow>

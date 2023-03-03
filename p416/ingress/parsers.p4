@@ -34,7 +34,16 @@ parser IngressParser(
         transition select(hdr.ethernet.ether_type) {
             ether_type_t.AP4    : parse_active_ih;
             ether_type_t.IPV4   : parse_ipv4;
+            ether_type_t.VLAN   : parse_vlan;
             _                   : accept;
+        }
+    }
+
+    state parse_vlan {
+        pkt.extract(hdr.vlan_tag);
+        transition select(hdr.vlan_tag.ether_type) {
+            ether_type_t.IPV4 : parse_ipv4;
+            default : accept;
         }
     }
 

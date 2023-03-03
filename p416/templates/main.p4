@@ -32,6 +32,7 @@ const mirror_type_t MIRROR_TYPE_E2E = 2;
 #include <tna.p4>
 
 #include "headers.p4"
+#include "metadata.p4"
 #include "ingress/parsers.p4"
 #include "ingress/control.p4"
 #include "egress/parsers.p4"
