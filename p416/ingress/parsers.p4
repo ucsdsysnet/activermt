@@ -10,7 +10,7 @@ parser IngressParser(
     state start {
         pkt.extract(ig_intr_md);
         hdr.meta.setValid();
-        hdr.meta.ingress_port = ig_intr_md.ingress_port;
+        // hdr.meta.ingress_port = (bit<32>)ig_intr_md.ingress_port;
         transition select(ig_intr_md.resubmit_flag) {
             1   : parse_resubmit;
             0   : parse_port_metadata;

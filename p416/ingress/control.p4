@@ -677,117 +677,6 @@ RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s5) heap_conditional_rw_zero_s5 =
     }
 };*/
 
-Register<bit<32>, bit<32>>(32w94208) heap_s6;
-
-/*
-    Write mbr to register value, return old value.
-    [special case] Increment: hdr.meta.mbr2 > 0. 
-*/
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_write_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-        if(hdr.meta.mbr2 != 0) {
-            obj = hdr.meta.mbr;
-        } else {
-            obj = obj + hdr.meta.mbr;
-        }
-    }
-};*/
-
-/*
-    Increment by mbr (eg. 1) if current value is less than mbr2.
-    [special case] Read: hdr.meta.mbr2 = 0.
-    [special case] Increment: hdr.meta.mbr2 = 0xFFFF.
-*/
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-        if(obj < hdr.meta.mbr2) {
-            obj = obj + hdr.meta.mbr;
-        } 
-    }
-};*/
-
-/*
-    R/W memory object.
-*/
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_read_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-    }
-};
-
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_write_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        obj = hdr.meta.mbr;
-    }
-};
-
-/*
-    Accumulate in regval.
-*/
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_accumulate_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        // obj = obj + hdr.meta.inc;
-        obj = obj + 1;
-        rv = obj;
-    }
-};
-
-/*
-    Conditional write (max).
-*/
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_max_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = obj;
-        if(obj < hdr.meta.mbr) {
-            obj = hdr.meta.mbr;
-        } 
-    }
-};*/
-
-/*
-    Conditional write (if not zero). 
-    Useful in implementing collision chains (object cannot be zero).
-    Cases: obj = 0, obj = mbr2, obj != mbr2.
-*/
-RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_rw_zero_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        // if(obj == hdr.meta.mbr2) {
-        //     rv = 0;    
-        // } 
-        if(obj == 0) {
-            obj = hdr.meta.mbr2;
-            // rv = 0;
-        } else {
-            rv = hdr.meta.mbr2 - obj;
-        }
-    }
-};
-
-/*
-    Increment if condition is true.
-    [special case] Increment: hdr.meta.mbr = REGMAX.
-*/
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_conditional_increment_s6 = {
-    void apply(inout bit<32> obj, out bit<32> rv) {
-        rv = 0;
-        if(obj < hdr.meta.mbr) {
-            obj = obj + 1;
-            rv = obj;
-        } else if(obj < hdr.meta.mbr2) {
-            obj = hdr.meta.mbr2;
-            rv = obj;
-        } 
-    }
-};*/
-
-/*RegisterAction<bit<32>, bit<32>, bit<32>>(heap_s6) heap_bulk_write_s6 = {
-    void apply(inout bit<32> value) {
-        value = hdr.bulk_data.data_6;
-    }
-};*/
-
     
 
 CRCPolynomial<bit<16>>(
@@ -855,17 +744,6 @@ CRCPolynomial<bit<16>>(
 ) crc_16_poly_s5;
 
 Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s5) crc_16_s5;
-
-CRCPolynomial<bit<16>>(
-    coeff       = 0x11021,
-    reversed    = false,
-    msb         = false,
-    extended    = true,
-    init        = 0x0000,
-    xor         = 0xFFFF
-) crc_16_poly_s6;
-
-Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s6) crc_16_s6;
 
     action fetch_qdelay() {}
 
@@ -955,12 +833,25 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s6) crc_16_s6;
         hdr.meta.hash_data_3 = (bit<32>)hdr.tcp.src_port;
         hdr.meta.hash_data_4 = (bit<32>)hdr.tcp.dst_port;
     }
+    
+    action load_tcp_flags() {
+        hdr.meta.mbr[15:0] = hdr.tcp.flags;
+    }
 
     // GENERATED: ACTIONS
 
     /*action uncomplete() {
     hdr.meta.complete = 0;
 }*/
+
+action drop_and_terminate() {
+    drop();
+    complete();
+}
+
+action get_port() {
+    hdr.meta.mbr[8:0] = hdr.meta.ingress_port;
+}
 
 action fork() {
     hdr.meta.duplicate = 1;
@@ -1018,6 +909,10 @@ action copy_hash_data_mbr2() {
 
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
+}
+
+action bit_and_mbr_mbr2() {
+    hdr.meta.mbr = hdr.meta.mbr & hdr.meta.mbr2;
 }
 
 action mar_add_mbr() {
@@ -1601,71 +1496,6 @@ action hash_s5() {
         hdr.meta.hash_data_3,
         hdr.meta.hash_data_4
     });
-}action jump_s6() {
-    hdr.meta.disabled = 1;
-}
-
-action attempt_rejoin_s6() {
-    hdr.meta.disabled = (hdr.meta.disabled + hdr.instr[6].goto);
-}
-
-/*action memory_bulk_read_s6() {
-    hdr.bulk_data.data_6 = heap_read_s6.execute((bit<32>)hdr.meta.mar);
-    hdr.bulk_data.setValid();
-    hdr.ih.opt_data = 1;
-}*/
-
-/*action memory_bulk_write_s6() {
-    heap_bulk_write_s6.execute((bit<32>)hdr.meta.mar);
-}*/
-
-action memory_read_s6() {
-    // hdr.meta.mbr = 0;
-    hdr.meta.mbr = heap_read_s6.execute(hdr.meta.mar);
-}
-
-action memory_write_s6() {
-    heap_write_s6.execute(hdr.meta.mar);
-}
-
-action memory_increment_s6() {
-    hdr.meta.mbr = heap_accumulate_s6.execute(hdr.meta.mar);
-}
-
-/*action memory_write_max_s6() {
-    // TODO
-    // hdr.meta.mbr = heap_conditional_rw_max_s6.execute(hdr.meta.mar);
-}*/
-
-action memory_write_zero_s6() {
-    hdr.meta.mbr = heap_conditional_rw_zero_s6.execute(hdr.meta.mar);
-}
-
-action memory_minread_s6() {
-    hdr.meta.mbr = heap_read_s6.execute(hdr.meta.mar);
-    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}
-
-action memory_minreadinc_s6() {
-    hdr.meta.mbr = heap_accumulate_s6.execute(hdr.meta.mar);
-    hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}
-
-/*action memory_minreadset_s6() {
-    hdr.meta.mbr = 1;
-    // TODO
-    // hdr.meta.mbr = heap_rw_s6.execute(hdr.meta.mar);
-    // hdr.meta.mbr2 = (hdr.meta.mbr2 < hdr.meta.mbr) ? hdr.meta.mbr2 : hdr.meta.mbr;
-}*/
-
-action hash_s6() {
-    hdr.meta.mar = (bit<32>)crc_16_s6.get({
-        hdr.meta.hash_data_0,
-        hdr.meta.hash_data_1,
-        hdr.meta.hash_data_2,
-        hdr.meta.hash_data_3,
-        hdr.meta.hash_data_4
-    });
 }
 
     // GENERATED: TABLES
@@ -2138,10 +1968,13 @@ table instruction_0 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2153,6 +1986,7 @@ table instruction_0 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2232,10 +2066,13 @@ table instruction_1 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2247,6 +2084,7 @@ table instruction_1 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2326,10 +2164,13 @@ table instruction_2 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2341,6 +2182,7 @@ table instruction_2 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2420,10 +2262,13 @@ table instruction_3 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2435,6 +2280,7 @@ table instruction_3 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2514,10 +2360,13 @@ table instruction_4 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2529,6 +2378,7 @@ table instruction_4 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2608,10 +2458,13 @@ table instruction_5 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
-        fork;
+        // fetch_pktcount;
+        drop_and_terminate;
+		get_port;
+		fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2623,6 +2476,7 @@ table instruction_5 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
+		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2684,100 +2538,6 @@ table allocation_5 {
     //default_action = default_allocation_s5;
 }
 
-table instruction_6 {
-    key = {
-        hdr.meta.fid                            : range;
-        hdr.instr[6].opcode      : exact;
-        hdr.meta.complete                       : exact;
-        hdr.meta.disabled                       : exact;
-        hdr.meta.mbr                            : lpm;
-        //hdr.meta.carry                          : exact;
-        hdr.meta.mar[19:0]                      : range;
-    }
-    actions = {
-        drop;
-        complete;
-        mark_termination;
-        skip;
-        rts;
-        set_port;
-        load_5_tuple_tcp;
-        fetch_queue;
-        fetch_qdelay;
-        fetch_pktcount;
-        fork;
-		copy_mbr2_mbr1;
-		copy_mbr1_mbr2;
-		min_mbr1_mbr2;
-		min_mbr2_mbr1;
-		mbr1_equals_mbr2;
-		copy_mar_mbr;
-		copy_mbr_mar;
-		copy_inc_mbr;
-		copy_hash_data_mbr;
-		copy_hash_data_mbr2;
-		bit_and_mar_mbr;
-		mar_add_mbr;
-		mar_add_mbr2;
-		mbr_add_mbr2;
-		mar_mbr_add_mbr2;
-		load_salt;
-		not_mbr;
-		mbr_or_mbr2;
-		mbr_subtract_mbr2;
-		swap_mbr_mbr2;
-		max_mbr_mbr2;
-		addr_mask_apply;
-		addr_offset_apply;
-		mar_load;
-		mbr_load;
-		mbr2_load;
-		mbr_store;
-		mbr_store_alt;
-		mbr_store_alt_2;
-		mbr_equals_d0;
-		mbr_equals_d1;
-		mbr_equals_d2;
-		mbr_equals_d3;
-		jump_s6;
-		attempt_rejoin_s6;
-		memory_read_s6;
-		memory_write_s6;
-		memory_increment_s6;
-		memory_write_zero_s6;
-		memory_minread_s6;
-		memory_minreadinc_s6;
-		hash_s6;
-    }
-    size = 640;
-}
-
-action get_allocation_s6(bit<32> offset_ig, bit<32> size_ig, bit<32> offset_eg, bit<32> size_eg) {
-    hdr.alloc[6].setValid();
-    hdr.alloc[6].offset = offset_ig;
-    hdr.alloc[6].size = size_ig;
-    hdr.alloc[EG_STAGE_OFFSET(6)].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(6)].offset = offset_eg;
-    hdr.alloc[EG_STAGE_OFFSET(6)].size = size_eg;
-}
-
-action default_allocation_s6() {
-    hdr.alloc[6].setValid();
-    hdr.alloc[EG_STAGE_OFFSET(6)].setValid();
-}
-
-table allocation_6 {
-    key = {
-        hdr.ih.fid              : exact;
-        hdr.ih.flag_allocated   : exact;
-    }
-    actions = {
-        get_allocation_s6;
-        default_allocation_s6;
-    }
-    //default_action = default_allocation_s6;
-}
-
     // resource monitoring
 
     // quota enforcement
@@ -2812,19 +2572,35 @@ table allocation_6 {
         }
     }
 
-    Register<bit<8>, bit<16>>(32w65536) seqmap;
-    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
+    action compute_seqidx(bit<32> offset) {
+        hdr.meta.seqidx = offset | (bit<32>)hdr.ih.seq;
+    }
 
-    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
-        void apply(inout bit<8> value, out bit<8> rv) {
-            rv = value;
-            value = (bit<8>)~hdr.ih.rst_seq & value;
+    table seqidx {
+        key = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            compute_seqidx;
+        }
+    }
+
+    Register<bit<1>, bit<32>>(32w65536) seqmap;
+    // Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
+
+    RegisterAction<bit<1>, bit<32>, bit<1>>(seqmap) seq_update = {
+        void apply(inout bit<1> value, out bit<1> rv) {
+            bit<1> curr = value;
+            value = 1;
+            rv = curr;
+            // value = (bit<8>)~hdr.ih.rst_seq & value;
         }
     };
 
     action check_prior_exec() {
-        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
-        hdr.meta.complete = (bit<1>)seq_update.execute(index);
+        // bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
+        // hdr.meta.complete = (bit<1>)seq_update.execute(index);
+        hdr.meta.executed = seq_update.execute(hdr.meta.seqidx);
     }
 
     action allocated(bit<16> allocation_id) {
@@ -2877,145 +2653,91 @@ table allocation_6 {
         }
     }
 
-    Register<bit<16>, bit<16>>(32w256) app_leader;
+    // Register<bit<16>, bit<16>>(32w256) app_leader;
     
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            if((bit<16>)meta.app_instance_id < obj) {
-                obj = (bit<16>)meta.app_instance_id;
-            }
-            rv = obj;
-        }
-    };
+    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
+    //     void apply(inout bit<16> obj, out bit<16> rv) {
+    //         if((bit<16>)meta.app_instance_id < obj) {
+    //             obj = (bit<16>)meta.app_instance_id;
+    //         }
+    //         rv = obj;
+    //     }
+    // };
 
-    action leader_elect() {
-        meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
+    // action leader_elect() {
+    //     meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
+    // }
+
+    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
+    //     void apply(inout bit<16> obj, out bit<16> rv) {
+    //         rv = obj;
+    //     }
+    // };
+
+    // action get_leader() {
+    //     hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
+    // }
+
+    // table leader_fetch {
+    //     key = {
+    //         hdr.ih.flag_leader  : exact;
+    //     }
+    //     actions = {
+    //         get_leader;
+    //     }
+    // }
+
+    action set_key(bit<32> key) {
+        hdr.meta.fid_key = key;
     }
 
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            rv = obj;
-        }
-    };
-
-    action get_leader() {
-        hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
-    }
-
-    table leader_fetch {
+    table keyfetch {
         key = {
-            hdr.ih.flag_leader  : exact;
+            hdr.ih.fid  : exact;
         }
         actions = {
-            get_leader;
+            set_key;
+        }
+    }
+
+    Hash<bit<32>>(HashAlgorithm_t.CRC32) hash_signature;
+
+    action compute_fid_signature(bit<32> key) {
+        hdr.meta.fid_sig = hash_signature.get({
+            hdr.ih.fid,
+            hdr.ih.seq,
+            hdr.ipv4.src_addr,
+            hdr.meta.fid_key
+        });
+    }
+
+    table app_signing {
+        key = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            compute_fid_signature;
         }
     }
 
     // Third-Party
 
     
-    action set_ifid(bit<32> ifid) {
-        meta.ifid = ifid;
-        // Set the destination port to an invalid value
-        ig_tm_md.ucast_egress_port = 9w0x1ff;
-    }
-
-    table  ing_port {
-        key = {
-            ig_intr_md.ingress_port  : exact;
-            hdr.vlan_tag.isValid()   : exact;
-            hdr.vlan_tag.vid     : exact;
-        }
-
-        actions = {
-            set_ifid;
-        }
-
-        size = 1024;
-    }
-
-    action set_src_ifid_md(ReplicationId_t rid, bit<9> yid, bit<16> brid, bit<13> hash1, bit<13> hash2) {
-        ig_tm_md.rid = rid;
-        ig_tm_md.level2_exclusion_id = yid;
-        meta.brid = brid;
-        ig_tm_md.level1_mcast_hash = hash1;
-        ig_tm_md.level2_mcast_hash = hash2;
-    }
-
-    table  ing_src_ifid {
-        key = {
-            meta.ifid : exact;
-        }
-
-        actions = {
-            set_src_ifid_md;
-        }
-
-        size = 1024;
-    }
-
-    action flood() {
-        ig_tm_md.mcast_grp_a = meta.brid;
-    }
-
-    action l2_switch(PortId_t port) {
-        ig_tm_md.ucast_egress_port = port;
-    }
-
-    action route(bit<16> vrf) {
-        meta.l3 = 1;
-        meta.vrf = vrf;
-    }
-
-    table ing_dmac {
-        key = {
-            meta.brid   : exact;
-            hdr.ethernet.dst_addr : exact;
-        }
-
-        actions = {
-            l2_switch;
-            route;
-            flood;
-        }
-
-        const default_action = flood;
-        size = 1024;
-    }
-
-    action mcast_route(bit<16> xid, MulticastGroupId_t mgid1, MulticastGroupId_t mgid2) {
-        ig_tm_md.level1_exclusion_id = xid;
-        ig_tm_md.mcast_grp_a = mgid1;
-        ig_tm_md.mcast_grp_b = mgid2;
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
-    }
-
-    table ing_ipv4_mcast {
-        key = {
-            meta.vrf   : exact;
-            hdr.ipv4.src_addr : ternary;
-            hdr.ipv4.dst_addr : ternary;
-        }
-
-        actions = {
-            mcast_route;
-        }
-
-        size = 1024;
-    }
-    // 
 
     // control flow
 
     apply {
         
-        ing_port.apply();
-        ing_src_ifid.apply();
-        ing_dmac.apply();
-        if (meta.l3 == 1) {
-            ing_ipv4_mcast.apply();
+        seqidx.apply();
+        check_prior_exec();
+        keyfetch.apply();
+        app_signing.apply();
+        if(hdr.meta.fid_sig != hdr.ih.sig || hdr.meta.executed == 1) {
+            drop();
+            bypass_egress();
+            hdr.meta.complete = 1;
         }
-        // 
+        hdr.meta.ingress_port = ig_intr_md.ingress_port;
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.flag_preload == 1) {
@@ -3040,52 +2762,18 @@ table allocation_6 {
             quota_recirc.apply();
             update_pkt_count_ap4();
         } else bypass_egress();
-        loader_0.apply();
-		loader_1.apply();
-		loader_2.apply();
-		loader_3.apply();
-		loader_4.apply();
-		loader_5.apply();
-		loader_6.apply();
-		loader_7.apply();
-		loader_8.apply();
-		loader_9.apply();
-		loader_10.apply();
-		loader_11.apply();
-		loader_12.apply();
-		loader_13.apply();
-		loader_14.apply();
-		loader_15.apply();
-		loader_16.apply();
-		loader_17.apply();
-		loader_18.apply();
-		loader_19.apply();
-		loader_20.apply();
-		loader_21.apply();
-		loader_22.apply();
-		loader_23.apply();
-		loader_24.apply();
-		loader_25.apply();
-		loader_26.apply();
-		loader_27.apply();
-		loader_28.apply();
-		loader_29.apply();
-		loader_30.apply();
-		loader_31.apply();
         if(hdr.instr[0].isValid()) { instruction_0.apply(); hdr.instr[0].setInvalid(); }
 		if(hdr.instr[1].isValid()) { instruction_1.apply(); hdr.instr[1].setInvalid(); }
 		if(hdr.instr[2].isValid()) { instruction_2.apply(); hdr.instr[2].setInvalid(); }
 		if(hdr.instr[3].isValid()) { instruction_3.apply(); hdr.instr[3].setInvalid(); }
 		if(hdr.instr[4].isValid()) { instruction_4.apply(); hdr.instr[4].setInvalid(); }
 		if(hdr.instr[5].isValid()) { instruction_5.apply(); hdr.instr[5].setInvalid(); }
-		if(hdr.instr[6].isValid()) { instruction_6.apply(); hdr.instr[6].setInvalid(); }
         allocation_0.apply();
 		allocation_1.apply();
 		allocation_2.apply();
 		allocation_3.apply();
 		allocation_4.apply();
 		allocation_5.apply();
-		allocation_6.apply();
         if(hdr.ipv4.isValid()) {
             ipv4_host.apply();
             /*overall_stats.count(0);

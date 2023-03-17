@@ -31,7 +31,7 @@ pkt = utils.constructActivePacket(fid, program, {
     'data_1'    : 1,
     'data_2'    : 2,
     'data_3'    : 0
-}, preload=True)
+}, preload=True, tcp_flags="S")
 
 sendp(pkt, iface=iface, verbose=False)
 

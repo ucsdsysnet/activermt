@@ -16,9 +16,10 @@ table instruction_<stage-id> {
         rts;
         set_port;
         load_5_tuple_tcp;
-        fetch_queue;
+        load_tcp_flags;
+        // fetch_queue;
         fetch_qdelay;
-        fetch_pktcount;
+        // fetch_pktcount;
         <generated-actions>
     }
     size = 640;

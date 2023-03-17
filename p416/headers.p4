@@ -97,6 +97,7 @@ header active_initial_h {
     bit<1>          flag_preload;
     bit<16>         fid;
     bit<16>         seq;
+    bit<32>         sig;
 }
 
 header active_data_h {
@@ -191,11 +192,17 @@ header bridged_metadata_h {
     bit<10>     mirror_sessid;
     bit<1>      mirror_en;
     bit<7>      mirror_iter;
-    bit<10>      _padding;
+    bit<10>     _padding;
     bit<9>      ingress_port;
     bit<1>      carry;
     bit<1>      remap;
+    bit<1>      executed;
     bit<16>     fid;
+    bit<32>     seqidx;
+    bit<32>     seqoffset;
+    bit<32>     fid_sig;
+    bit<32>     fid_key;
+    // bit<16>     tcp_flags;
     // bit<32>     paddr_mask;
     // bit<32>     paddr_offset;
 }

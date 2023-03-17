@@ -60,6 +60,7 @@ class ActiveProgram:
         self.iglim = -1
         self.referenced_regs = set()
         for i in range(0, len(program)):
+            program[i][0] = program[i][0].strip()
             opcode = program[i][0]
             reg = self.regex_register.findall(opcode)
             reg = reg[0] if len(reg) > 0 else None

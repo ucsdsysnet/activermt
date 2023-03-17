@@ -101,6 +101,10 @@ control Ingress(
         hdr.meta.hash_data_3 = (bit<32>)hdr.tcp.src_port;
         hdr.meta.hash_data_4 = (bit<32>)hdr.tcp.dst_port;
     }
+    
+    action load_tcp_flags() {
+        hdr.meta.mbr[15:0] = hdr.tcp.flags;
+    }
 
     // GENERATED: ACTIONS
 
@@ -146,19 +150,35 @@ control Ingress(
         }
     }
 
-    Register<bit<8>, bit<16>>(32w65536) seqmap;
-    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
+    action compute_seqidx(bit<32> offset) {
+        hdr.meta.seqidx = offset | (bit<32>)hdr.ih.seq;
+    }
 
-    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
-        void apply(inout bit<8> value, out bit<8> rv) {
-            rv = value;
-            value = (bit<8>)~hdr.ih.rst_seq & value;
+    table seqidx {
+        key = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            compute_seqidx;
+        }
+    }
+
+    Register<bit<1>, bit<32>>(32w65536) seqmap;
+    // Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
+
+    RegisterAction<bit<1>, bit<32>, bit<1>>(seqmap) seq_update = {
+        void apply(inout bit<1> value, out bit<1> rv) {
+            bit<1> curr = value;
+            value = 1;
+            rv = curr;
+            // value = (bit<8>)~hdr.ih.rst_seq & value;
         }
     };
 
     action check_prior_exec() {
-        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
-        hdr.meta.complete = (bit<1>)seq_update.execute(index);
+        // bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
+        // hdr.meta.complete = (bit<1>)seq_update.execute(index);
+        hdr.meta.executed = seq_update.execute(hdr.meta.seqidx);
     }
 
     action allocated(bit<16> allocation_id) {
@@ -211,37 +231,70 @@ control Ingress(
         }
     }
 
-    Register<bit<16>, bit<16>>(32w256) app_leader;
+    // Register<bit<16>, bit<16>>(32w256) app_leader;
     
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            if((bit<16>)meta.app_instance_id < obj) {
-                obj = (bit<16>)meta.app_instance_id;
-            }
-            rv = obj;
-        }
-    };
+    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
+    //     void apply(inout bit<16> obj, out bit<16> rv) {
+    //         if((bit<16>)meta.app_instance_id < obj) {
+    //             obj = (bit<16>)meta.app_instance_id;
+    //         }
+    //         rv = obj;
+    //     }
+    // };
 
-    action leader_elect() {
-        meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
+    // action leader_elect() {
+    //     meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
+    // }
+
+    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
+    //     void apply(inout bit<16> obj, out bit<16> rv) {
+    //         rv = obj;
+    //     }
+    // };
+
+    // action get_leader() {
+    //     hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
+    // }
+
+    // table leader_fetch {
+    //     key = {
+    //         hdr.ih.flag_leader  : exact;
+    //     }
+    //     actions = {
+    //         get_leader;
+    //     }
+    // }
+
+    action set_key(bit<32> key) {
+        hdr.meta.fid_key = key;
     }
 
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            rv = obj;
-        }
-    };
-
-    action get_leader() {
-        hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
-    }
-
-    table leader_fetch {
+    table keyfetch {
         key = {
-            hdr.ih.flag_leader  : exact;
+            hdr.ih.fid  : exact;
         }
         actions = {
-            get_leader;
+            set_key;
+        }
+    }
+
+    Hash<bit<32>>(HashAlgorithm_t.CRC32) hash_signature;
+
+    action compute_fid_signature(bit<32> key) {
+        hdr.meta.fid_sig = hash_signature.get({
+            hdr.ih.fid,
+            hdr.ih.seq,
+            hdr.ipv4.src_addr,
+            hdr.meta.fid_key
+        });
+    }
+
+    table app_signing {
+        key = {
+            hdr.ih.fid  : exact;
+        }
+        actions = {
+            compute_fid_signature;
         }
     }
 
@@ -253,6 +306,16 @@ control Ingress(
 
     apply {
         <third-party-ig-cf>
+        seqidx.apply();
+        check_prior_exec();
+        keyfetch.apply();
+        app_signing.apply();
+        if(hdr.meta.fid_sig != hdr.ih.sig || hdr.meta.executed == 1) {
+            drop();
+            bypass_egress();
+            hdr.meta.complete = 1;
+        }
+        hdr.meta.ingress_port = ig_intr_md.ingress_port;
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.flag_preload == 1) {
@@ -277,7 +340,6 @@ control Ingress(
             quota_recirc.apply();
             update_pkt_count_ap4();
         } else bypass_egress();
-        <generated-loaders>
         <generated-ctrlflow>
         <generated-malloc>
         if(hdr.ipv4.isValid()) {

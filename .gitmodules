@@ -34,3 +34,6 @@
 [submodule "ref/tutorials"]
 	path = ref/tutorials
 	url = git@github.com:p4lang/tutorials.git
+[submodule "ref/p4c"]
+	path = ref/p4c
+	url = https://github.com/p4lang/p4c.git

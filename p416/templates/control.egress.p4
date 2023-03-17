@@ -52,6 +52,11 @@ control Egress(
         // NOP
     }
 
+    action load_tcp_flags() {
+        // NOP
+        // hdr.meta.mbr[15:0] = hdr.tcp.flags;
+    }
+
     // GENERATED: ACTIONS
 
     <generated-actions-defs>

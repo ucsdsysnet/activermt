@@ -15,14 +15,6 @@ MBR_LOAD,mbr_load
 MBR2_LOAD,mbr2_load
 MAR_LOAD,mar_load
 MBR_STORE,mbr_store
-MBR_STORE_ED0,mbr_store_extended_data_0
-MBR_STORE_ED1,mbr_store_extended_data_1
-MBR_STORE_ED2,mbr_store_extended_data_2
-MBR_STORE_ED3,mbr_store_extended_data_3
-MBR_STORE_ED4,mbr_store_extended_data_4
-MBR_STORE_ED5,mbr_store_extended_data_5
-MBR_STORE_ED6,mbr_store_extended_data_6
-MBR_STORE_ED7,mbr_store_extended_data_7
 MBR_EQUALS_MBR2,mbr1_equals_mbr2
 MBR_EQUALS_DATA_0,mbr_equals_d0
 MBR_EQUALS_DATA_1,mbr_equals_d1
@@ -56,8 +48,6 @@ HASH,hash_s#
 LOAD_SALT,load_salt
 LOAD_TCP_5TUPLE,load_5_tuple_tcp
 LOAD_QDELAY,fetch_qdelay
-LOAD_QUEUE,fetch_queue
-LOAD_PKTCOUNT,fetch_pktcount
 ADDR_MASK_0,addr_mask_apply
 ADDR_OFFSET_0,addr_offset_apply
 ADDR_MASK_1,addr_mask_apply
@@ -102,3 +92,9 @@ ADDR_MASK,NULL
 ADDR_OFFSET,NULL
 MBR_STORE_ALT,mbr_store_alt
 MBR_STORE_ALT2,mbr_store_alt_2
+GET_PORT,get_port
+LOAD_TCP_FLAGS,load_tcp_flags
+BIT_AND_MBR_MBR2,bit_and_mbr_mbr2
+CDROP,drop
+DROP_RETURN,drop_and_terminate
+CDROP_RETURN,drop_and_terminate

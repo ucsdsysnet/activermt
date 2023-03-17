@@ -15,11 +15,6 @@ struct ig_metadata_t {
     bit<8>      app_instance_id;
     bit<8>      leader_id;
     
-    bit<32>  ifid;  // Logical Interface ID
-    bit<16>  brid;  // Bridging Domain ID
-    bit<16>  vrf;   // VRF ID
-    bit<1>   l3;    // Set if routed
-    // 
 }
 
 @flexible

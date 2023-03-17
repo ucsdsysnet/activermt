@@ -86,9 +86,8 @@ class ActiveP4Controller:
         self.base_path = basePath
         logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
         self.debug_dir = os.path.join(self.base_path, 'debug')
-        if os.path.exists(self.debug_dir):
-            os.removedirs(self.debug_dir)
-        os.makedirs(self.debug_dir)
+        if not os.path.exists(self.debug_dir):
+            os.makedirs(self.debug_dir)
         self.customInstructionSet = custom
         self.opcode_action = {}
         self.opcode_pnemonic = {}
