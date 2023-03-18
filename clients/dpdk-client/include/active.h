@@ -10,6 +10,9 @@
 #include "types.h"
 #include "../../../headers/activep4.h"
 
+#define CRCPOLY_DNP     0x3D65
+#define CRCPOLY_CRC32	0x104C11DB7
+
 static  __rte_always_inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	activep4_def_t* program = ctxt->programs[ctxt->current_pid];
 	assert(program != NULL);
@@ -331,6 +334,24 @@ static  __rte_always_inline void construct_memremap_packet(struct rte_mbuf* mbuf
 	iph->hdr_checksum = rte_ipv4_cksum(iph);
 	mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(activep4_ih) + sizeof(activep4_data_t) + (program->proglen * sizeof(activep4_instr)) + sizeof(struct rte_ipv4_hdr);
 	mbuf->data_len = mbuf->pkt_len;
+}
+
+static inline uint16_t compute_crc16(char* buf, int num_bytes) {
+    uint16_t crc16 = 0;
+    int i, j;
+    for(i = 0; i < num_bytes; i++) {
+        crc16 = crc16 ^ (buf[i] << 8);
+        for(j = 0; j < 8; j++) {
+            if(crc16 & 0x8000) crc16 = (crc16 << 1) ^ CRCPOLY_DNP;
+            else crc16 = crc16 << 1;
+        }
+    }
+    return crc16;
+}
+
+// signature computation algorithm has to match switch.
+static  __rte_always_inline void compute_packet_signature(activep4_ih* ap4ih, uint32_t key) {
+	ap4ih->sig = 0;
 }
 
 #endif

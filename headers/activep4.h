@@ -73,6 +73,7 @@ typedef struct {
     uint16_t    flags;
     uint16_t    fid;
     uint16_t    seq;
+    uint32_t    sig;
 } __attribute__((packed)) activep4_ih;
 
 typedef struct {

@@ -129,6 +129,7 @@ class ActiveP4Controller:
             'Ingress'   : {},
             'Egress'    : {}
         }
+        self.trusted_sources = {}
         self.allocVersion = {}
         self.queue = []
         self.allocTiming = {}
@@ -148,6 +149,17 @@ class ActiveP4Controller:
         self.mutex = threading.Lock()
         self.digestMutex = threading.Lock()
         self.monitorThread = None
+
+    def addSource(self, source, key):
+        if source not in self.trusted_sources:
+            self.trusted_sources[source] = {
+                'key'   : None,
+                'fids'  : set()
+            }
+        self.trusted_sources[source]['key'] = key
+
+    def authorizeFunction(self, source, fid):
+        self.trusted_sources[source]['fids'].add(fid)
 
     def save(self):
         """ctrlstate = {
