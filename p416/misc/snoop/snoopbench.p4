@@ -1,11 +1,14 @@
 #include <core.p4>
 #include <tna.p4>
 
+#define SWITCH_ID   1
+
 typedef bit<48> mac_addr_t;
 
 enum bit<16> ether_type_t {
-    IPV4 = 0x0800,
-    ARP  = 0x0806
+    IPV4        = 0x0800,
+    ARP         = 0x0806,
+    ETH_P_SNOOP = 0x83b3
 }
 
 header ethernet_h {
@@ -14,19 +17,27 @@ header ethernet_h {
     ether_type_t ether_type;
 }
 
-struct ig_metadata_t {
-    bit<32>     mbr;
-    bit<32>     mbr2;
-    bit<32>     mbr3;
+header snoop_h {
+    bit<32>     pipe_id;
+    bit<32>     ingress_ts;
+    bit<32>     egress_ts;
+    bit<32>     addr;
+    bit<32>     data;
 }
+
+struct ig_metadata_t {}
 
 struct eg_metadata_t {}
 
 struct ingress_headers_t {
-    ethernet_h              ethernet;                        
+    ethernet_h              ethernet;
+    snoop_h                 snoop;                 
 }
 
-struct egress_headers_t {}
+struct egress_headers_t {
+    ethernet_h              ethernet;
+    snoop_h                 snoop;
+}
 
 parser IngressParser(
     packet_in                       pkt,
@@ -43,8 +54,15 @@ parser IngressParser(
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        meta.mbr = 32w255;
-        meta.mbr2 = 32w253;
+        transition select(hdr.ethernet.ether_type) {
+            ether_type_t.ETH_P_SNOOP    : parse_snoop;
+            _                           : accept;
+        }
+    }
+
+    state parse_snoop {
+        pkt.extract(hdr.snoop);
+        hdr.snoop.pipe_id = (bit<32>)SWITCH_ID;
         transition accept;
     }
 }
@@ -58,6 +76,28 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md
 ) {
+    Register<bit<32>, bit<32>>(32w65536) heap;
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(heap) heap_read_ra = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            rv = obj;
+        }
+    };
+
+    RegisterAction<bit<32>, bit<32>, bit<32>>(heap) heap_write_ra = {
+        void apply(inout bit<32> obj, out bit<32> rv) {
+            obj = hdr.snoop.data;
+        }
+    };
+
+    action heap_read() {
+        hdr.snoop.data = heap_read_ra.execute(hdr.snoop.addr);
+    }
+
+    action heap_write() {
+        heap_write_ra.execute(hdr.snoop.addr);
+    }
+
     action send(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
         ig_tm_md.bypass_egress = 1;
@@ -69,7 +109,8 @@ control Ingress(
 
     table fwd {
         key     = {
-            hdr.ethernet.dst_addr   : exact;
+            ig_intr_md.ingress_port : exact;
+            // hdr.ethernet.dst_addr   : exact;
         }
         actions = {
             send;
@@ -78,20 +119,20 @@ control Ingress(
         const default_action = drop();
     }
 
-    action lt() {
-        meta.mbr3 = meta.mbr2 - meta.mbr;
-    }
-
-    Hash<bit<32>>(HashAlgorithm_t.CRC32) crc32;
-
-    action compute_address() {
-        // meta.mbr = crc32.get({ hdr.ethernet.src_addr }) + meta.mbr2;
-        meta.mbr = meta.mbr & meta.mbr2 + meta.mbr3;
-    }
-
     apply {
+        
         if(hdr.ethernet.isValid()) {
-            compute_address();
+            fwd.apply();
+        }
+        
+        if(hdr.snoop.isValid()) {
+            if(hdr.snoop.ingress_ts == 0) {
+                hdr.snoop.ingress_ts = (bit<32>)ig_prsr_md.global_tstamp[31:0];
+                heap_read();
+            } else {
+                hdr.snoop.egress_ts = (bit<32>)ig_prsr_md.global_tstamp[31:0];
+                heap_write();
+            }
         }
     }
 }
@@ -117,6 +158,19 @@ parser EgressParser(
 ) {
     state start {
         pkt.extract(eg_intr_md);
+        transition parse_ethernet;
+    }
+
+    state parse_ethernet {
+        pkt.extract(hdr.ethernet);
+        transition select(hdr.ethernet.ether_type) {
+            ether_type_t.ETH_P_SNOOP    : parse_snoop;
+            _                           : accept;
+        }
+    }
+
+    state parse_snoop {
+        pkt.extract(hdr.snoop);
         transition accept;
     }
 }
@@ -130,7 +184,12 @@ control Egress(
     inout egress_intrinsic_metadata_for_deparser_t     eg_dprsr_md,
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md
 ) {
-    apply {}
+    apply {
+        if(hdr.snoop.isValid()) {
+            // hdr.snoop.egress_ts = (bit<32>)eg_prsr_md.global_tstamp[31:0];
+            hdr.snoop.addr = 0;
+        }
+    }
 }
 
 control EgressDeparser(

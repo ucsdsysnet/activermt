@@ -16,7 +16,7 @@ static inline void add_ipv4_host_entry(
     uint8_t* mac_dst_addr
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Ingress.ipv4_host", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.ipv4_host", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_dst_addr = 0, id_action_send = 0, id_action_drop = 0, id_data_port = 0, id_data_mac = 0;
@@ -31,24 +31,24 @@ static inline void add_ipv4_host_entry(
     bf_sys_assert(bf_status == BF_SUCCESS);
     bf_status = tbl->dataFieldIdGet("mac", id_action_send, &id_data_mac);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_send, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_send, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_dst_addr, ipv4_dst_addr, 4);
+    bf_status = bfrtTableKey->setValue(id_key_dst_addr, ipv4_dst_addr, 4);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableData->setValue(id_data_port, static_cast<uint64_t>(port));
+    bf_status = bfrtTableData->setValue(id_data_port, static_cast<uint64_t>(port));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableData->setValue(id_data_mac, mac_dst_addr, 6);
+    bf_status = bfrtTableData->setValue(id_data_mac, mac_dst_addr, 6);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -57,7 +57,7 @@ static inline void add_quota_recirc_entry(
     uint16_t fid
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Ingress.quota_recirc", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.quota_recirc", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_fid = 0, id_action_enable_recirculation = 0;
@@ -67,20 +67,20 @@ static inline void add_quota_recirc_entry(
     bf_status = tbl->actionIdGet("Ingress.enable_recirculation", &id_action_enable_recirculation);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_enable_recirculation, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_enable_recirculation, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
+    bf_status = bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -91,7 +91,7 @@ static inline void add_allocation_entry(
     int* allocation_id
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Ingress.allocation", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.allocation", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_fid = 0, id_key_flag_reqalloc = 0, id_action_allocated = 0, id_action_pending = 0, id_data_allocation_id = 0;
@@ -105,28 +105,28 @@ static inline void add_allocation_entry(
     bf_status = tbl->actionIdGet("Ingress.pending", &id_action_pending);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
+    tbl->keyReset(bfrtTableKey.get());
+    bf_status = bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_flag_reqalloc, static_cast<uint64_t>(flag_reqalloc));
+    bf_status = bfrtTableKey->setValue(id_key_flag_reqalloc, static_cast<uint64_t>(flag_reqalloc));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     if(allocation_id == NULL) {
-        tbl->dataReset(id_action_allocated, ctxt->bfrtTableData.get());
-        bf_status = ctxt->bfrtTableData->setValue(id_data_allocation_id, static_cast<uint64_t>(*allocation_id));
+        tbl->dataReset(id_action_allocated, bfrtTableData.get());
+        bf_status = bfrtTableData->setValue(id_data_allocation_id, static_cast<uint64_t>(*allocation_id));
         bf_sys_assert(bf_status == BF_SUCCESS);
     } else {
-        tbl->dataReset(id_action_pending, ctxt->bfrtTableData.get());
+        tbl->dataReset(id_action_pending, bfrtTableData.get());
     }
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -135,7 +135,7 @@ static inline void add_routeback_entry(
     int flag_reqalloc
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Ingress.routeback", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.routeback", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_flag_reqalloc = 0, id_action_route_malloc = 0;
@@ -145,20 +145,20 @@ static inline void add_routeback_entry(
     bf_status = tbl->actionIdGet("Ingress.route_malloc", &id_action_route_malloc);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_route_malloc, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_route_malloc, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_flag_reqalloc, static_cast<uint64_t>(flag_reqalloc));
+    bf_status = bfrtTableKey->setValue(id_key_flag_reqalloc, static_cast<uint64_t>(flag_reqalloc));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -169,7 +169,7 @@ static inline void add_remap_check_entry(
     int allocation_id
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Ingress.remap_check", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Ingress.remap_check", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_fid = 0, id_key_flag_initiated = 0, id_action_remapped = 0, id_data_allocation_id = 0;
@@ -183,22 +183,22 @@ static inline void add_remap_check_entry(
     bf_status = tbl->dataFieldIdGet("allocation_id", id_action_remapped, &id_data_allocation_id);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_remapped, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_remapped, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
+    bf_status = bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_flag_initiated, static_cast<uint64_t>(flag_initiated));
+    bf_status = bfrtTableKey->setValue(id_key_flag_initiated, static_cast<uint64_t>(flag_initiated));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -209,7 +209,7 @@ static inline void add_mirror_ack_entry(
     int session_id
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Egress.mirror_ack", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Egress.mirror_ack", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_remap = 0, id_key_ingress_port = 0, id_action_ack = 0, id_data_sessid = 0;
@@ -223,24 +223,24 @@ static inline void add_mirror_ack_entry(
     bf_status = tbl->dataFieldIdGet("sessid", id_action_ack, &id_data_sessid);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_ack, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_ack, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_remap, static_cast<uint64_t>(remap));
+    bf_status = bfrtTableKey->setValue(id_key_remap, static_cast<uint64_t>(remap));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_ingress_port, static_cast<uint64_t>(ingress_port));
+    bf_status = bfrtTableKey->setValue(id_key_ingress_port, static_cast<uint64_t>(ingress_port));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableData->setValue(id_data_sessid, static_cast<uint64_t>(session_id));
+    bf_status = bfrtTableData->setValue(id_data_sessid, static_cast<uint64_t>(session_id));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -250,7 +250,7 @@ static inline void add_mirror_cfg_entry(
     int session_id
 ) {
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet("Egress.mirror_cfg", &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet("Egress.mirror_cfg", &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_egress_port = 0, id_action_set_mirror = 0, id_data_sessid = 0;
@@ -262,22 +262,22 @@ static inline void add_mirror_cfg_entry(
     bf_status = tbl->dataFieldIdGet("sessid", id_action_set_mirror, &id_data_sessid);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action_set_mirror, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action_set_mirror, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_egress_port, static_cast<uint64_t>(egress_port));
+    bf_status = bfrtTableKey->setValue(id_key_egress_port, static_cast<uint64_t>(egress_port));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableData->setValue(id_data_sessid, static_cast<uint64_t>(session_id));
+    bf_status = bfrtTableData->setValue(id_data_sessid, static_cast<uint64_t>(session_id));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
@@ -299,7 +299,7 @@ static inline void add_allocation_entry(
     sprintf(table_name, "Ingress.allocation_%d", stage_id);
 
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet(table_name, &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet(table_name, &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_fid = 0, id_key_flag_allocated = 0, id_action_get_allocation = 0, id_action_default_allocation = 0, id_data_offset_ig = 0, id_data_offset_eg = 0, id_data_size_ig = 0, id_data_size_eg = 0;
@@ -321,42 +321,42 @@ static inline void add_allocation_entry(
     bf_status = tbl->dataFieldIdGet("size_eg", id_action_get_allocation, &id_data_size_eg);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
+    tbl->keyReset(bfrtTableKey.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
+    bf_status = bfrtTableKey->setValue(id_key_fid, static_cast<uint64_t>(fid));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_flag_allocated, static_cast<uint64_t>(flag_allocated));
+    bf_status = bfrtTableKey->setValue(id_key_flag_allocated, static_cast<uint64_t>(flag_allocated));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     if(is_default) {
-        tbl->dataReset(id_action_default_allocation, ctxt->bfrtTableData.get());
+        tbl->dataReset(id_action_default_allocation, bfrtTableData.get());
     } else {
-        tbl->dataReset(id_action_get_allocation, ctxt->bfrtTableData.get());
-        bf_status = ctxt->bfrtTableData->setValue(id_data_offset_ig, static_cast<uint64_t>(alloc_ig_start));
+        tbl->dataReset(id_action_get_allocation, bfrtTableData.get());
+        bf_status = bfrtTableData->setValue(id_data_offset_ig, static_cast<uint64_t>(alloc_ig_start));
         bf_sys_assert(bf_status == BF_SUCCESS);
-        bf_status = ctxt->bfrtTableData->setValue(id_data_offset_eg, static_cast<uint64_t>(alloc_eg_start));
+        bf_status = bfrtTableData->setValue(id_data_offset_eg, static_cast<uint64_t>(alloc_eg_start));
         bf_sys_assert(bf_status == BF_SUCCESS);
-        bf_status = ctxt->bfrtTableData->setValue(id_data_size_ig, static_cast<uint64_t>(alloc_ig_end));
+        bf_status = bfrtTableData->setValue(id_data_size_ig, static_cast<uint64_t>(alloc_ig_end));
         bf_sys_assert(bf_status == BF_SUCCESS);
-        bf_status = ctxt->bfrtTableData->setValue(id_data_size_eg, static_cast<uint64_t>(alloc_eg_end));
+        bf_status = bfrtTableData->setValue(id_data_size_eg, static_cast<uint64_t>(alloc_eg_end));
         bf_sys_assert(bf_status == BF_SUCCESS);
     }
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
 /* Active program execution tables. */
 
 static inline void add_instruction_entry(
-    program_context_t* ctxt,
+    std::shared_ptr<bfrt::BfRtSession> session,
     int ig_eg,
     int stage_id,
     uint16_t fid_start,
@@ -375,7 +375,7 @@ static inline void add_instruction_entry(
     sprintf(table_name, "%s.instruction_%d", (ig_eg == 0) ? "Egress" : "Ingress", stage_id);
 
     const bfrt::BfRtTable* tbl = nullptr;
-    auto bf_status = ctxt->bfrtInfo->bfrtTableFromNameGet(table_name, &tbl);
+    auto bf_status = bfrtInfo->bfrtTableFromNameGet(table_name, &tbl);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     bf_rt_id_t id_key_fid = 0, id_key_opcode = 0, id_key_complete = 0, id_key_disabled = 0, id_key_mbr = 0, id_key_mar = 0, id_action = 0;
@@ -399,30 +399,30 @@ static inline void add_instruction_entry(
     bf_status = tbl->actionIdGet(action_id, &id_action);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    bf_status = tbl->keyAllocate(&ctxt->bfrtTableKey);
+    bf_status = tbl->keyAllocate(&bfrtTableKey);
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = tbl->dataAllocate(&ctxt->bfrtTableData);
+    bf_status = tbl->dataAllocate(&bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 
-    tbl->keyReset(ctxt->bfrtTableKey.get());
-    tbl->dataReset(id_action, ctxt->bfrtTableData.get());
+    tbl->keyReset(bfrtTableKey.get());
+    tbl->dataReset(id_action, bfrtTableData.get());
 
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_opcode, static_cast<uint64_t>(opcode));
+    bf_status = bfrtTableKey->setValue(id_key_opcode, static_cast<uint64_t>(opcode));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_complete, static_cast<uint64_t>(complete));
+    bf_status = bfrtTableKey->setValue(id_key_complete, static_cast<uint64_t>(complete));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValue(id_key_disabled, static_cast<uint64_t>(disabled));
+    bf_status = bfrtTableKey->setValue(id_key_disabled, static_cast<uint64_t>(disabled));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValueRange(id_key_fid, static_cast<uint64_t>(fid_start), static_cast<uint64_t>(fid_end));
+    bf_status = bfrtTableKey->setValueRange(id_key_fid, static_cast<uint64_t>(fid_start), static_cast<uint64_t>(fid_end));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValueRange(id_key_mar, static_cast<uint64_t>(mar_start), static_cast<uint64_t>(mar_end));
+    bf_status = bfrtTableKey->setValueRange(id_key_mar, static_cast<uint64_t>(mar_start), static_cast<uint64_t>(mar_end));
     bf_sys_assert(bf_status == BF_SUCCESS);
-    bf_status = ctxt->bfrtTableKey->setValueLpm(id_key_mbr, static_cast<uint64_t>(mbr), static_cast<uint16_t>(mbr_mask));
+    bf_status = bfrtTableKey->setValueLpm(id_key_mbr, static_cast<uint64_t>(mbr), static_cast<uint16_t>(mbr_mask));
     bf_sys_assert(bf_status == BF_SUCCESS);
 
     uint64_t flags = 0;
 
-    bf_status = tbl->tableEntryAdd(*ctxt->session, dev_tgt, flags, *ctxt->bfrtTableKey, *ctxt->bfrtTableData);
+    bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
