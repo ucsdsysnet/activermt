@@ -44,6 +44,10 @@ static bf_rt_target_t dev_tgt;
 #include "include/controller_common.h"
 // #include "include/active_p4_tables.h"
 
+/**
+ * @brief Memory region.
+ * 
+ */
 typedef struct {
     int fid;
     int stage_id;
@@ -51,11 +55,23 @@ typedef struct {
     int mem_end;
 } active_malloc_blk_t;
 
-typedef struct {
-    active_malloc_blk_t* blk;
-    active_malloc_blk_t* next;
-} active_memblks_t;
-
+/**
+ * @brief Adds an instruction table entry.
+ * 
+ * @param session Session object
+ * @param is_ingress Ingress/Egress pipeline
+ * @param stage_id Active stage index for respective pipeline
+ * @param fid_start Staring FID
+ * @param fid_end Ending FID
+ * @param opcode Instruction opcode
+ * @param complete Execution is complete flag
+ * @param disabled Execution was disabled by branching flag
+ * @param mbr Conditional spec = 0
+ * @param mbr_mask Conditional spec: should be 0 if true else 32
+ * @param mar_start Memory region start
+ * @param mar_end Memory region end
+ * @param action_name Name of P4 action to invoke
+ */
 static inline void add_instruction_entry(
     std::shared_ptr<bfrt::BfRtSession> session,
     bool is_ingress,
@@ -129,6 +145,17 @@ static inline void add_instruction_entry(
     bf_sys_assert(bf_status == BF_SUCCESS);
 }
 
+/**
+ * @brief Installs an instruction.
+ * 
+ * @param session Session object
+ * @param is_ingress is_ingress Ingress/Egress pipeline
+ * @param stage_id stage_id Active stage index for respective pipeline
+ * @param fid FID of function
+ * @param mar_start Memory region start
+ * @param mar_end Memory region end
+ * @param instr Instruction definition
+ */
 static inline void install_instruction(
     std::shared_ptr<bfrt::BfRtSession> session,
     bool is_ingress,
@@ -174,6 +201,15 @@ static inline void install_instruction(
     add_instruction_entry(session, is_ingress, stage_id, fid_start, fid_end, opcode, 0, 1, mbr, 0, mar_start, MAXMEM, action_rejoin.c_str());
 }
 
+/**
+ * @brief Updates an installed instruction corresponding to a memory reallocation.
+ * 
+ * @param session Session object
+ * @param is_ingress is_ingress is_ingress Ingress/Egress pipeline
+ * @param stage_id stage_id stage_id Active stage index for respective pipeline
+ * @param mem memory allocation for each FID belonging the stage
+ * @param opcode_map mapping from opcode to the instruction definition
+ */
 static inline void update_instruction_entries(
     std::shared_ptr<bfrt::BfRtSession> session,
     bool is_ingress,
@@ -300,25 +336,58 @@ void benchmark_table_update() {
 
     struct timespec ts_start, ts_now;
     uint64_t elapsed_ns;
-
-    /* Step 1 - initial installation. */
-
-    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) { perror("clock_gettime"); exit(1); }
-
-    std::shared_ptr<bfrt::BfRtSession> session = bfrt::BfRtSession::sessionCreate();
-
-    session->beginBatch();
+    int num_installed = 0;
 
     uint16_t fid = 1;
     int stage_id = 0;
     bool is_ingress = true;
 
     std::regex re_vaddr("ADDR_");
+    std::regex re_mem("MEM_");
 
-    int num_installed = 0;
+    std::shared_ptr<bfrt::BfRtSession> session = bfrt::BfRtSession::sessionCreate();
+
+    /* Step 1 - initial installation. */
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) { perror("clock_gettime"); exit(1); }
+
+    session->beginBatch();
+
+    num_installed = 0;
 
     for(auto& it: instr_set) {
-        if(std::regex_search(it.first, re_vaddr)) continue;
+        if(std::regex_search(it.first, re_vaddr) || std::regex_search(it.first, re_mem)) continue;
+        // std::cout << "Adding entry: " << it.first << " - (" << it.second.opcode << ", " << action << ", " << it.second.conditional << ")" << std::endl;
+        install_instruction(
+            session,
+            is_ingress,
+            stage_id,
+            0,
+            0,
+            65535,
+            &it.second
+        );
+        num_installed++;
+    }
+
+    session->sessionCompleteOperations();
+    session->endBatch(true);
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
+    elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+
+    printf("Init: %d entries installed in %lu ns.\n", num_installed, elapsed_ns);
+
+    /* Step 2 - FID installation. */
+
+    if( clock_gettime(CLOCK_MONOTONIC, &ts_start) < 0 ) { perror("clock_gettime"); exit(1); }
+
+    session->beginBatch();
+
+    num_installed = 0;
+
+    for(auto& it: instr_set) {
+        if(!std::regex_search(it.first, re_mem)) continue;
         // std::cout << "Adding entry: " << it.first << " - (" << it.second.opcode << ", " << action << ", " << it.second.conditional << ")" << std::endl;
         install_instruction(
             session,
@@ -338,9 +407,9 @@ void benchmark_table_update() {
     if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
     elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
 
-    printf("%d entries installed in %lu ns.\n", num_installed, elapsed_ns);
+    printf("FID %d: %d entries installed in %lu ns.\n", fid, num_installed, elapsed_ns);
 
-    /* Step 2: updated installation. */
+    /* Step 3: updated installation. */
 
     std::unordered_map<int, active_malloc_blk_t> mem;
     std::unordered_map<int, instrset_action_t> opcode_map;
