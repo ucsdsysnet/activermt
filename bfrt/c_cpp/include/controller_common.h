@@ -10,11 +10,14 @@
 #include <unordered_map>
 #include <string>
 #include <iostream>
+#include <regex>
 
 typedef struct {
     int         opcode;
     std::string action;
     bool        conditional;
+    bool        condition;
+    bool        memop;
 } instrset_action_t;
 
 typedef struct {
@@ -86,13 +89,15 @@ void read_instruction_set(const char* instruction_set_path, std::unordered_map<s
 
     std::string pnemonic, action;
     int opcode = 0, tokidx = 0;
-    bool conditional;
+    bool conditional = false, memop, condition;
     const char* tok;
     char buf[100];
 
     FILE* fp = fopen(instruction_set_path, "r");
     
     assert(fp != NULL);
+
+    std::regex re_mem("MEM_");
 
     while(fgets(buf, 100, fp) != NULL) {
         pnemonic.clear();
@@ -104,12 +109,14 @@ void read_instruction_set(const char* instruction_set_path, std::unordered_map<s
             } else if(tokidx == 1) {
                 action = tok;
             } else if(tokidx == 2) {
-                conditional = (atoi(tok) == 1);
+                conditional = true;
+                condition = (atoi(tok) == 1);
             }
             tokidx++;
         }
         if(!pnemonic.empty()) {
-            instrset_action_t actiondef = {opcode, action, conditional};
+            memop = std::regex_search(pnemonic, re_mem);
+            instrset_action_t actiondef = {opcode, action, conditional, condition, memop};
             instr_set->insert({pnemonic, actiondef});
             opcode++;
         }
