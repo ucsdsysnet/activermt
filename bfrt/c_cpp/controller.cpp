@@ -112,7 +112,7 @@ void simulate_application_arrivals() {
     printf("Read instruction set with %lu instructions.\n", instr_set.size());
 
     struct timespec ts_start, ts_now;
-    uint64_t elapsed_ns;
+    uint64_t elapsed_ns, elapsed_ms;
     int num_installed = 0;
 
     uint16_t fid = 1;
@@ -132,19 +132,23 @@ void simulate_application_arrivals() {
 
     num_installed = 0;
 
-    for(auto& it: instr_set) {
-        if(std::regex_search(it.first, re_vaddr) || std::regex_search(it.first, re_mem)) continue;
-        // std::cout << "Adding entry: " << it.first << " - (" << it.second.opcode << ", " << action << ", " << it.second.conditional << ")" << std::endl;
-        install_instruction(
-            session,
-            is_ingress,
-            stage_id,
-            0,
-            0,
-            65535,
-            &it.second
-        );
-        num_installed++;
+    for(int i = 0; i < NUM_STAGES_PIPE * 2; i++) {
+        stage_id = i % NUM_STAGES_PIPE;
+        is_ingress = i < NUM_STAGES_PIPE;
+        for(auto& it: instr_set) {
+            if(std::regex_search(it.first, re_vaddr) || std::regex_search(it.first, re_mem)) continue;
+            // std::cout << "Adding entry: " << it.first << " - (" << it.second.opcode << ", " << action << ", " << it.second.conditional << ")" << std::endl;
+            install_instruction(
+                session,
+                is_ingress,
+                stage_id,
+                0,
+                0,
+                MAXMEM,
+                &it.second
+            );
+            num_installed++;
+        }
     }
 
     session->sessionCompleteOperations();
@@ -152,8 +156,9 @@ void simulate_application_arrivals() {
 
     if( clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0 ) { perror("clock_gettime"); exit(1); }
     elapsed_ns = (ts_now.tv_sec - ts_start.tv_sec) * 1E9 + (ts_now.tv_nsec - ts_start.tv_nsec);
+    elapsed_ms = elapsed_ns / 1E6;
 
-    printf("Init: %d entries installed in %lu ns.\n", num_installed, elapsed_ns);
+    printf("Init: %d entries installed in %lu ms.\n", num_installed, elapsed_ms);
 
     /* Step 2 - application arrivals. */
 
@@ -167,7 +172,7 @@ void simulate_application_arrivals() {
 
     int current_allocation[MAXINSTANCES];
 
-    int num_repeats = 1;
+    int num_repeats = 100;
     int num_apps = 20;
 
     init_analysis(num_repeats, num_apps);

@@ -219,16 +219,20 @@ static inline bool add_instruction_entry(
 
     uint64_t flags = 0;
 
+    // printf("Adding instruction entry FID %d stage %d opcode %d.\n", fid_start, stage_id, opcode);
+
     bf_status = tbl->tableEntryAdd(*session, dev_tgt, flags, *bfrtTableKey, *bfrtTableData);
-    bf_sys_assert(bf_status == BF_SUCCESS || bf_status == BF_NO_SPACE);
-    
-    if(bf_status == BF_NO_SPACE) {
-        printf("Ran out of space!\n");
-        assert(1 == 0);
-        return false;
+
+    switch(bf_status) {
+        case BF_SUCCESS:
+            return true;
+        case BF_ALREADY_EXISTS:
+            printf("Duplicate entry: FID %d-%d stage %d opcode %d.\n", fid_start, fid_end, stage_id, opcode);
+        case BF_NO_SPACE:
+        default:
+            bf_sys_assert(bf_status == BF_SUCCESS);
+            return false;
     }
-    
-    return true;
 }
 
 /**
@@ -416,6 +420,16 @@ static inline bool update_instruction_entries(
     return true;
 }
 
+/**
+ * @brief Remove all memory access entries for FIDs in a stage.
+ * 
+ * @param session Session object
+ * @param is_ingress ingress/egress pipe
+ * @param stage_id active stage index for respective pipe
+ * @param opcode_map mapping from opcode to instruction
+ * @return true 
+ * @return false 
+ */
 static inline bool clear_applications(
     std::shared_ptr<bfrt::BfRtSession> session,
     bool is_ingress,
@@ -455,6 +469,8 @@ static inline bool clear_applications(
     session->beginBatch();
 
     if(usage_count > 0) {
+        printf("clearing stage %d ... ", stage_id);
+
         std::unique_ptr<bfrt::BfRtTableKey> gIdcKey;
         std::unique_ptr<bfrt::BfRtTableData> gIdcData;
         bf_status = tbl->keyAllocate(&gIdcKey);
@@ -488,6 +504,8 @@ static inline bool clear_applications(
         );
         bf_sys_assert(bf_status == BF_SUCCESS);
 
+        int num_removed = 0;
+
         for(auto& it: key_data_pairs) {
             bf_sys_assert(it.first->getValueRange(id_key_fid, &fid_start, &fid_end) == BF_SUCCESS);
             bf_sys_assert(it.first->getValue(id_key_opcode, &opcode) == BF_SUCCESS);
@@ -495,7 +513,7 @@ static inline bool clear_applications(
             auto instr = opcode_map->find(opcode);
             assert(instr != opcode_map->end());
             if(instr->second.memop) {
-                // std::cout << "Deleting " << instr->first << " opcode " << opcode << " ... " << std::endl;
+                // std::cout << "Deleting FID " << fid_start << " stage " << stage_id << " opcode " << opcode << " ... " << std::endl;
                 bf_status = tbl->tableEntryDel(
                     *session,
                     dev_tgt,
@@ -503,9 +521,12 @@ static inline bool clear_applications(
                     *it.first
                 );
                 bf_sys_assert(bf_status == BF_SUCCESS);
+                num_removed++;
             }
             // std::cout << "Entry: (" << fid_start << "," << fid_end << ") - " << opcode << std::endl;
         }
+
+        printf("%d entries removed.\n", num_removed);
     }
 
     session->sessionCompleteOperations();
