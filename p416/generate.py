@@ -35,7 +35,7 @@ ANNOTATION_TP_METADATA      = '<third-party-metadata>'
 
 class ActiveP4Generator:
 
-    NUM_ACTIVE_STAGES_IG    = 6
+    NUM_ACTIVE_STAGES_IG    = 10
     NUM_ACTIVE_STAGES_EG    = 10
     MAX_INSTRUCTIONS        = 32
     SALT                    = 0x1234

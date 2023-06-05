@@ -13,14 +13,6 @@
 #include <regex>
 
 typedef struct {
-    int         opcode;
-    std::string action;
-    bool        conditional;
-    bool        condition;
-    bool        memop;
-} instrset_action_t;
-
-typedef struct {
     std::string                             basedir;
     const bfrt::BfRtInfo*                   bfrtInfo;
     std::shared_ptr<bfrt::BfRtSession>      session;
@@ -80,45 +72,6 @@ void read_routing_configuration(program_context_t* ctxt, std::string config, rou
             // uint8_t mac_addr_bytes[6];
             // sscanf(mac_addr.c_str(), "%c:%c:%c:%c:%c:%c", mac_addr_bytes[0], mac_addr_bytes[1], mac_addr_bytes[2], mac_addr_bytes[3], mac_addr_bytes[4], mac_addr_bytes[5]);
             // cfg->mac_config.insert(std::make_pair(port, mac_addr_bytes));
-        }
-    }
-    fclose(fp);
-}
-
-void read_instruction_set(const char* instruction_set_path, std::unordered_map<std::string, instrset_action_t>* instr_set) {
-
-    std::string pnemonic, action;
-    int opcode = 0, tokidx = 0;
-    bool conditional = false, memop, condition;
-    const char* tok;
-    char buf[100];
-
-    FILE* fp = fopen(instruction_set_path, "r");
-    
-    assert(fp != NULL);
-
-    std::regex re_mem("MEM_");
-
-    while(fgets(buf, 100, fp) != NULL) {
-        pnemonic.clear();
-        action.clear();
-        tokidx = 0;
-        for(tok = strtok(buf, ",\n"); tok && *tok; tok = strtok(NULL, ",\n")) {
-            if(tokidx == 0) {
-                pnemonic = tok;
-            } else if(tokidx == 1) {
-                action = tok;
-            } else if(tokidx == 2) {
-                conditional = true;
-                condition = (atoi(tok) == 1);
-            }
-            tokidx++;
-        }
-        if(!pnemonic.empty()) {
-            memop = std::regex_search(pnemonic, re_mem);
-            instrset_action_t actiondef = {opcode, action, conditional, condition, memop};
-            instr_set->insert({pnemonic, actiondef});
-            opcode++;
         }
     }
     fclose(fp);

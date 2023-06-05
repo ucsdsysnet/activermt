@@ -306,15 +306,15 @@ control Ingress(
 
     apply {
         <third-party-ig-cf>
-        seqidx.apply();
-        check_prior_exec();
-        keyfetch.apply();
-        app_signing.apply();
-        if(hdr.meta.fid_sig != hdr.ih.sig || hdr.meta.executed == 1) {
-            drop();
-            bypass_egress();
-            hdr.meta.complete = 1;
-        }
+        // seqidx.apply();
+        // check_prior_exec();
+        // keyfetch.apply();
+        // app_signing.apply();
+        // if(hdr.meta.fid_sig != hdr.ih.sig || hdr.meta.executed == 1) {
+        //     drop();
+        //     bypass_egress();
+        //     hdr.meta.complete = 1;
+        // }
         hdr.meta.ingress_port = ig_intr_md.ingress_port;
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();

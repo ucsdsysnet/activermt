@@ -13,6 +13,7 @@ local/
 sde
 malloc/stats/
 debug/
+results/
 
 CMake*
 bf_drivers*
