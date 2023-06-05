@@ -70,7 +70,8 @@ void init_switchd() {
         exit(1);
     }
 
-    switchd_ctx->init_mode = BF_DEV_WARM_INIT_FAST_RECFG;
+    // switchd_ctx->init_mode = BF_DEV_WARM_INIT_FAST_RECFG;
+    switchd_ctx->init_mode = BF_DEV_INIT_COLD;
     switchd_ctx->running_in_background = true;
     switchd_ctx->skip_port_add = true;
     switchd_ctx->install_dir = (char*)install_dir.c_str();

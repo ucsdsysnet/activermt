@@ -172,7 +172,7 @@ void simulate_application_arrivals() {
 
     int current_allocation[MAXINSTANCES];
 
-    int num_repeats = 100;
+    int num_repeats = 10;
     int num_apps = 20;
 
     init_analysis(num_repeats, num_apps);
