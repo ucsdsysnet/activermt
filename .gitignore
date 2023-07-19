@@ -14,6 +14,10 @@ sde
 malloc/stats/
 debug/
 results/
+bfrt/c_cpp/
+malloc/sim/
+
+p4-build
 
 CMake*
 bf_drivers*
