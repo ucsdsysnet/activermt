@@ -1,11 +1,13 @@
 clear;
 clc;
 
+addpath("../../../../malloc");
+
 NUM_REPEATS = 10;
 DURATION = 100;
 DATADIR = 'allocation';
 
-params_colors = {'b', 'r'};
+% params_colors = {'b', 'r'};
 
 fid_total = zeros(DURATION, NUM_REPEATS);
 fid_snapshots = zeros(DURATION, NUM_REPEATS);
@@ -67,16 +69,16 @@ pos_s = ub_s - avg_snapshots;
 
 max_fid = max(fid_total, [], "all");
 
-a = area(1:max_fid, avg_allocation(1:max_fid), 'FaceColor', params_colors{1}, 'EdgeColor', 'none');
+a = area(1:max_fid, avg_allocation(1:max_fid), 'FaceColor', getColor(1), 'EdgeColor', 'none');
 a.FaceAlpha = 0.4;
 hold on;
-b = area(1:max_fid, avg_snapshots(1:max_fid), 'FaceColor', params_colors{2}, 'EdgeColor', 'none');
+b = area(1:max_fid, avg_snapshots(1:max_fid), 'FaceColor', getColor(2), 'EdgeColor', 'none');
 b.FaceAlpha = 0.4;
 hold on;
 
-errorbar(1:DURATION, avg_allocation, neg_a, pos_a, 'LineWidth', 1.5, 'Color', params_colors{1});
+errorbar(1:DURATION, avg_allocation, neg_a, pos_a, 'LineWidth', 1.5, 'Color', getColor(1));
 hold on;
-errorbar(1:DURATION, avg_snapshots, neg_s, pos_s, 'LineWidth', 1.5, 'Color', params_colors{2});
+errorbar(1:DURATION, avg_snapshots, neg_s, pos_s, 'LineWidth', 1.5, 'Color', getColor(2));
 
 % plot(avg_allocation, '-square', 'LineWidth', 2);
 % hold on;
@@ -96,4 +98,4 @@ lgd.FontSize = 12;
 set(gca, 'FontSize', 16);
 grid on;
 
-saveas(gcf, 'allocation_time_duration_based.png');
+saveas(gcf, 'allocation_time_duration_based_cr.png');

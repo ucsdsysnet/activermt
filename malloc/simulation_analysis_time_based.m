@@ -1,7 +1,8 @@
 clear;
 clc;
 
-BASE_DIR = '.';
+% BASE_DIR = '.';
+BASE_DIR = 'evals/timeseries/v5';
 NUM_STAGES = 20;
 PARAM_GRANULARITY = 368;
 PARAM_DURATION = 1000;
@@ -25,7 +26,7 @@ param_colors = {'r', 'b', 'g', 'm'};
 labels_constraints = {'least-constr', 'most-constr'};
 
 % utilization, occupancy, reallocations, failures, fairness.
-graphs = [0 0 1 0 0];
+graphs = [1 1 1 1 1];
 
 if graphs(1) == 1
     figure;
@@ -57,15 +58,17 @@ if graphs(1) == 1
         err_neg = util_avg - util_lb;
         err_pos = util_ub - util_avg;
 
+        color = getColor(i);
+
         X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y1 = [util_lb',fliplr(util_ub')];
 
-        p = fill(X1, Y1, param_colors{i}, 'EdgeColor', 'none');
+        p = fill(X1, Y1, color, 'EdgeColor', 'none');
         p.FaceAlpha = 0.4;
     
 %         errorbar(1:PARAM_DURATION, util_avg, err_neg, err_pos);
         hold on;
-        plot(1:PARAM_DURATION, util_avg, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
+        plot(1:PARAM_DURATION, util_avg, '-', 'Color', color, 'LineWidth', 1.5);
         hold on;
     end
     
@@ -132,13 +135,15 @@ if graphs(2) == 1
         X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y1 = [occ_lb',fliplr(occ_ub')];
 
+        color = getColor(i);
+
 %         yyaxis left;
-        p = fill(X1, Y1, param_colors{i}, 'EdgeColor', 'none');
+        p = fill(X1, Y1, color, 'EdgeColor', 'none');
         p.FaceAlpha = 0.4;
     
 %         errorbar(1:PARAM_DURATION, occ_avg, err_neg, err_pos);
         hold on;
-        plot(1:PARAM_DURATION, occ_avg, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
+        plot(1:PARAM_DURATION, occ_avg, '-', 'Color', color, 'LineWidth', 1.5);
         hold on;
         
 %         yyaxis right;
@@ -209,6 +214,8 @@ if graphs(3) == 1
         X2 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y2 = [cost_lb_elastic',fliplr(cost_ub_elastic')];
 
+        color = getColor(i);
+
 %         c = 2 * (i - 1);
 
 %         p = fill(X1, Y1, param_colors{c + 1}, 'EdgeColor', 'none');
@@ -217,9 +224,9 @@ if graphs(3) == 1
 %         plot(1:PARAM_DURATION, cost_avg_total * 100, '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
 %         hold on;
 
-        p = fill(X2, Y2 * 100, param_colors{i}, 'EdgeColor', 'none');
-        p.FaceAlpha = 0.4;
-        hold on;
+%         p = fill(X2, Y2 * 100, param_colors{i}, 'EdgeColor', 'none');
+%         p.FaceAlpha = 0.4;
+%         hold on;
 %         plot(1:PARAM_DURATION, cost_avg_elastic * 100, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
 %         hold on;
 
@@ -231,7 +238,7 @@ if graphs(3) == 1
 
 %         plot(1:PARAM_DURATION, emwa_total(1:PARAM_DURATION), '-', 'Color', param_colors{c + 1}, 'LineWidth', 1.5);
 %         hold on;
-        plot(1:PARAM_DURATION, emwa_elastic(1:PARAM_DURATION), '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
+        plot(1:PARAM_DURATION, emwa_elastic(1:PARAM_DURATION), '-', 'Color', color, 'LineWidth', 1.5);
         hold on;
 
 %         mwa = conv(cost_avg, mwa_filter);
@@ -248,7 +255,8 @@ if graphs(3) == 1
     xlabel('Time Interval');
     xlim([1, PARAM_DURATION]);
 %     lgd = legend({'least-constr (all)', 'least-constr (elastic)', 'most-constr (all)', 'most-constr (elastic)'});
-    lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
+%     lgd = legend({'least-constr (range)', 'least-constr (avg)', 'most-constr (range)', 'most-constr (avg)'});
+    lgd = legend({'least-constr', 'most-constr'});
 %     lgd = legend(labels_constraints);
 %     lgd.Location = 'southeast';
     lgd.Location = 'northeast';
@@ -340,12 +348,14 @@ if graphs(5) == 1 && strcmp(PARAM_WL, 'inelastic') == 0
         X1 = [1:PARAM_DURATION,fliplr(1:PARAM_DURATION)];
         Y1 = [fairness_lb',fliplr(fairness_ub')];
 
-        p = fill(X1, Y1, param_colors{i}, 'EdgeColor', 'none');
+        color = getColor(i);
+
+        p = fill(X1, Y1, color, 'EdgeColor', 'none');
         p.FaceAlpha = 0.4;
 %         p = cdfplot(fairness(:));
 %         set(p, 'LineWidth', 2);
         hold on;
-        plot(1:PARAM_DURATION, fairness_avg, '-', 'Color', param_colors{i}, 'LineWidth', 1.5);
+        plot(1:PARAM_DURATION, fairness_avg, '-', 'Color', color, 'LineWidth', 1.5);
         hold on;
     end
     

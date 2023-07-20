@@ -1,6 +1,8 @@
 clear;
 clc;
 
+addpath("../../../../malloc");
+
 SOURCE_DIR = './evals/mi_100ms_n_4_itvl_5_sec';
 NUM_APPS = 4;
 ALPHA = 0.01;
@@ -77,4 +79,4 @@ lgd.Location = 'southeast';
 set(gca,'XMinorTick','on','YMinorTick','on');
 set(gca, 'FontSize', 16);
 grid on;
-saveas(gcf, sprintf('dpdk_cache_hit_rate_n_%d.png', NUM_APPS));
+saveas(gcf, sprintf('dpdk_cache_hit_rate_n_%d_cr.png', NUM_APPS));
