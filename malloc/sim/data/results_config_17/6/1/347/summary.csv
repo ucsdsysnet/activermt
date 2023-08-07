@@ -1,0 +1,2 @@
+num_events,utilization,reallocations,changes,failures,reallocated_prop,time_compute,time_apply,time_enum,time_search,time_pp
+1,0.37717391304347825,1,0,0,0.0,0.28708839416503906,0.29659557342529297,0.018169164657592773,0.25861144065856934,0.010305643081665039
