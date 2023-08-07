@@ -11,6 +11,7 @@ _ica/
 clients/dpdk-client/build/
 local/
 sde
+p4-build
 malloc/stats/
 debug/
 results/

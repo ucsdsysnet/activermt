@@ -1,0 +1,2 @@
+num_events,utilization,reallocations,changes,failures,reallocated_prop,time_compute,time_apply
+1,1.0,26,41,0,0.22413793103448276,0.03026866912841797,0.641897439956665
