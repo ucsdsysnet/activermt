@@ -28,4 +28,22 @@ Dissectors that recognize active packets are located at "wsdissector/".
 There are various utility scripts that can e.g., be used to create virtual networks with the Tofino model to evaluate functionality. These can be found at "util/".  
 
 # SIGCOMM Paper Evaluations
-TODO
+Here are the instructions to generate the following graphs, which can be run on any standard x86/x64 machine:
+1. Figure 5(a)
+2. Figure 5(b)
+3. Figure 6(a)
+4. Figure 6(b)
+5. Figure 7(a)
+6. Figure 7(b)
+7. Figure 7(c)
+8. Figure 7(d)
+9. Figure 11(a)
+10. Figure 11(b)
+11. Figure 11(c)
+12. Figure 11(d)
+13. Figure 12(a)
+14. Figure 12(b)
+15. Figure 12(c)
+16. Figure 12(d)
+
+Figures 8,9 and 10 require a Tofino ASIC.
