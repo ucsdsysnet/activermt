@@ -1,42 +1,6 @@
-[submodule "ref/cheetah-p4"]
-	path = ref/cheetah-p4
-	url = https://github.com/cheetahlb/cheetah-p4.git
-[submodule "ref/Open-Tofino"]
-	path = ref/Open-Tofino
-	url = https://github.com/barefootnetworks/Open-Tofino.git
 [submodule "apps/_common/redis-client/hiredis"]
 	path = apps/_common/redis-client/hiredis
 	url = https://github.com/redis/hiredis.git
 [submodule "util/tofino-logviz"]
 	path = util/tofino-logviz
 	url = git@github.com:dasrajdeep/tofino-logviz.git
-[submodule "ref/p4app-switchML"]
-	path = ref/p4app-switchML
-	url = https://github.com/p4lang/p4app-switchML.git
-[submodule "ref/hashpipe"]
-	path = ref/hashpipe
-	url = https://github.com/vibhaa/hashpipe.git
-[submodule "ref/LightGuardian"]
-	path = ref/LightGuardian
-	url = https://github.com/Light-Guardian/LightGuardian.git
-[submodule "ref/pktgen"]
-	path = ref/pktgen
-	url = git@github.com:dasrajdeep/Pktgen-DPDK.git
-[submodule "ref/dpdk"]
-	path = ref/dpdk
-	url = git@github.com:DPDK/dpdk.git
-[submodule "ref/NetVRM"]
-	path = ref/NetVRM
-	url = git@github.com:netx-repo/NetVRM.git
-[submodule "ref/uthash"]
-	path = ref/uthash
-	url = git@github.com:troydhanson/uthash.git
-[submodule "ref/tutorials"]
-	path = ref/tutorials
-	url = git@github.com:p4lang/tutorials.git
-[submodule "ref/p4c"]
-	path = ref/p4c
-	url = https://github.com/p4lang/p4c.git
-[submodule "ref/switch"]
-	path = ref/switch
-	url = git@github.com:p4lang/switch.git
