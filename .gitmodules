@@ -1,6 +1,3 @@
 [submodule "apps/_common/redis-client/hiredis"]
 	path = apps/_common/redis-client/hiredis
 	url = https://github.com/redis/hiredis.git
-[submodule "util/tofino-logviz"]
-	path = util/tofino-logviz
-	url = git@github.com:dasrajdeep/tofino-logviz.git
