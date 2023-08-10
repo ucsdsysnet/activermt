@@ -37,6 +37,7 @@ control Ingress(
         ig_dprsr_md.resubmit_type = RESUBMIT_TYPE_DEFAULT;
     }
 
+    // Taken from Tofino examples.
     table ipv4_host {
         key = { 
             hdr.ipv4.dst_addr   : exact; 
@@ -52,16 +53,6 @@ control Ingress(
         const default_action = NoAction();
 #endif
     }
-
-    /*table vroute {
-        key = {
-            meta.port_change    : exact;
-            meta.vport          : exact;
-        }
-        actions = {
-            send;
-        }
-    }*/
 
     // actions
 
@@ -110,12 +101,8 @@ control Ingress(
 
     // resource monitoring
 
-    // quota enforcement
-
     Random<bit<16>>() rnd;
     Register<bit<32>, bit<32>>(32w65536) pkt_count;
-    Counter<bit<64>, bit<32>>(1, CounterType_t.PACKETS_AND_BYTES) overall_stats;
-    Counter<bit<32>, bit<32>>(65536, CounterType_t.PACKETS_AND_BYTES) activep4_stats;
 
     RegisterAction<bit<32>, bit<32>, bit<32>>(pkt_count) counter_pkts = {
         void apply(inout bit<32> obj, out bit<32> rv) {
@@ -128,6 +115,8 @@ control Ingress(
         hdr.meta.ig_pktcount = counter_pkts.execute((bit<32>)hdr.ih.fid);
     }
 
+    // quota enforcement
+
     action enable_recirculation() {
         hdr.meta.mirror_iter = MAX_RECIRCULATIONS;
     }
@@ -135,26 +124,10 @@ control Ingress(
     table quota_recirc {
         key = {
             hdr.ih.fid          : exact;
-            //hdr.meta.randnum    : range;
         }
         actions = {
             enable_recirculation;
         }
-    }
-
-    Register<bit<8>, bit<16>>(32w65536) seqmap;
-    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
-
-    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
-        void apply(inout bit<8> value, out bit<8> rv) {
-            rv = value;
-            value = (bit<8>)~hdr.ih.rst_seq & value;
-        }
-    };
-
-    action check_prior_exec() {
-        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
-        hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
     action allocated(bit<16> allocation_id) {
@@ -207,40 +180,6 @@ control Ingress(
         }
     }
 
-    Register<bit<16>, bit<16>>(32w256) app_leader;
-    
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            if((bit<16>)meta.app_instance_id < obj) {
-                obj = (bit<16>)meta.app_instance_id;
-            }
-            rv = obj;
-        }
-    };
-
-    action leader_elect() {
-        meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
-    }
-
-    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
-        void apply(inout bit<16> obj, out bit<16> rv) {
-            rv = obj;
-        }
-    };
-
-    action get_leader() {
-        hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
-    }
-
-    table leader_fetch {
-        key = {
-            hdr.ih.flag_leader  : exact;
-        }
-        actions = {
-            get_leader;
-        }
-    }
-
     // control flow
 
     apply {
@@ -252,9 +191,6 @@ control Ingress(
             hdr.meta.mbr2 = hdr.data.data_2;
         }
         if(hdr.ih.isValid()) {
-            // leader_elect();
-            // leader_fetch.apply();
-            // activep4_stats.count((bit<32>)hdr.ih.fid);
             routeback.apply();
             if(hdr.ih.flag_reqalloc == 1) {
                 ig_dprsr_md.digest_type = 1;
@@ -262,9 +198,7 @@ control Ingress(
             if(hdr.ih.flag_remapped == 1) {
                 ig_dprsr_md.digest_type = 2;
             }
-            if(allocation.apply().miss) {
-                //check_prior_exec();
-            }
+            allocation.apply();
             quota_recirc.apply();
             update_pkt_count_ap4();
         } else bypass_egress();
@@ -272,10 +206,6 @@ control Ingress(
         <generated-malloc>
         if(hdr.ipv4.isValid()) {
             ipv4_host.apply();
-            /*overall_stats.count(0);
-            if(vroute.apply().miss) {
-                ipv4_host.apply();
-            }*/
         }
         remap_check.apply();
         if(hdr.meta.complete == 1) hdr.meta.setInvalid();
