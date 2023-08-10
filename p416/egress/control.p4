@@ -1,5 +1,3 @@
-
-
 control Egress(
     inout egress_headers_t                             hdr,
     inout eg_metadata_t                                meta,
@@ -1272,25 +1270,11 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         // NOP
     }
 
-    action load_tcp_flags() {
-        // NOP
-        // hdr.meta.mbr[15:0] = hdr.tcp.flags;
-    }
-
     // GENERATED: ACTIONS
 
     /*action uncomplete() {
     hdr.meta.complete = 0;
 }*/
-
-action drop_and_terminate() {
-    drop();
-    complete();
-}
-
-action get_port() {
-    hdr.meta.mbr[8:0] = hdr.meta.ingress_port;
-}
 
 action fork() {
     hdr.meta.duplicate = 1;
@@ -1348,10 +1332,6 @@ action copy_hash_data_mbr2() {
 
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
-}
-
-action bit_and_mbr_mbr2() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.meta.mbr2;
 }
 
 action mar_add_mbr() {
@@ -2219,13 +2199,10 @@ table instruction_0 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2237,7 +2214,6 @@ table instruction_0 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2293,13 +2269,10 @@ table instruction_1 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2311,7 +2284,6 @@ table instruction_1 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2367,13 +2339,10 @@ table instruction_2 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2385,7 +2354,6 @@ table instruction_2 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2441,13 +2409,10 @@ table instruction_3 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2459,7 +2424,6 @@ table instruction_3 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2515,13 +2479,10 @@ table instruction_4 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2533,7 +2494,6 @@ table instruction_4 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2589,13 +2549,10 @@ table instruction_5 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2607,7 +2564,6 @@ table instruction_5 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2663,13 +2619,10 @@ table instruction_6 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2681,7 +2634,6 @@ table instruction_6 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2737,13 +2689,10 @@ table instruction_7 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2755,7 +2704,6 @@ table instruction_7 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2811,13 +2759,10 @@ table instruction_8 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2829,7 +2774,6 @@ table instruction_8 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2885,13 +2829,10 @@ table instruction_9 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2903,7 +2844,6 @@ table instruction_9 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2983,15 +2923,10 @@ table instruction_9 {
             set_mirror;
         }
     }
-
-    // Third-Party
-
-    
     
     // control flow
     
     apply {
-        
         mirror_cfg.apply();
         hdr.meta.eg_timestamp = (bit<32>)eg_prsr_md.global_tstamp[31:0];
         hdr.meta.qdelay = hdr.meta.eg_timestamp - hdr.meta.ig_timestamp;

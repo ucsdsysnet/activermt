@@ -2,15 +2,6 @@
     hdr.meta.complete = 0;
 }*/
 
-action drop_and_terminate() {
-    drop();
-    complete();
-}
-
-action get_port() {
-    hdr.meta.mbr[8:0] = hdr.meta.ingress_port;
-}
-
 action fork() {
     hdr.meta.duplicate = 1;
 }
@@ -67,10 +58,6 @@ action copy_hash_data_mbr2() {
 
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
-}
-
-action bit_and_mbr_mbr2() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.meta.mbr2;
 }
 
 action mar_add_mbr() {

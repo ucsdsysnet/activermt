@@ -9,6 +9,7 @@ _eval/
 _ica/
 .vscode/
 clients/dpdk-client/build/
+clients/dpdk-client/apps/cache/build/
 local/
 sde
 p4-build

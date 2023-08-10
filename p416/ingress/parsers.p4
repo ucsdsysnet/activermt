@@ -10,7 +10,7 @@ parser IngressParser(
     state start {
         pkt.extract(ig_intr_md);
         hdr.meta.setValid();
-        // hdr.meta.ingress_port = (bit<32>)ig_intr_md.ingress_port;
+        hdr.meta.ingress_port = ig_intr_md.ingress_port;
         transition select(ig_intr_md.resubmit_flag) {
             1   : parse_resubmit;
             0   : parse_port_metadata;
@@ -34,16 +34,7 @@ parser IngressParser(
         transition select(hdr.ethernet.ether_type) {
             ether_type_t.AP4    : parse_active_ih;
             ether_type_t.IPV4   : parse_ipv4;
-            ether_type_t.VLAN   : parse_vlan;
             _                   : accept;
-        }
-    }
-
-    state parse_vlan {
-        pkt.extract(hdr.vlan_tag);
-        transition select(hdr.vlan_tag.ether_type) {
-            ether_type_t.IPV4 : parse_ipv4;
-            default : accept;
         }
     }
 

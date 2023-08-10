@@ -1,5 +1,3 @@
-
-
 control Ingress(
     inout ingress_headers_t                          hdr,
     inout ig_metadata_t                              meta,
@@ -1321,25 +1319,12 @@ Hash<bit<16>>(HashAlgorithm_t.CUSTOM, crc_16_poly_s9) crc_16_s9;
         hdr.meta.hash_data_3 = (bit<32>)hdr.tcp.src_port;
         hdr.meta.hash_data_4 = (bit<32>)hdr.tcp.dst_port;
     }
-    
-    action load_tcp_flags() {
-        hdr.meta.mbr[15:0] = hdr.tcp.flags;
-    }
 
     // GENERATED: ACTIONS
 
     /*action uncomplete() {
     hdr.meta.complete = 0;
 }*/
-
-action drop_and_terminate() {
-    drop();
-    complete();
-}
-
-action get_port() {
-    hdr.meta.mbr[8:0] = hdr.meta.ingress_port;
-}
 
 action fork() {
     hdr.meta.duplicate = 1;
@@ -1397,10 +1382,6 @@ action copy_hash_data_mbr2() {
 
 action bit_and_mar_mbr() {
     hdr.meta.mar = hdr.meta.mar & hdr.meta.mbr;
-}
-
-action bit_and_mbr_mbr2() {
-    hdr.meta.mbr = hdr.meta.mbr & hdr.meta.mbr2;
 }
 
 action mar_add_mbr() {
@@ -2248,454 +2229,6 @@ action hash_s9() {
 
     // GENERATED: TABLES
 
-    action load_instr_0(bit<8> opcode, bit<1> goto) {
-    hdr.instr[0].opcode = opcode;
-    hdr.instr[0].goto = goto;
-}
-
-table loader_0 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_0;
-    }
-}
-
-action load_instr_1(bit<8> opcode, bit<1> goto) {
-    hdr.instr[1].opcode = opcode;
-    hdr.instr[1].goto = goto;
-}
-
-table loader_1 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_1;
-    }
-}
-
-action load_instr_2(bit<8> opcode, bit<1> goto) {
-    hdr.instr[2].opcode = opcode;
-    hdr.instr[2].goto = goto;
-}
-
-table loader_2 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_2;
-    }
-}
-
-action load_instr_3(bit<8> opcode, bit<1> goto) {
-    hdr.instr[3].opcode = opcode;
-    hdr.instr[3].goto = goto;
-}
-
-table loader_3 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_3;
-    }
-}
-
-action load_instr_4(bit<8> opcode, bit<1> goto) {
-    hdr.instr[4].opcode = opcode;
-    hdr.instr[4].goto = goto;
-}
-
-table loader_4 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_4;
-    }
-}
-
-action load_instr_5(bit<8> opcode, bit<1> goto) {
-    hdr.instr[5].opcode = opcode;
-    hdr.instr[5].goto = goto;
-}
-
-table loader_5 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_5;
-    }
-}
-
-action load_instr_6(bit<8> opcode, bit<1> goto) {
-    hdr.instr[6].opcode = opcode;
-    hdr.instr[6].goto = goto;
-}
-
-table loader_6 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_6;
-    }
-}
-
-action load_instr_7(bit<8> opcode, bit<1> goto) {
-    hdr.instr[7].opcode = opcode;
-    hdr.instr[7].goto = goto;
-}
-
-table loader_7 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_7;
-    }
-}
-
-action load_instr_8(bit<8> opcode, bit<1> goto) {
-    hdr.instr[8].opcode = opcode;
-    hdr.instr[8].goto = goto;
-}
-
-table loader_8 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_8;
-    }
-}
-
-action load_instr_9(bit<8> opcode, bit<1> goto) {
-    hdr.instr[9].opcode = opcode;
-    hdr.instr[9].goto = goto;
-}
-
-table loader_9 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_9;
-    }
-}
-
-action load_instr_10(bit<8> opcode, bit<1> goto) {
-    hdr.instr[10].opcode = opcode;
-    hdr.instr[10].goto = goto;
-}
-
-table loader_10 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_10;
-    }
-}
-
-action load_instr_11(bit<8> opcode, bit<1> goto) {
-    hdr.instr[11].opcode = opcode;
-    hdr.instr[11].goto = goto;
-}
-
-table loader_11 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_11;
-    }
-}
-
-action load_instr_12(bit<8> opcode, bit<1> goto) {
-    hdr.instr[12].opcode = opcode;
-    hdr.instr[12].goto = goto;
-}
-
-table loader_12 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_12;
-    }
-}
-
-action load_instr_13(bit<8> opcode, bit<1> goto) {
-    hdr.instr[13].opcode = opcode;
-    hdr.instr[13].goto = goto;
-}
-
-table loader_13 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_13;
-    }
-}
-
-action load_instr_14(bit<8> opcode, bit<1> goto) {
-    hdr.instr[14].opcode = opcode;
-    hdr.instr[14].goto = goto;
-}
-
-table loader_14 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_14;
-    }
-}
-
-action load_instr_15(bit<8> opcode, bit<1> goto) {
-    hdr.instr[15].opcode = opcode;
-    hdr.instr[15].goto = goto;
-}
-
-table loader_15 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_15;
-    }
-}
-
-action load_instr_16(bit<8> opcode, bit<1> goto) {
-    hdr.instr[16].opcode = opcode;
-    hdr.instr[16].goto = goto;
-}
-
-table loader_16 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_16;
-    }
-}
-
-action load_instr_17(bit<8> opcode, bit<1> goto) {
-    hdr.instr[17].opcode = opcode;
-    hdr.instr[17].goto = goto;
-}
-
-table loader_17 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_17;
-    }
-}
-
-action load_instr_18(bit<8> opcode, bit<1> goto) {
-    hdr.instr[18].opcode = opcode;
-    hdr.instr[18].goto = goto;
-}
-
-table loader_18 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_18;
-    }
-}
-
-action load_instr_19(bit<8> opcode, bit<1> goto) {
-    hdr.instr[19].opcode = opcode;
-    hdr.instr[19].goto = goto;
-}
-
-table loader_19 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_19;
-    }
-}
-
-action load_instr_20(bit<8> opcode, bit<1> goto) {
-    hdr.instr[20].opcode = opcode;
-    hdr.instr[20].goto = goto;
-}
-
-table loader_20 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_20;
-    }
-}
-
-action load_instr_21(bit<8> opcode, bit<1> goto) {
-    hdr.instr[21].opcode = opcode;
-    hdr.instr[21].goto = goto;
-}
-
-table loader_21 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_21;
-    }
-}
-
-action load_instr_22(bit<8> opcode, bit<1> goto) {
-    hdr.instr[22].opcode = opcode;
-    hdr.instr[22].goto = goto;
-}
-
-table loader_22 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_22;
-    }
-}
-
-action load_instr_23(bit<8> opcode, bit<1> goto) {
-    hdr.instr[23].opcode = opcode;
-    hdr.instr[23].goto = goto;
-}
-
-table loader_23 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_23;
-    }
-}
-
-action load_instr_24(bit<8> opcode, bit<1> goto) {
-    hdr.instr[24].opcode = opcode;
-    hdr.instr[24].goto = goto;
-}
-
-table loader_24 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_24;
-    }
-}
-
-action load_instr_25(bit<8> opcode, bit<1> goto) {
-    hdr.instr[25].opcode = opcode;
-    hdr.instr[25].goto = goto;
-}
-
-table loader_25 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_25;
-    }
-}
-
-action load_instr_26(bit<8> opcode, bit<1> goto) {
-    hdr.instr[26].opcode = opcode;
-    hdr.instr[26].goto = goto;
-}
-
-table loader_26 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_26;
-    }
-}
-
-action load_instr_27(bit<8> opcode, bit<1> goto) {
-    hdr.instr[27].opcode = opcode;
-    hdr.instr[27].goto = goto;
-}
-
-table loader_27 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_27;
-    }
-}
-
-action load_instr_28(bit<8> opcode, bit<1> goto) {
-    hdr.instr[28].opcode = opcode;
-    hdr.instr[28].goto = goto;
-}
-
-table loader_28 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_28;
-    }
-}
-
-action load_instr_29(bit<8> opcode, bit<1> goto) {
-    hdr.instr[29].opcode = opcode;
-    hdr.instr[29].goto = goto;
-}
-
-table loader_29 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_29;
-    }
-}
-
-action load_instr_30(bit<8> opcode, bit<1> goto) {
-    hdr.instr[30].opcode = opcode;
-    hdr.instr[30].goto = goto;
-}
-
-table loader_30 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_30;
-    }
-}
-
-action load_instr_31(bit<8> opcode, bit<1> goto) {
-    hdr.instr[31].opcode = opcode;
-    hdr.instr[31].goto = goto;
-}
-
-table loader_31 {
-    key = {
-        hdr.ih.opt_data : exact;
-    }
-    actions = {
-        load_instr_31;
-    }
-}
-
     
 
 table instruction_0 {
@@ -2716,13 +2249,10 @@ table instruction_0 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2734,7 +2264,6 @@ table instruction_0 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2814,13 +2343,10 @@ table instruction_1 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2832,7 +2358,6 @@ table instruction_1 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -2912,13 +2437,10 @@ table instruction_2 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -2930,7 +2452,6 @@ table instruction_2 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3010,13 +2531,10 @@ table instruction_3 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3028,7 +2546,6 @@ table instruction_3 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3108,13 +2625,10 @@ table instruction_4 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3126,7 +2640,6 @@ table instruction_4 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3206,13 +2719,10 @@ table instruction_5 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3224,7 +2734,6 @@ table instruction_5 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3304,13 +2813,10 @@ table instruction_6 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3322,7 +2828,6 @@ table instruction_6 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3402,13 +2907,10 @@ table instruction_7 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3420,7 +2922,6 @@ table instruction_7 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3500,13 +3001,10 @@ table instruction_8 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3518,7 +3016,6 @@ table instruction_8 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3598,13 +3095,10 @@ table instruction_9 {
         rts;
         set_port;
         load_5_tuple_tcp;
-        load_tcp_flags;
-        // fetch_queue;
+        fetch_queue;
         fetch_qdelay;
-        // fetch_pktcount;
-        drop_and_terminate;
-		get_port;
-		fork;
+        fetch_pktcount;
+        fork;
 		copy_mbr2_mbr1;
 		copy_mbr1_mbr2;
 		min_mbr1_mbr2;
@@ -3616,7 +3110,6 @@ table instruction_9 {
 		copy_hash_data_mbr;
 		copy_hash_data_mbr2;
 		bit_and_mar_mbr;
-		bit_and_mbr_mbr2;
 		mar_add_mbr;
 		mar_add_mbr2;
 		mbr_add_mbr2;
@@ -3712,35 +3205,19 @@ table allocation_9 {
         }
     }
 
-    action compute_seqidx(bit<32> offset) {
-        hdr.meta.seqidx = offset | (bit<32>)hdr.ih.seq;
-    }
+    Register<bit<8>, bit<16>>(32w65536) seqmap;
+    Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
 
-    table seqidx {
-        key = {
-            hdr.ih.fid  : exact;
-        }
-        actions = {
-            compute_seqidx;
-        }
-    }
-
-    Register<bit<1>, bit<32>>(32w65536) seqmap;
-    // Hash<bit<16>>(HashAlgorithm_t.CRC16) seqhash;
-
-    RegisterAction<bit<1>, bit<32>, bit<1>>(seqmap) seq_update = {
-        void apply(inout bit<1> value, out bit<1> rv) {
-            bit<1> curr = value;
-            value = 1;
-            rv = curr;
-            // value = (bit<8>)~hdr.ih.rst_seq & value;
+    RegisterAction<bit<8>, bit<16>, bit<8>>(seqmap) seq_update = {
+        void apply(inout bit<8> value, out bit<8> rv) {
+            rv = value;
+            value = (bit<8>)~hdr.ih.rst_seq & value;
         }
     };
 
     action check_prior_exec() {
-        // bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
-        // hdr.meta.complete = (bit<1>)seq_update.execute(index);
-        hdr.meta.executed = seq_update.execute(hdr.meta.seqidx);
+        bit<16> index = seqhash.get({ hdr.ih.fid, hdr.ih.seq });
+        hdr.meta.complete = (bit<1>)seq_update.execute(index);
     }
 
     action allocated(bit<16> allocation_id) {
@@ -3793,91 +3270,43 @@ table allocation_9 {
         }
     }
 
-    // Register<bit<16>, bit<16>>(32w256) app_leader;
+    Register<bit<16>, bit<16>>(32w256) app_leader;
     
-    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
-    //     void apply(inout bit<16> obj, out bit<16> rv) {
-    //         if((bit<16>)meta.app_instance_id < obj) {
-    //             obj = (bit<16>)meta.app_instance_id;
-    //         }
-    //         rv = obj;
-    //     }
-    // };
+    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) update_leader = {
+        void apply(inout bit<16> obj, out bit<16> rv) {
+            if((bit<16>)meta.app_instance_id < obj) {
+                obj = (bit<16>)meta.app_instance_id;
+            }
+            rv = obj;
+        }
+    };
 
-    // action leader_elect() {
-    //     meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
-    // }
-
-    // RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
-    //     void apply(inout bit<16> obj, out bit<16> rv) {
-    //         rv = obj;
-    //     }
-    // };
-
-    // action get_leader() {
-    //     hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
-    // }
-
-    // table leader_fetch {
-    //     key = {
-    //         hdr.ih.flag_leader  : exact;
-    //     }
-    //     actions = {
-    //         get_leader;
-    //     }
-    // }
-
-    action set_key(bit<32> key) {
-        hdr.meta.fid_key = key;
+    action leader_elect() {
+        meta.leader_id = (bit<8>)update_leader.execute((bit<16>)meta.app_fid);
     }
 
-    table keyfetch {
+    RegisterAction<bit<16>, bit<16>, bit<16>>(app_leader) read_leader = {
+        void apply(inout bit<16> obj, out bit<16> rv) {
+            rv = obj;
+        }
+    };
+
+    action get_leader() {
+        hdr.ih.seq = (bit<16>)read_leader.execute((bit<16>)meta.app_fid);
+    }
+
+    table leader_fetch {
         key = {
-            hdr.ih.fid  : exact;
+            hdr.ih.flag_leader  : exact;
         }
         actions = {
-            set_key;
+            get_leader;
         }
     }
-
-    Hash<bit<32>>(HashAlgorithm_t.CRC32) hash_signature;
-
-    action compute_fid_signature(bit<32> key) {
-        hdr.meta.fid_sig = hash_signature.get({
-            hdr.ih.fid,
-            hdr.ih.seq,
-            hdr.ipv4.src_addr,
-            hdr.meta.fid_key
-        });
-    }
-
-    table app_signing {
-        key = {
-            hdr.ih.fid  : exact;
-        }
-        actions = {
-            compute_fid_signature;
-        }
-    }
-
-    // Third-Party
-
-    
 
     // control flow
 
     apply {
-        
-        // seqidx.apply();
-        // check_prior_exec();
-        // keyfetch.apply();
-        // app_signing.apply();
-        // if(hdr.meta.fid_sig != hdr.ih.sig || hdr.meta.executed == 1) {
-        //     drop();
-        //     bypass_egress();
-        //     hdr.meta.complete = 1;
-        // }
-        hdr.meta.ingress_port = ig_intr_md.ingress_port;
         hdr.meta.ig_timestamp = (bit<32>)ig_prsr_md.global_tstamp[31:0];
         hdr.meta.randnum = rnd.get();
         if(hdr.ih.flag_preload == 1) {

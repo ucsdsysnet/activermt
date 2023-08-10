@@ -1,10 +1,8 @@
 typedef bit<48> mac_addr_t;
 typedef bit<32> ipv4_addr_t;
-typedef bit<12> vlan_id_t;
 
 enum bit<16> ether_type_t {
     IPV4 = 0x0800,
-    VLAN = 0x8100,
     ARP  = 0x0806,
     AP4  = 0x83B2
 }
@@ -28,13 +26,6 @@ header ethernet_h {
     mac_addr_t   dst_addr;
     mac_addr_t   src_addr;
     ether_type_t ether_type;
-}
-
-header vlan_tag_h {
-    bit<3> pcp;
-    bit<1> cfi;
-    vlan_id_t vid;
-    bit<16> ether_type;
 }
 
 header ipv4_h {
@@ -97,7 +88,6 @@ header active_initial_h {
     bit<1>          flag_preload;
     bit<16>         fid;
     bit<16>         seq;
-    bit<32>         sig;
 }
 
 header active_data_h {
@@ -192,17 +182,11 @@ header bridged_metadata_h {
     bit<10>     mirror_sessid;
     bit<1>      mirror_en;
     bit<7>      mirror_iter;
-    bit<10>     _padding;
+    bit<10>      _padding;
     bit<9>      ingress_port;
     bit<1>      carry;
     bit<1>      remap;
-    bit<1>      executed;
     bit<16>     fid;
-    bit<32>     seqidx;
-    bit<32>     seqoffset;
-    bit<32>     fid_sig;
-    bit<32>     fid_key;
-    // bit<16>     tcp_flags;
     // bit<32>     paddr_mask;
     // bit<32>     paddr_offset;
 }
@@ -216,10 +200,33 @@ header eg_port_mirror_h {
     pkt_type_t  pkt_type;
 }
 
+@flexible
+struct ig_metadata_t {
+    resubmit_header_t   resubmit_data;
+    bit<8>      port_change;
+    bit<8>      set_clr_seq;
+    bit<8>      prev_exec;
+    bit<16>     instr_count;
+    bit<16>     seq_offset;
+    bit<16>     seq_addr;
+    bit<16>     vport;
+    bit<16>     chksum_tcp;
+    bit<16>     phash;
+    bit<32>     idx;
+    bit<8>      app_fid;
+    bit<8>      app_instance_id;
+    bit<8>      leader_id;
+}
+
+struct eg_metadata_t {
+    bit<10>     mirror_sessid;
+    bit<9>      egress_port;
+    bit<1>      port_change;
+}
+
 struct ingress_headers_t {
     bridged_metadata_h                          meta;
     ethernet_h                                  ethernet;
-    vlan_tag_h                                  vlan_tag;
     active_initial_h                            ih;
     active_data_h                               data;
     active_data_extended_h[MAX_EXTENDED_DATA]   extended_data;
