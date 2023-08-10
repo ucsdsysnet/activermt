@@ -1,49 +1,30 @@
-# ActiveRMT Source
+# ActiveRMT: A framework for running active programs on programmable switches
+ActiveRMT enables running active programs on programmable switches based on the portable switch architecture (PSA). Currently, we support Tofino switches (TNA) as our only target. This repository contains the tools necessary to write user-defined applications that can take advantage of memory and compute on programmable switches. This repository contains the following:
+1. A runtime for Tofino that can run active programs.
+2. A DPDK library to write active applications.
 
-Source code for the ActiveRMT project. Contains the following main components:
+## Requirements
+The following hardware and software requirements must be met:
+1. A Tofino ASIC is required to run the ActiveRMT runtime (Tofino model may also be used as a virtual switch). The ASIC must be connected to an on-board switch CPU. You will also need to obtain the necessary SDK from Intel to compile and run the P4 code.
+2. A DPDK capable NIC (http://core.dpdk.org/supported/nics/) for running active network applications.
+3. An x86/x64 platform that supports DPDK. We have tested this on Linux (Ubuntu server 20.04 LTS).
+4. DPDK (https://doc.dpdk.org/guides/index.html).
+5. Python (https://www.python.org/).
 
-1. P4 program(s) for the runtime that runs active programs embedded in network packets.
-2. Client interface(s) for the runtime.
-3. Applications (and corresponding clients) that have been written for the active runtime.
+## Getting Started
+### Setting up the switch
+We assume that you have a Tofino switch configured according to the vendor specifications, and at least one x86 machine connected to one of the switch ports. The software has been tested on SDE 9.7.0 and we recommend using the same for the evaluation. Ensure that the environment variables *SDE* and *SDE_INSTALL* are set correctly. Clone the repository on the switch CPU. You will need the contents of the "activermt" folder on the switch. A set of utility scripts used below can be found in the *$SDE* directory or provided by the vendor.
 
-## Dataplane (P4-16)
-Dataplane source is located at "p416/". The file "generate.py" is used to generate the P4 source based on templates and configurations. The main P4 file is "active.p4".
+Compile the P4 program *active.p4*. Run the driver, load the active program onto the switch ASIC (the name of the program is "active") and configure the ports. Assuming you have the scripts "p4_build.sh" and "run_switchd.sh", the following are the sequence of operations you need to perform:
 
-## Controller (Python)
-The controller code is contained in the file "bfrt/ctrl/controller.py". This also uses "allocator.py" located at "malloc/".
+```
+<path_to_p4_build.sh> active.p4 P4FLAGS="-Xp4c=--traffic-limit=80"
+<path_to_run_switchd.sh> -p active
+```
 
-## Active Programs (Active Instruction Set)
-Example active programs are located at "apps/<program_name>/active". Associated test clients are located at "apps/<program_name>/clients". These are written in C/C++ or Python. The compiler is located at "compiler/ap4.py".
+The dataplane is now ready to run active programs. Next, you need to run the controller to enable stateful applicartions. Our controller uses the BFRT Python APIs to interact with the dataplane. Assuming you have a script named "run_bfshell.sh", run the following command:
+```
+<path_to_run_bfshell.sh> -b <path_to_controller.py> -i
+```
 
-## Shim Layer (C/C++)
-Client shim layers are located at "netproxy/". These are based on DPDK. 
-
-## DPDK Clients (C/C++)
-DPDK-based clients for active packet generation is located at "clients/dpdk-client". Clients are written in a framework that simplifies writing active applications. A set of exported interfaces are defined in the corresponding application headers (e.g. "active_cache.h").
-
-## Wireshark Dissectors (Lua)
-Dissectors that recognize active packets are located at "wsdissector/".
-
-## Utility scripts (BASH/Python)
-There are various utility scripts that can e.g., be used to create virtual networks with the Tofino model to evaluate functionality. These can be found at "util/".  
-
-# SIGCOMM Paper Evaluations
-Here are the instructions to generate the following graphs, which can be run on any standard x86/x64 machine:
-1. Figure 5(a)
-2. Figure 5(b)
-3. Figure 6(a)
-4. Figure 6(b)
-5. Figure 7(a)
-6. Figure 7(b)
-7. Figure 7(c)
-8. Figure 7(d)
-9. Figure 11(a)
-10. Figure 11(b)
-11. Figure 11(c)
-12. Figure 11(d)
-13. Figure 12(a)
-14. Figure 12(b)
-15. Figure 12(c)
-16. Figure 12(d)
-
-Figures 8,9 and 10 require a Tofino ASIC.
+The controller is now ready to admit new applications.
