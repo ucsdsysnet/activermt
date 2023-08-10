@@ -22,23 +22,19 @@ if os.path.exists(os.path.join(SDE_PATH, 'controller.json')):
         print("Read controller configuration from file.")
 
 basePath = os.getcwd()
-refPath = basePath
-
 if config is not None:
     basePath = config['BASE_PATH']
-    refPath = config['REF_PATH']
 
 print("Using base path:", basePath)
-print("Using ref path:", refPath)
 print("Using python version", VERSION)
 
-sys.path.insert(0, os.path.join(basePath, 'malloc'))
+sys.path.insert(0, os.path.join(os.path.realpath(basePath), 'activermt', 'controlplane'))
 sys.path.insert(0, os.path.join(SDE_PATH, 'install/lib/python%s/site-packages' % VERSION))
 sys.path.insert(0, '/usr/local/lib/python%s/dist-packages' % VERSION)
 
-import allocator as ap4alloc
 import numpy as np
 
+from allocator import ActiveFunction, Allocator
 from netaddr import IPAddress
 
 class ActiveP4Controller:
@@ -54,7 +50,8 @@ class ActiveP4Controller:
     global logging
     global random
     global IPAddress
-    global ap4alloc
+    global Allocator
+    global ActiveFunction
 
     MAR_MAX = 0xFFFFF
     REG_MAX = 0xFFFFF
@@ -65,11 +62,11 @@ class ActiveP4Controller:
 
     def __init__(self, allocator=None, custom=None, basePath=""):
         if allocator is None:
-            self.allocator = ap4alloc.Allocator(debug=self.DEBUG)
+            self.allocator = Allocator(debug=self.DEBUG)
         else:
             self.allocator = allocator
         self.p4 = bfrt.active.pipe
-        self.augment_fid = ap4alloc.Allocator.FID_AUGMENTATION
+        self.augment_fid = Allocator.FID_AUGMENTATION
         self.erase = True
         self.perform_coredump = False
         self.watchdog = True
@@ -84,7 +81,7 @@ class ActiveP4Controller:
         self.max_iter = 100
         self.recirculation_enabled = True
         self.base_path = basePath
-        logging.basicConfig(filename=os.path.join(self.base_path, 'logs/controller/controller.log'), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
+        logging.basicConfig(filename=os.path.join(self.base_path, 'logs', 'controller', 'controller.log'), filemode='w', format='%(asctime)s - %(message)s', level=logging.INFO)
         self.debug_dir = os.path.join(self.base_path, 'debug')
         if not os.path.exists(self.debug_dir):
             os.makedirs(self.debug_dir)
@@ -93,7 +90,7 @@ class ActiveP4Controller:
         self.opcode_pnemonic = {}
         self.opcodes_memaccess = []
         self.opcodes_vaddr = []
-        with open('%s/config/opcode_action_mapping.csv' % self.base_path) as f:
+        with open(os.path.join(self.base_path, 'activermt', 'opcode_action_mapping.csv')) as f:
             mapping = f.read().strip().splitlines()
             for opcode in range(0, len(mapping)):
                 m = mapping[opcode].split(',')
@@ -222,11 +219,8 @@ class ActiveP4Controller:
                 port_to_mac[dport] = mac_addr
             f.close()
         ipv4_host = self.p4.Ingress.ipv4_host
-        #vroute = self.p4.Ingress.vroute
         for host in self.dst_port_mapping:
             ipv4_host.add_with_send(dst_addr=IPAddress(host), port=self.dst_port_mapping[host], mac=port_to_mac[self.dst_port_mapping[host]])
-        """for vport in vport_dst_mapping:
-            vroute.add_with_send(port_change=1, vport=vport, port=dst_port_mapping[vport_dst_mapping[vport]], mac=port_to_mac[dst_port_mapping[vport_dst_mapping[vport]]])"""
         bfrt.complete_operations()
         #ipv4_host.dump(table=True)
         #info = ipv4_host.info(return_info=True, print_info=False)
@@ -913,7 +907,7 @@ class ActiveP4Controller:
         if self.least_constrained:
             igLim = -1
 
-        activeFunc = ap4alloc.ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=self.least_constrained)
+        activeFunc = ActiveFunction(fid, accessIdx, igLim, progLen, minDemand, enumerate=True, allow_filling=self.least_constrained)
 
         if fid != self.augment_fid:
             self.programDefs[fid] = activeFunc
@@ -1148,31 +1142,7 @@ class ActiveP4Controller:
         self.monitorThread = threading.Thread(target=self.monitor)
         self.monitorThread.start()
 
-# Custom settings.
-
-def getReferenceOpcodes(basePath, sourceName):
-    opcodes = set()
-    bytecodeFile = os.path.join(basePath, "%s.apo" % sourceName)
-    with open(bytecodeFile, 'rb') as f:
-        data = list(f.read())
-        f.close()
-        i = 0
-        while i < len(data):
-            opcodes.add(data[i + 1])
-            i = i + 2
-    return opcodes
-
-TOTAL_STAGES = 20
-testMode = False
-debug = True
-restrictedInstructionSet = False
-referenceProgram = "condition"
-
-customInstructions = None
-if restrictedInstructionSet:
-    customInstructions = getReferenceOpcodes(refPath, referenceProgram)
-
-controller = ActiveP4Controller(custom=customInstructions, basePath=basePath)
+controller = ActiveP4Controller(basePath=basePath)
 
 controller.clear_all()
 controller.installControlEntries()
@@ -1180,49 +1150,5 @@ controller.installForwardingTableEntries(config=config['IPCONFIG'])
 controller.createSidToPortMapping()
 controller.setMirrorSessions()
 controller.installInstructionTableEntries()
-
-apps = []
-currentFID = 1
-for app in config['APPS']:
-    applen = 0
-    memidx = []
-    iglim = -1
-    with open("%s/%s.ap4" % (app['PATH'], app['NAME'])) as f:
-        applen = len(f.read().strip().splitlines())
-        f.close()
-    with open("%s/%s.memidx.csv" % (app['PATH'], app['NAME'])) as f:
-        rows = f.read().splitlines()
-        memidx = [ int(x) for x in rows[0].split(",")]
-        iglim = int(rows[1])
-        f.close()
-    apps.append({
-        'fid'       : currentFID,
-        'idx'       : memidx,
-        'iglim'     : iglim,
-        'applen'    : applen,
-        'mindemand' : [app['DEMAND']] * len(memidx),
-        'instances' : app['INSTANCES']
-    })
-    currentFID += app['INSTANCES']
-
-for app in apps:
-    for i in range(0, app['instances']):
-        controller.allocate(app['fid'] + i, app['applen'], app['iglim'], app['idx'], app['mindemand'], ignorePeers=True)
-
-# for gressId in controller.instrTableEntryParams:
-#     print("[%s]" % gressId)
-#     print(controller.instrTableEntryParams[gressId].keys())
-
-if testMode:
-    testFID = 1
-    accessIdx = [3, 5]
-    minDemand = [1] * len(accessIdx)
-    igLim = -1
-    print("Testing reallocation for", testFID)
-    controller.reallocate(testFID, 12, igLim, accessIdx, minDemand, ignorePeers=True)
-
 controller.initController()
 controller.listen()
-
-#controller.getTrafficCounters(fids)
-#controller.resetTrafficCounters()
