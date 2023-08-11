@@ -14,6 +14,7 @@
 #include "common.h"
 
 #define DEBUG_CACHE
+// #define MODULAR
 
 #define KEYDIST_PATH            "zipf_dist_a_1.1_n_100000.csv"
 #define INSTR_SET_PATH		    "../../../../../activermt/opcode_action_mapping.csv"
@@ -207,7 +208,11 @@ main(int argc, char** argv)
         cache[i].ts_ref = ts_ref;
 		cache[i].ipv4_dstaddr = APP_IPV4_DSTADDR;
 		cache[i].app_port = PORT_START + i;
+		#ifdef MODULAR
 		cache[i].frequent_item_monitor = 1;
+		#else
+		cache[i].frequent_item_monitor = 0;
+		#endif
 
 		ctxt[i].instr_set = &instr_set;
 
@@ -215,7 +220,11 @@ main(int argc, char** argv)
 		assert(ctxt[i].num_programs > 0);
 
 		ctxt[i].fid = i + 1;
+		#ifdef MODULAR
 		ctxt[i].current_pid = PID_FREQITEM;
+		#else
+		ctxt[i].current_pid = PID_CACHEREAD;
+		#endif
 
 		for(int j = 0; j < NUM_ACTIVE_PROGRAMS; j++) {
 			ctxt[i].programs[j] = rte_zmalloc(NULL, sizeof(activep4_def_t), 0);
@@ -228,7 +237,11 @@ main(int argc, char** argv)
 		ctxt[i].active_tx_enabled = true;
 		ctxt[i].active_heartbeat_enabled = true;
 		ctxt[i].active_timer_enabled = true;
+		#ifdef MODULAR
 		ctxt[i].timer_interval_us = 2 * DEFAULT_TI_US;
+		#else
+		ctxt[i].timer_interval_us = 100;
+		#endif
 		ctxt[i].is_active = false;
 		ctxt[i].is_elastic = true;
 		ctxt[i].status = ACTIVE_STATE_INITIALIZING;
@@ -237,8 +250,11 @@ main(int argc, char** argv)
         ctxt[i].app_context = (void*)&cache[i];
 
         ctxt[i].shutdown = shutdown_cache;
+		#ifdef MODULAR
 		context_switch_monitor(&ctxt[i]);
-		// context_switch_cache(&ctxt[i]);
+		#else
+		context_switch_cache(&ctxt[i]);
+		#endif
 
 		// TODO debug
 		// int memsize = 65536;

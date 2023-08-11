@@ -5,10 +5,9 @@ import sys
 
 from scapy.all import *
 
-if "ACTIVEP4_SRC" in os.environ:
-    sys.path.insert(0, os.path.join(os.environ['ACTIVEP4_SRC'], 'bfrt', 'ptf'))
-else:
-    sys.path.insert(0, os.path.join(os.getcwd(), 'bfrt', 'ptf'))
+BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
+sys.path.insert(0, os.path.join(BASE_DIR, 'include', 'python'))
 
 from headers import *
 
