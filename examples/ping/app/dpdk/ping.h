@@ -20,6 +20,7 @@ typedef struct {
 
 void 
 shutdown_ping(int id, void* context) {
+	rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Shutting down ping ... \n", id);
 	ping_context_t* ping_ctxt = (ping_context_t*)context;
 	if(ping_ctxt->num_samples == 0) return;
     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "[FID %d] Writing %d samples written to ping_stats.csv ... \n", id, ping_ctxt->num_samples);

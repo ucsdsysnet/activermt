@@ -8,7 +8,8 @@
 #include "../../../../include/c/dpdk/types.h"
 #include "ping.h"
 
-#define BURST_SIZE			1
+#define TX_BURST_SIZE			1
+#define REUSE_BUFFERS
 
 typedef struct {
     activep4_context_t* ctxt;
@@ -44,6 +45,7 @@ construct_packets_bulk(tx_config_t* cfg, int appidx, struct rte_mbuf** mbufs, in
         rte_memcpy(&eth->src_addr, (void*)&eth_addr, sizeof(struct rte_ether_addr));
 
         int offset = 0;
+        activep4_data_t* ap4data = NULL;
 
         if(activate_packets) {
             activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
@@ -51,7 +53,7 @@ construct_packets_bulk(tx_config_t* cfg, int appidx, struct rte_mbuf** mbufs, in
             ap4ih->flags = htons(AP4FLAGMASK_OPT_ARGS | AP4FLAGMASK_FLAG_PRELOAD);
             ap4ih->fid = htons(ctxt->fid);
             ap4ih->seq = 0;
-            activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+            ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
             for(int i = 0; i < AP4_DATA_LEN; i++) ap4data->data[i] = 0;
             uint64_t now = rte_rdtsc_precise();
             ap4data->data[0] = now & 0xFFFFFFFF;
@@ -90,6 +92,18 @@ construct_packets_bulk(tx_config_t* cfg, int appidx, struct rte_mbuf** mbufs, in
     }
 }
 
+static __rte_always_inline void
+update_packet(struct rte_mbuf* mbuf) {
+    char* bufptr = rte_pktmbuf_mtod(mbuf, char*);
+    activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
+    if(ap4ih->SIG == htonl(ACTIVEP4SIG)) {
+        activep4_data_t* ap4data = (activep4_data_t*)(bufptr + sizeof(struct rte_ether_hdr) + sizeof(activep4_ih));
+        uint64_t now = rte_rdtsc_precise();
+        ap4data->data[0] = now & 0xFFFFFFFF;
+        ap4data->data[1] = (now >> 32) & 0xFFFFFFFF;
+    }
+}
+
 static int
 lcore_tx(void* arg) {
 
@@ -99,25 +113,37 @@ lcore_tx(void* arg) {
 
     rte_log(RTE_LOG_INFO, RTE_LOGTYPE_USER1, "TX thread running for port %d on lcore %d\n", port_id, rte_lcore_id());
 
-    struct rte_mbuf* mbufs[BURST_SIZE];
+    struct rte_mbuf* mbufs[TX_BURST_SIZE]; 
 
     const int qid = 0;
 
+    #ifdef REUSE_BUFFERS
+    if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, TX_BURST_SIZE) != 0) return -1;
+    construct_packets_bulk(cfg, 0, mbufs, TX_BURST_SIZE);
+    #endif
+
     while(is_running) {
 
-        // rte_delay_ms(1); continue;
+        rte_delay_us(10); // avoid queue buildups.
 
         for(int i = 0; i < cfg->num_active; i++) {
 
-            if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, BURST_SIZE) != 0) continue;
-
-            construct_packets_bulk(cfg, i, mbufs, BURST_SIZE);
-
-            uint16_t nb_tx = rte_eth_tx_burst(port_id, qid, mbufs, BURST_SIZE);
-            if(unlikely(nb_tx < BURST_SIZE)) {
+            #ifdef REUSE_BUFFERS
+            for(int j = 0; j < TX_BURST_SIZE; j++) {
+                update_packet(mbufs[j]);
+            }
+            #else
+            if(rte_mempool_get_bulk(mbuf_pool, (void**)mbufs, TX_BURST_SIZE) != 0) continue;
+            construct_packets_bulk(cfg, i, mbufs, TX_BURST_SIZE);
+            #endif
+            
+            uint16_t nb_tx = rte_eth_tx_burst(port_id, qid, mbufs, TX_BURST_SIZE);
+            if(unlikely(nb_tx < TX_BURST_SIZE)) {
+                #ifndef REUSE_BUFFERS
                 uint16_t buf;
-                for(buf = nb_tx; buf < BURST_SIZE; buf++)
+                for(buf = nb_tx; buf < TX_BURST_SIZE; buf++)
                     rte_pktmbuf_free(mbufs[buf]);
+                #endif
             }
         }
     }

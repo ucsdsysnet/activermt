@@ -10,7 +10,7 @@ data /= 1000
 
 plt.figure()
 plt.hist(data, bins=100, density=True, cumulative=True, histtype='step', label='CDF', color='blue')
-plt.xlim(0, 20)
+plt.xlim(0, 5)
 plt.ylabel("CDF")
 plt.xlabel("Latency (us)")
 plt.grid()

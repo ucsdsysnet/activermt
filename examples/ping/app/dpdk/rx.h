@@ -6,12 +6,14 @@
 #include "../../../../include/c/dpdk/types.h"
 #include "ping.h"
 
-// #define DEBUG_RX
+#define RX_BURST_SIZE			32
+#define SAMPLE_RATE             100
 
 typedef struct {
     activep4_context_t*     ctxt;
     int                     num_instances;
     int                     port_id;
+    uint64_t                current_count;
 } rx_config_t;
 
 static int
@@ -44,8 +46,9 @@ lcore_rx(void* arg) {
     const int qid = 0;
 
     while(is_running) {
-		struct rte_mbuf* bufs[BURST_SIZE];
-        const uint16_t nb_rx = rte_eth_rx_burst(port_id, qid, bufs, BURST_SIZE);
+		struct rte_mbuf* bufs[RX_BURST_SIZE];
+        const uint16_t nb_rx = rte_eth_rx_burst(port_id, qid, bufs, RX_BURST_SIZE);
+        uint64_t now = rte_rdtsc_precise();
         
         if (unlikely(nb_rx == 0))
             continue;
@@ -59,13 +62,14 @@ lcore_rx(void* arg) {
             int offset = 0;
 
             if(ntohs(hdr_eth->ether_type) == AP4_ETHER_TYPE_AP4) {
+
+                cfg->current_count++;
                 
                 activep4_ih* ap4ih = (activep4_ih*)(bufptr + sizeof(struct rte_ether_hdr));
                 if(htonl(ap4ih->SIG) != ACTIVEP4SIG) continue;
                 
                 uint16_t flags = ntohs(ap4ih->flags);
 			    uint16_t fid = ntohs(ap4ih->fid);
-                // uint16_t seq = ntohs(ap4ih->seq);
 
                 activep4_data_t* ap4data = NULL;
                 offset += sizeof(activep4_ih);
@@ -84,11 +88,13 @@ lcore_rx(void* arg) {
 
                 if(ctxt == NULL || ping == NULL) continue;
 
-                if(ap4data != NULL && ping->num_samples < MAX_SAMPLES) {
-                    uint64_t then = ap4data->data[0] | ((uint64_t)ap4data->data[1] << 32);
-                    uint64_t now = rte_rdtsc_precise();
-                    uint64_t diff = now - then;
-                    ping->ping_times_ns[ping->num_samples++] = diff;
+                if(cfg->current_count > SAMPLE_RATE) {
+                    if(ap4data != NULL && ping->num_samples < MAX_SAMPLES) {
+                        uint64_t then = ap4data->data[0] | ((uint64_t)ap4data->data[1] << 32);
+                        uint64_t diff = ((now - then) * 1.0f / rte_get_tsc_hz()) * 1000000000;
+                        ping->ping_times_ns[ping->num_samples++] = diff;
+                    }
+                    cfg->current_count = 0;
                 }
 
                 switch(ctxt->status) {
