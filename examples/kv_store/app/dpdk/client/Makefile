@@ -5,7 +5,7 @@
 APP = active-cache
 
 # all source are stored in SRCS-y
-SRCS-y := main.c ../../../../headers/activep4.h ../../include/types.h ../../include/utils.h ../../include/memory.h ../../include/active.h ../../include/control.h ../../include/encap.h ../../include/decap.h rx.h tx.h cache.h monitor.h control.h common.h
+SRCS-y := main.c ../../../../../include/c/common/activep4.h ../../../../../include/c/dpdk/types.h ../../../../../include/c/dpdk/utils.h ../../../../../include/c/dpdk/memory.h ../../../../../include/c/dpdk/active.h ../../../../../include/c/dpdk/control.h ../../../../../include/c/dpdk/encap.h ../../../../../include/c/dpdk/decap.h rx.h tx.h cache.h monitor.h control.h common.h
 
 PKGCONF ?= pkg-config
 

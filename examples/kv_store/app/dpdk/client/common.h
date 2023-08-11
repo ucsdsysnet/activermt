@@ -1,8 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "../../../../ref/uthash/include/uthash.h"
-#include "../../../../headers/activep4.h"
+#include "../../../../../ref/uthash/include/uthash.h"
+#include "../../../../../include/c/common/activep4.h"
 
 #define PID_CACHEREAD		0
 #define PID_FREQITEM		1

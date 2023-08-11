@@ -6,12 +6,12 @@
 #include <rte_lcore.h>
 #include <rte_log.h>
 
-#include "../../include/types.h"
-#include "../../include/utils.h"
-#include "../../include/active.h"
-#include "../../include/memory.h"
+#include "../../../../../include/c/dpdk/types.h"
+#include "../../../../../include/c/dpdk/utils.h"
+#include "../../../../../include/c/dpdk/active.h"
+#include "../../../../../include/c/dpdk/memory.h"
 
-#include "../../../../headers/activep4.h"
+#include "../../../../../include/c/common/activep4.h"
 
 // #define DEBUG_CONTROL
 

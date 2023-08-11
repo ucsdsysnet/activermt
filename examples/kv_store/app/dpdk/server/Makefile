@@ -5,7 +5,7 @@
 APP = dpdk-ap4server
 
 # all source are stored in SRCS-y
-SRCS-y := dpdk-ap4server.c ../../headers/activep4.h
+SRCS-y := dpdk-ap4server.c ../../../../../include/c/common/activep4.h
 
 # Build using pkg-config variables if possible
 ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)

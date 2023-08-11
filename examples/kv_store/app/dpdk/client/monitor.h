@@ -5,8 +5,8 @@
 #include <rte_timer.h>
 #include <rte_malloc.h>
 
-#include "../../../../ref/uthash/include/uthash.h"
-#include "../../../../headers/activep4.h"
+#include "../../../../../ref/uthash/include/uthash.h"
+#include "../../../../../include/c/common/activep4.h"
 #include "common.h"
 
 #define MIN_ITEMS 8192

@@ -3,7 +3,7 @@
 
 #include <rte_ethdev.h>
 
-#include "../../include/types.h"
+#include "../../../../../include/c/dpdk/types.h"
 #include "cache.h"
 
 // #define DEBUG_RX

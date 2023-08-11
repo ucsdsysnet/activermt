@@ -7,8 +7,8 @@
 #include <rte_timer.h>
 #include <rte_memcpy.h>
 
-#include "../../../../ref/uthash/include/uthash.h"
-#include "../../../../headers/activep4.h"
+#include "../../../../../ref/uthash/include/uthash.h"
+#include "../../../../../include/c/common/activep4.h"
 
 #include "common.h"
 

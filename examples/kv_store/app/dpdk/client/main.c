@@ -1,10 +1,10 @@
 #include <signal.h>
 #include <rte_malloc.h>
 
-#include "../../include/types.h"
-#include "../../include/utils.h"
-#include "../../include/memory.h"
-#include "../../include/active.h"
+#include "../../../../../include/c/dpdk/types.h"
+#include "../../../../../include/c/dpdk/utils.h"
+#include "../../../../../include/c/dpdk/memory.h"
+#include "../../../../../include/c/dpdk/active.h"
 
 #include "cache.h"
 #include "monitor.h"
@@ -15,11 +15,11 @@
 
 #define DEBUG_CACHE
 
-#define KEYDIST_PATH            "../../../../apps/cache/clients/udpc/zipf_dist_a_1.1_n_100000.csv"
-#define INSTR_SET_PATH		    "../../../../config/opcode_action_mapping.csv"
-#define ACTIVE_DIR              "../../../../apps/cache/active"
-#define ACTIVE_PROGRAM_CACHE    "cacheread"
-#define ACTIVE_PROGRAM_MONITOR	"freqitem"
+#define KEYDIST_PATH            "zipf_dist_a_1.1_n_100000.csv"
+#define INSTR_SET_PATH		    "../../../../../activermt/opcode_action_mapping.csv"
+#define ACTIVE_DIR              "../../../activesrc"
+#define ACTIVE_PROGRAM_CACHE    "kvstore"
+#define ACTIVE_PROGRAM_MONITOR	"hh"
 
 #define APP_IPV4_ADDR       0x0100000a
 #define APP_IPV4_DSTADDR    0x0100000a
