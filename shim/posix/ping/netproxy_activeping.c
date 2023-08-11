@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "../activep4_tunnel.h"
+#include "../../../include/c/common/activep4_tunnel.h"
 
 #define MAXFILENAME     128
 

@@ -27,7 +27,7 @@
 #include "encap.h"
 #include "decap.h"
 
-#include "../../../headers/activep4.h"
+#include "../common/activep4.h"
 
 #define DEBUG_COMMON
 

@@ -11,7 +11,7 @@
 #include "active.h"
 #include "memory.h"
 
-#include "../../../headers/activep4.h"
+#include "../common/activep4.h"
 
 static int
 lcore_control(void* arg) {

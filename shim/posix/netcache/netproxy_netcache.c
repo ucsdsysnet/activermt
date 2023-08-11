@@ -2,7 +2,8 @@
 #include <stdlib.h>
 
 #include "payload_parser_resp.h"
-#include "../activep4_tunnel.h"
+#include "../../../include/c/common/activep4_tunnel.h"
+#include "../../../include/c/common/activep4.h"
 
 #define MAXSTRLEN       256
 #define MAXFILENAME     128

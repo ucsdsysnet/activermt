@@ -8,16 +8,11 @@ logs/
 _eval/
 _ica/
 .vscode/
-clients/dpdk-client/build/
-clients/dpdk-client/apps/cache/build/
 local/
 sde
 p4-build
-malloc/stats/
 debug/
-results/
-bfrt/c_cpp/
-malloc/sim/
+_archived/
 
 p4-build
 
@@ -35,19 +30,7 @@ bf_drivers*
 
 bf_drivers*
 
-apps/cache/clients/udpc/kv_hits_misses*.csv
-clients/dpdk-client/active_tx_stats*.csv
-clients/dpdk-client/cache_stats*.csv
-clients/dpdk-client/dpdk_ap4_stats*.csv
-clients/dpdk-client/apps/cache/*.csv
-clients/dpdk-client/apps/cache/*.png
-apps/cache/clients/udpc/*.png
-apps/cache/clients/udpc/kvapp*.csv
-malloc/*.csv
-malloc/*.png
-clients/dpdk-client/*.csv
-
-malloc/stats*
-malloc/timesim*
-
-apps/cache/clients/udpc/kvapp
+examples/**/*.png
+examples/**/*.csv
+examples/**/*.apo
+examples/**/build/

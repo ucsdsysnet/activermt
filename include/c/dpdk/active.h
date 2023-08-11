@@ -8,7 +8,7 @@
 #include <rte_ethdev.h>
 
 #include "types.h"
-#include "../../../headers/activep4.h"
+#include "../common/activep4.h"
 
 static  __rte_always_inline void construct_reqalloc_packet(struct rte_mbuf* mbuf, int port_id, activep4_context_t* ctxt) {
 	activep4_def_t* program = ctxt->programs[ctxt->current_pid];

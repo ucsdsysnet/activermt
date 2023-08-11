@@ -14,7 +14,7 @@
 #include <rte_ethdev.h>
 
 #include "types.h"
-#include "../../../headers/activep4.h"
+#include "../common/activep4.h"
 
 #define DISPLAY_BUFFER_SIZE     65536
 #define MAX_DISPLAY_FIELDS      16

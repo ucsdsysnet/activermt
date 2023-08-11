@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <rte_hash.h>
 
-#include "../../../headers/activep4.h"
+#include "../common/activep4.h"
 
 // #define CTRL_MULTICORE
 // #define CTRL_PARALLEL
