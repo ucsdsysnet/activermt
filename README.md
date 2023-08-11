@@ -62,4 +62,11 @@ The dataplane is now ready to run active programs. Next, you need to run the con
 <path_to_run_bfshell.sh> -b <path_to_controller.py> -i
 ```
 
-The controller is now ready to admit new applications.
+The controller is now ready to admit new applications. 
+
+The examples folder contains applications that use the active runtime. Before we evaluate stateful applications such as a key-value store, let's run a stateless application based on DPDK. Make sure that DPDK is installed and the environment variables set correctly.
+
+### A stateless application: ping
+The "examples/ping/activesrc" folder contains the active program for our ping application. The program simply echoes the packet to the ingress port while swapping the Ethernet and IP addresses. Such an utility can be useful in measuring network congestion. 
+
+A DPDK application that measures ping times to the switch is located at the "examples/ping/app/dpdk" folder. First, build the application by running `make` inside the folder. A helper script "launch.sh" is also present in the directory which launches the application. Quit the application after some time pressing "Ctrl+C". A CSV file containing measured ping times should be present in the same folder. Run the plotter script by typing `./plotter.py`. A CDF (png) plot of the ping times should be generated in the same folder. 
