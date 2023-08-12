@@ -1,8 +1,9 @@
-# ActiveRMT: A framework for running active programs on programmable switches
+# ActiveRMT: Enabling Active Networking on Programmable Switches
 ActiveRMT enables running active programs on programmable switches based on the Tofino Native Architecture (TNA). This repository contains the tools necessary to write user-defined applications that can take advantage of memory and compute on Tofino switches. This repository contains the following:
 1. Control plane and data plane software to run active programs.
 2. A DPDK library to write user-space active applications.
 3. A Linux shim layer to enable POSIX-socket based active applications.
+4. Examples.
 
 ## Getting Started
 ### Minimum Requirements
@@ -28,13 +29,13 @@ run_tofino_model.sh -p active
 cd $SDE
 run_switchd.sh -p active
 ```
-The ActiveRMT dataplane is now ready to run active programs. However, it still needs to be configured with the instruction set so that programs are correctly recognized.
-5. Run a PTF test to install a minimal runtime and test the system. The test runs a "NOP" program (activermt/tests/nop/nop.ap4) that runs a dummy program to check execution at the switch. Upon execution of the program, a flag is set in the ActiveRMT Initial Header to indicate the same. The packet is routed according to the default routing table.
+5. Create and edit the necessary configuration files. Copy the "controller.json" file from the "config" folder to *$SDE*. Edit the *BASE_PATH* variable to point to the root directory of this (cloned) repository. The *IPCONFIG* variable is whatever you set it to be (e.g. asic). This variable is used to determine which routing configuration to use. For example, the routing configuration files in the "config" folder are named to "ip_config_model.csv" and "arp_table_model.csv" for *IPCONFIG=model*. Each line in the "ip_config_<IPCONFIG>.csv" file has the format "<ip_address>,<port>". Each line in the "arp_table_<IPCONFIG>.csv" file has the format "<ip_address>,<mac_address>,<port>". Create the corresponding routing configuration files if you change the *IPCONFIG* variable.
+6. Run a PTF test to install a minimal runtime and test the system. The test runs a "NOP" program (activermt/tests/nop/nop.ap4) that runs a dummy program to check execution at the switch. Upon execution of the program, a flag is set in the ActiveRMT Initial Header to indicate the same. The packet is routed according to the default routing table. The test setup configures the runtime to recognize instructions from the active program.
 ```
 cd <activermt_source_dir>/activermt/tests
 $SDE/run_p4_tests.sh -p active -t nop/
 ```
-If the test passes, then the ActiveRMT dataplane is set up correctly. Feel free to play around with the test framework to run more complex tests.
+If the test passes, then the ActiveRMT dataplane is set up correctly and ready to run active programs.
 
 ## Running an application
 Now that we have tested a working ActiveRMT, we can write an active application for an activated switch. Note that you will require a Tofino ASIC for the rest of this document. If you do not have one, you may be able to create a virtual switch using the Tofino model running on a x86 machine. This document does not however, cover the details of how to do so.
@@ -46,6 +47,14 @@ The following hardware and software requirements must be met:
 3. A DPDK capable NIC (http://core.dpdk.org/supported/nics/) for running active network applications.
 4. DPDK (https://doc.dpdk.org/guides/index.html).
 5. A Linux (x86) machine, preferrably running Ubuntu (focal or higher).
+
+### Dependencies
+The following software dependencies for Linux are also required:
+1. Python3
+2. Scapy
+3. Numpy
+4. Pandas
+5. Matplotlib
 
 ### Setting up the ASIC
 We assume that you have a Tofino switch configured according to the vendor specifications, and at least one x86 machine connected to one of the switch ports. The software has been tested on SDE 9.7.0 and we recommend using the same for the evaluation. Ensure that the environment variables *SDE* and *SDE_INSTALL* are set correctly. Clone the repository on the switch CPU. You will need the contents of the "activermt" folder on the switch. A set of utility scripts used below can be found in the *$SDE* directory or provided by the vendor.
@@ -67,6 +76,33 @@ The controller is now ready to admit new applications.
 The examples folder contains applications that use the active runtime. Before we evaluate stateful applications such as a key-value store, let's run a stateless application based on DPDK. Make sure that DPDK is installed and the environment variables set correctly.
 
 ### A stateless application: ping
-The "examples/ping/activesrc" folder contains the active program for our ping application. The program simply echoes the packet to the ingress port while swapping the Ethernet and IP addresses. Such an utility can be useful in measuring network congestion. 
+The "examples/ping/activesrc" folder contains the active program for an example (active) ping application. The active program simply echoes the packet to the ingress port while swapping the Ethernet and IP addresses. Such an utility can be useful in for example, measuring network congestion. You will first need to generate the bytecode for the active program as follows:
+```
+cd examples/ping/activesrc
+../../../tools/ap4.py ping.ap4
+```
 
-A DPDK application that measures ping times to the switch is located at the "examples/ping/app/dpdk" folder. First, build the application by running `make` inside the folder. A helper script "launch.sh" is also present in the directory which launches the application. Quit the application after some time pressing "Ctrl+C". A CSV file containing measured ping times should be present in the same folder. Run the plotter script by typing `./plotter.py`. A CDF (png) plot of the ping times should be generated in the same folder. 
+A DPDK application that measures ping times to the switch is located at the "examples/ping/app/dpdk" folder. Next, build the application by running `make` inside the folder. A helper script "launch.sh" is also present in the directory which launches the application. Quit the application after some time pressing "Ctrl+C". A CSV file containing measured ping times should be present in the same folder. Run the plotter script by typing `./plotter.py`. A PNG plot (cdf) of the ping times should be generated in the same folder as below:
+![Active Ping RTT CDF](examples/ping/app/dpdk/ping_cdf.png)
+
+### A stateful application: key-value store (cache)
+A key-value store implementation from the paper can be found at "examples/kv_store". The "activesrc" directory as before contains two active programs - one for heavy-hitter or frequent item detection (hh.ap4) and the other for reading objects from the switch key-value store (kvstore.ap4). Build the active program for the key-value store as follows:
+```
+cd examples/kv_store/activesrc
+../../../tools/ap4.py kvstore.ap4
+```
+
+Next, build the DPDK app:
+```
+cd examples/kv_store/app/dpdk/client
+make
+```
+
+Finally, launch the app by running `./launch_concurrent.sh` from the containing folder. After about 25 seconds, you can quit the app by typing "Ctrl+C". You can refer to the log (rte_log_active_cache.log) generated in the same folder to quit the app a few seconds after "FID 4" is active. A set of CSV files should be generated in the same folder. Copy them to the evals folder in the same directory and run the plotter from there:
+```
+cp cache_rx_stats*.csv evals/
+cd evals
+./plotter.py
+```
+A PNG plot should be generated in the same folder as below:
+![Active Cache Hit Rate](examples/kv_store/app/dpdk/client/evals/hit_rates_concurrent.png)
