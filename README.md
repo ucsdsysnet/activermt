@@ -76,7 +76,7 @@ The controller is now ready to admit new applications.
 The examples folder contains applications that use the active runtime. Before we evaluate stateful applications such as a key-value store, let's run a stateless application based on DPDK. Make sure that DPDK is installed and the environment variables set correctly.
 
 ### A stateless application: ping
-The "examples/ping/activesrc" folder contains the active program for an example (active) ping application. The active program simply echoes the packet to the ingress port while swapping the Ethernet and IP addresses. Such an utility can be useful in for example, measuring network congestion. You will first need to generate the bytecode for the active program as follows:
+The "examples/ping/activesrc" folder contains the active program for an example (active) ping application. The active program simply echoes the packet to the ingress port while swapping the Ethernet and IP addresses. The DPDK application measures the ping times of several packets and saves the corresponding results. You will first need to generate the bytecode for the active program as follows:
 ```
 cd examples/ping/activesrc
 ../../../tools/ap4.py ping.ap4
@@ -106,3 +106,19 @@ cd evals
 ```
 A PNG plot should be generated in the same folder as below:
 ![Active Cache Hit Rate](examples/kv_store/app/dpdk/client/evals/hit_rates_concurrent.png)
+
+## Microbenchmarks
+Programs for running microbenchmarks are present in various folders of the repository. In particular, scripts for generating microbenchmarks for the allocator are located in the "malloc" folder. The analyses correspond to the ones in the paper where application arrivals are mimicked and the corresponding allocation times, for example, are measured. Each such analysis is defined by a configuration present in the "malloc/config" folder. To run an analysis, you need to specify the configuration. For example,
+```
+cd malloc
+./analysis.py config/config_16.json
+```
+
+After the script finishes execution, data will be generated inside the "evals/data" directory, corresponding to the configuration name. You can generate plots from the same folder as follows: 
+```
+./plotter_constrained.py evals/data/results_config_16/ config/config_16.json
+```
+
+The "evals/plots" directory will contain PNG files corresponding to the plots. For example, "config_16" will generate the following allocation time plot:
+
+![Allocation time comparing LC/MC for mixed workload](malloc/evals/plots/allocation_time.png)
