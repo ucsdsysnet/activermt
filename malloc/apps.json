@@ -1,0 +1,14 @@
+{
+    "cacheread"     : {
+        "source"    : "apps/cacheread.apo",
+        "demand"    : 1
+    },
+    "cheetahlb"     : {
+        "source"    : "apps/cheetahlb-syn.apo",
+        "demand"    : 2
+    },
+    "telemetry"     : {
+        "source"    : "apps/freqitem.apo",
+        "demand"    : 16
+    }
+}

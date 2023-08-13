@@ -30,6 +30,8 @@ bf_drivers*
 
 bf_drivers*
 
+malloc/**/*.png
+malloc/**/*.csv
 examples/**/*.png
 examples/**/*.csv
 examples/**/*.apo

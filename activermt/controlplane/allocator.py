@@ -127,9 +127,12 @@ class ActiveFunction:
         tsEnumEnd = time.time()
         self.enumTime = tsEnumEnd - tsEnumStart
 
-    def getVariant(self, idx):
+    def getVariant(self, idx, transformed=False):
         if idx < len(self.enumeration):
-            return self.enumeration[idx]
+            if not transformed:
+                return self.enumeration[idx]
+            else:
+                return (np.unique([ (y if y < self.num_stage_ig else y % self.num_stage_eg + self.num_stage_ig) for y in self.enumeration[idx] ]))
         return None
 
     def getEnumeration(self, transformed=False):
@@ -150,15 +153,17 @@ class Allocator:
     METRIC_UTILITY = 1
     METRIC_UTILIZATION = 2
     METRIC_SAT = 3
-    ALLOCATION_GRANULARITY = 368
+    METRIC_REALLOC = 4
+    # ALLOCATION_GRANULARITY = 368
     ALLOCATION_TYPE_DEFAULT = 0
     ALLOCATION_TYPE_MAXMINFAIR = 1
     NUM_STAGES = 20
     FID_AUGMENTATION = 253
     WT_OVERFLOW = 1000000
 
-    def __init__(self, metric=0, optimize=True, minimize=True, debug=False):
+    def __init__(self, metric=0, optimize=True, minimize=True, debug=False, granularity=368):
         self.num_stages = self.NUM_STAGES
+        self.ALLOCATION_GRANULARITY = granularity
         self.max_occupancy = self.ALLOCATION_GRANULARITY
         self.metric = metric
         self.optimize = optimize
@@ -169,6 +174,10 @@ class Allocator:
         self.elastic_offset = [0] * self.num_stages
         self.fragmentation = [[]] * self.num_stages
         self.reset()
+        self.profiling = {
+            'getCost'   : [],
+            'enums'     : []
+        }
 
     def reset(self):
         self.allocation = set()
@@ -204,6 +213,7 @@ class Allocator:
         pass
 
     def getMinDemand(self, fid, idx):
+        assert(fid in self.activeFuncs)
         return self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[idx]]
 
     def getOverallUtility(self):
@@ -259,21 +269,83 @@ class Allocator:
             utilization += 0 if elastic else (activeFunc.minDemand[i] if activeFunc.minDemand[i] > 1 else remaining)
         return utilization
 
-    # cost = number of data moving required to accomodate new app.
-    # alternative: decrease in utility of other apps - difficult to estimate fairly since utility functions may vary across apps.
-    def getCostMoving(self, memIdx, activeFunc):
+    # cost = amount of data moving required to accomodate new app.
+    # determined by number of elastic applications residing in particular stage.
+    # progressive filling consideration required to find exact cost.
+    def getCostMoving(self, memIdx, activeFunc, exact=True):
         cost = 0
         numAccesses = len(memIdx)
         for i in range(0, numAccesses):
             idx = memIdx[i]
             occupied = 0
+            num_elastic = 0
+            inelastic_region = 0
+            stage_cost = 0
+            # 1. find number of elastic apps and available memory region.
             for fid in self.allocationMap[idx]:
+                # pessimistic estimate.
                 if self.getMinDemand(fid, idx) == 1:
-                    cost += 1
+                    stage_cost += 1
+                    num_elastic += 1
                 occupied += self.getMinDemand(fid, idx)
+                if self.getMinDemand(fid, idx) > 1:
+                    inelastic_region += self.getMinDemand(fid, idx)
             occupied += activeFunc.minDemand[i]
+            # check if there is enough space to accomodate new app.
             if occupied > self.max_occupancy:
                 return -1
+            if activeFunc.minDemand[i] == 1:
+                elastic_region = self.max_occupancy - self.elastic_offset[idx]
+                if num_elastic + 1 > elastic_region:
+                    return -1
+            else:
+                largest_cluster = self.max_occupancy - self.elastic_offset[idx]
+                # if (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
+                #     return -1
+                if len(self.fragmentation[idx]) > 0 and self.fragmentation[idx][0][1] > largest_cluster:
+                    largest_cluster = self.fragmentation[idx][0][1]
+                elif (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
+                    return -1
+                if largest_cluster < activeFunc.minDemand[i]:
+                    return -1
+            if exact:
+                # 2. estimate filled cost.
+                elastic_region = self.max_occupancy - inelastic_region
+                if activeFunc.minDemand[i] == 1 and num_elastic > 0:
+                    # compute how may elastic apps are affected.
+                    num_elastic += 1
+                    # cost function: 
+                    # f(x) =    x - 1                   , if floor(N/x) < floor(N/(x-1))
+                    #           (N % (x-1)) - (N % x)   , otherwise
+                    # where N is the number of memory blocks in elastic region, x is the number of elastic apps.
+                    # stage_cost = num_elastic - 1 if math.floor(elastic_region / num_elastic) < math.floor(elastic_region / (num_elastic - 1)) else (elastic_region % (num_elastic - 1)) - (elastic_region % num_elastic)
+                    # f(x) =    x - 1                   , if floor(N/x) < floor(N/(x-1))
+                    #           N - 1 - (N % x)   , otherwise
+                    # where N is the number of memory blocks in elastic region, x is the number of elastic apps.
+                    stage_cost = num_elastic - 1 if math.floor(elastic_region / num_elastic) < math.floor(elastic_region / (num_elastic - 1)) else num_elastic - (elastic_region % num_elastic) - 1
+                    # blocks = np.zeros((num_elastic, 2), dtype=np.int)
+                    # n = elastic_region
+                    # while n > 0:
+                    #     for j in range(0, num_elastic - 1):
+                    #         blocks[j, 0] += 1
+                    #         n -= 1
+                    #         if n == 0:
+                    #             break
+                    # n = elastic_region
+                    # while n > 0:
+                    #     for j in range(0, num_elastic):
+                    #         blocks[j, 1] += 1
+                    #         n -= 1
+                    #         if n == 0:
+                    #             break
+                    # stage_cost = 0
+                    # for j in range(0, num_elastic - 1):
+                    #     print(blocks[j, 0], blocks[j, 1])
+                    #     stage_cost += 1 if blocks[j, 0] != blocks[j, 1] else 0
+                else:
+                    # inelastic applications are pinned to beginning of memory region.
+                    stage_cost = num_elastic
+            cost += stage_cost
         return cost
 
     # Best-fit will maximize this cost; worst-fit will minimize.
@@ -282,13 +354,14 @@ class Allocator:
         # 1. inelastic app should fit.
         # 2. elastic app should fit.
         # 3. remaining blocks after fitting is inverse of cost.
+        # (Does not attempt to find the allocated region.)
         sumcost = 0
         numAccesses = len(memIdx)
         for i in range(0, numAccesses):
             idx = memIdx[i]
             cost = 0
             num_elastic = 0
-            # min requirements.
+            # min requirements; number of blocks left after satisfying min demands is the cost.
             for fid in self.allocationMap[idx]:
                 cost += self.getMinDemand(fid, idx)
                 if self.getMinDemand(fid, idx) == 1:
@@ -299,17 +372,25 @@ class Allocator:
             # separate logic for elastic/inelastic.
             if activeFunc.minDemand[i] == 1:
                 elastic_region = self.max_occupancy - self.elastic_offset[idx]
-                if num_elastic > elastic_region:
+                if num_elastic + 1 > elastic_region:
                     return -1
+                # elastic applications do not benefit from fragmentation; cost is (based on) proportion of total memory elastic app gets.
+                # estimates (elastic) tenancy as cost, to factor in reallocations.
                 cost = num_elastic * (self.max_occupancy * 1.0 / elastic_region)
+                num_elastic += 1
             else:
                 largest_cluster = self.max_occupancy - self.elastic_offset[idx]
-                if (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
-                    return -1
+                # check if existing elastic apps can fit.
+                # if (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
+                #     return -1
                 if len(self.fragmentation[idx]) > 0 and self.fragmentation[idx][0][1] > largest_cluster:
                     largest_cluster = self.fragmentation[idx][0][1]
+                elif (largest_cluster - activeFunc.minDemand[i]) < num_elastic:
+                    return -1
+                # check if inelastic app can fit.
                 if largest_cluster < activeFunc.minDemand[i]:
                     return -1
+            assert(self.max_occupancy - self.elastic_offset[idx] >= num_elastic)
             sumcost += cost
         return sumcost
 
@@ -363,6 +444,8 @@ class Allocator:
             cost = self.getUtility(memIdx, activeFunc)
         elif self.metric == self.METRIC_UTILIZATION:
             cost = self.getUtilizationIncrease(memIdx, activeFunc)
+        elif self.metric == self.METRIC_REALLOC:
+            cost = self.getCostMoving(memIdx, activeFunc)
         else:
             cost = self.getFeasibility(memIdx, activeFunc)
         return cost
@@ -411,6 +494,52 @@ class Allocator:
                 newset.add(self.queue['allocationMatrix'][i, j])
             numChanges += len(newset) - len(oldset)
         return numChanges
+    
+    def buildAllocationMatrix(self, fids, variants, af):
+        allocation_map = {}
+        for stage in range(0, self.num_stages):
+            allocation_map[stage] = set()
+        for id in range(0, len(variants) - 1):
+            variant = self.activeFuncs[fids[id]].getVariant(variants[id], transformed=True)
+            print("variant: ", variant)
+            for stage in variant:
+                allocation_map[stage].add(fids[id])
+        for stage in af.getVariant(variants[-1], transformed=True):
+            allocation_map[stage].add(af.fid)
+        # matrix = self.computeAllocationMatrix(allocation_map)
+        return None
+    
+    def getBenefitUtilization(self, fids, X, af):
+        allocation_matrix = self.buildAllocationMatrix(fids, X, af)
+        utilization = 0.0
+        numBlocksTotal = self.max_occupancy * self.num_stages
+        for i in range(0, self.max_occupancy):
+            for j in range(0, self.num_stages):
+                utilization += 1 if allocation_matrix[i, j] > 0 else 0
+        return (utilization * 1.0 / numBlocksTotal)
+
+    def getCostReallocations(self, fids, X, af):
+        allocation_matrix = self.buildAllocationMatrix(fids, X, af)
+        ws_old = set(np.unique(self.allocationMatrix))
+        reallocated = set()
+        for i in range(self.max_occupancy):
+            for j in range(self.num_stages):
+                fid = allocation_matrix[i, j]
+                if fid == 0 or fid not in ws_old:
+                    continue
+                if self.allocationMatrix[i, j] != allocation_matrix[i, j]:
+                    reallocated.add(fid)
+        return len(reallocated)
+
+    def getOccupancyCost(self, fids, X, af):
+        occupancy = np.zeros((self.num_stages, 1), dtype=np.uint32)
+        for i in range(0, len(X) - 1):
+            variant = self.activeFuncs[fids[i]].getVariant(X[i], transformed=True)
+            for stage in variant:
+                occupancy[stage] += 1
+        for stage in af.getVariant(X[-1], transformed=True):
+            occupancy[stage] += 1
+        return np.sum(np.square(occupancy))
 
     def computeAllocation(self, activeFunc, online=True):
         self.resetQueue()
@@ -418,12 +547,23 @@ class Allocator:
         self.activeFuncs[activeFunc.getFID()] = activeFunc
         optCost = None
         optimal = None
+        enumTime = 0
+        ppTime = 0
+        searchTime = 0
         tsAllocStart = time.time()
         if online:
+            enum_start = time.time()
             enumeration = activeFunc.getEnumeration(transformed=True)
+            enum_end = time.time()
+            enumTime = enum_end - enum_start
+            self.profiling['enums'].append(len(enumeration))
+            search_start = time.time()
             for i in range(0, len(enumeration)):
                 memIdx = enumeration[i]
+                t1 = time.time()
                 cost = self.getCost(memIdx, activeFunc)
+                t2 = time.time()
+                self.profiling['getCost'].append(t2 - t1)
                 if cost < 0:
                     continue
                 if not self.optimize:
@@ -439,48 +579,38 @@ class Allocator:
                 elif not self.minimize and cost > optCost:
                     optCost = cost
                     optimal = memIdx
+            search_end = time.time()
+            searchTime = search_end - search_start
         else:
             enumSizes = []
             fids = []
-            weights = {}
             for fid in self.activeFuncs:
                 fids.append(fid)
                 enumSizes.append(self.activeFuncs[fid].getEnumerationSize())
-                weights[fid] = self.activeFuncs[fid].wt
             radix = len(fids)
-            current = np.zeros(radix, dtype=np.int32)
-            while True:
-                allocationMap = {}
+            rng = np.random.default_rng()
+            max_iter = 1000
+            optimal_value = np.inf
+            optimal = None
+            for iter in range(0, max_iter):
+                X = []
                 for i in range(0, radix):
-                    variant = self.activeFuncs[fids[i]].getVariant(current[i])
-                    for j in range(0, len(variant)):
-                        if variant[j] not in allocationMap:
-                            allocationMap[variant[j]] = set()
-                        allocationMap[variant[j]].add(fids[i])
-                cost = 0
-                for idx in allocationMap:
-                    if len(allocationMap[idx]) > 1:
-                        for fid in allocationMap[idx]:
-                            cost += weights[fid]
-                if optimal is None:
-                    optCost = cost
-                    optimal = np.copy(current)
-                if cost < optCost:
-                    optCost = cost
-                    optimal = np.copy(current)
-                pos = radix - 1
-                while pos >= 0 and current[pos] + 1 >= enumSizes[pos]:
-                    pos = pos - 1
-                if pos < 0:
-                    break
-                current[pos] = current[pos] + 1
-                for i in range(pos + 1, radix):
-                    current[i] = 0
+                    varidx = int(rng.random() * enumSizes[i])
+                    X.append(varidx)
+                varidx = int(rng.random() * activeFunc.getEnumerationSize())
+                X.append(varidx)
+                value = self.getOccupancyCost(fids, X, activeFunc)
+                # assumes that the cost is always minimized.
+                if value < optimal_value:
+                    optimal_value = value
+                    optimal = np.copy(X)
+            optCost = optimal_value
         utilization = None
         allocation = None
         allocationMap = None
         if optimal is not None:
             if online:
+                pp_start = time.time()
                 allocation = self.allocation.copy()
                 allocationMap = copy.deepcopy(self.allocationMap)
                 self.activeFuncs[activeFunc.getFID()].allocation = {}
@@ -491,37 +621,58 @@ class Allocator:
                     self.activeFuncs[activeFunc.getFID()].allocation[idx] = i
                     i += 1
                 utilization = self.getUtilization()
+                pp_end = time.time()
+                ppTime = pp_end - pp_start
             else:
                 allocation = set()
                 allocationMap = {}
                 # TODO update allocation for active function object.
+                for fid in self.activeFuncs:
+                    self.activeFuncs[fid].allocation = {}
+                self.activeFuncs[activeFunc.getFID()].allocation = {}
                 for i in range(0, self.num_stages):
                     allocationMap[i] = set()
                 for i in range(0, radix):
-                    variant = self.activeFuncs[fids[i]].getVariant(optimal[i])
+                    variant = self.activeFuncs[fids[i]].getVariant(optimal[i], transformed=True)
+                    k = 0
                     for idx in variant:
                         allocation.add(idx)
                         allocationMap[idx].add(fids[i])
-                optimal = variant
+                        self.activeFuncs[fids[i]].allocation[idx] = k
+                        k += 1
+                k = 0
+                for idx in activeFunc.getVariant(optimal[-1], transformed=True):
+                    allocation.add(idx)
+                    allocationMap[idx].add(activeFunc.getFID())
+                    self.activeFuncs[activeFunc.getFID()].allocation[idx] = k
+                    k += 1
+                optimal = activeFunc.getVariant(optimal[-1], transformed=True)
                 utilization = self.getUtilization()
         tsAllocElapsed = time.time() - tsAllocStart
         if optCost is None:
             # allocation failed.
             optimal = None
             self.activeFuncs.pop(activeFunc.getFID())
-        return (optimal, optCost, utilization, tsAllocElapsed, allocation, allocationMap)
+        return (optimal, optCost, utilization, tsAllocElapsed, allocation, allocationMap, enumTime, searchTime, ppTime)
     
     def computeAllocationMatrix(self, allocationMap):
         allocationMatrix = np.zeros((self.max_occupancy, self.num_stages), dtype=np.uint32)
+        allocation_stages = []
         for i in range(0, self.num_stages):
             if len(allocationMap[i]) == 0:
                 continue
+            current_tenants = set()
+            for j in range(0, self.max_occupancy):
+                if self.allocationMatrix[j, i] != 0:
+                    current_tenants.add(self.allocationMatrix[j, i])
             current_inelastic_tenants = set()
+            current_elastic_tenants = set()
             # copy the allocation for the inelastic applications.
             frag_start = -1
             frag_end = -1
             self.fragmentation[i] = []
             for j in range(0, self.elastic_offset[i]):
+                assert (self.allocationMatrix[j, i] == 0 or self.getMinDemand(self.allocationMatrix[j, i], i) > 1),"unexpected elastic app in elastic region: {}".format(self.allocationMatrix[j, i])
                 allocationMatrix[j, i] = self.allocationMatrix[j, i]
                 if self.allocationMatrix[j, i] != 0 and self.getMinDemand(self.allocationMatrix[j, i], i) > 1:
                     current_inelastic_tenants.add(self.allocationMatrix[j, i])
@@ -535,7 +686,17 @@ class Allocator:
                     num_frag_blocks = frag_end - frag_start + 1
                     self.fragmentation[i].append((frag_start, num_frag_blocks))
                     frag_start = -1
-            apps = [ (fid, self.activeFuncs[fid].wt, self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[i]]) for fid in allocationMap[i] ]
+            for j in range(self.elastic_offset[i], self.max_occupancy):
+                if self.allocationMatrix[j, i] != 0 and self.getMinDemand(self.allocationMatrix[j, i], i) == 1:
+                    current_elastic_tenants.add(self.allocationMatrix[j, i])
+            # apps = [ (fid, self.activeFuncs[fid].wt, self.activeFuncs[fid].minDemand[self.activeFuncs[fid].allocation[i]]) for fid in allocationMap[i] ]
+            apps = [ (fid, self.activeFuncs[fid].wt, self.getMinDemand(fid, i)) for fid in allocationMap[i] ]
+            arrivals = list(filter(lambda x: (x[0] not in current_tenants), apps))
+            assert (len(arrivals) <= 1),"too many concurrent arrivals on stage {}: {},{}".format(i, arrivals,current_tenants)
+            # no new arrivals for this stage.
+            # if len(arrivals) == 0:
+            #     continue
+            allocation_stages.append(i)
             numElastic = 0
             numInelastic = 0
             # prune allocation set.
@@ -547,14 +708,23 @@ class Allocator:
                     pruned_apps.append(app)
                 if demand == 1:
                     numElastic += 1
+            inelasticArrivals = list(filter(lambda x: (x[2] > 1), pruned_apps))
+            elasticArrivals = list(filter(lambda x: (x[2] == 1 and x[0] not in current_elastic_tenants), pruned_apps))
+            assert (len(inelasticArrivals) <= 1),"too many concurrent inelastic arrivals: {}".format(inelasticArrivals)
+            assert (len(elasticArrivals) <= 1),"too many concurrent elastic arrivals: {}".format(elasticArrivals)
             apps = pruned_apps
             # assuming ordered in increasing FID value.
             apps.sort(key=lambda x: x[0])
-            # allocate blocks for inelastic apps first.
+            assert (self.max_occupancy - self.elastic_offset[i] >= numElastic),"overlimit: {} app arrival w/ demand={}".format("elastic" if len(inelasticArrivals) == 0 else "inelastic", 1 if len(inelasticArrivals) == 0 else inelasticArrivals[0][2])
+            # 1. ALLOCATE blocks for inelastic apps first.
             for app in apps:
                 fid = app[0]
                 demand = app[2]
                 if demand > 1:
+                    # Cases:
+                    # 1. FF
+                    # 2. BF
+                    # 3. WF
                     # find largest fragmented hole.
                     fraghole = None
                     fragIdx = None
@@ -562,6 +732,7 @@ class Allocator:
                         frag = self.fragmentation[i][k]
                         if frag[1] < demand:
                             continue
+                        # TODO: depends on fit.
                         if fraghole is None or frag[1] > fraghole[1]:
                             fraghole = frag
                             fragIdx = k
@@ -581,7 +752,7 @@ class Allocator:
             remaining = self.max_occupancy - self.elastic_offset[i]
             # for frag in self.fragmentation[i]:
             #     remaining += frag[1]
-            # allocate number of blocks for elastic apps.
+            # 2. ALLOCATE number of blocks for elastic apps.
             elasticBlocks = remaining
             numBlocks = {}
             clusters = {}
@@ -670,10 +841,22 @@ class Allocator:
                             print(numBlocks)
                             print(apps)"""
                         assert not (self.getMinDemand(fid, j) > 1 and fid != allocationMatrix[k, j])
+            # verify that existing allocations are retained.
+            ws = set()
+            for k in range(0, self.max_occupancy):
+                if allocationMatrix[k, j] > 0:
+                    ws.add(allocationMatrix[k, j])
+            assert len(current_tenants.difference(ws)) == 0,"some existing allocations were lost."
+            # verify that new allocations are performed.
+            for app in arrivals:
+                assert (app[0] in ws),"some new allocations were not performed."
+        assert (len(allocation_stages) > 0),"no allocations were performed."
         return allocationMatrix
 
     def enqueueAllocation(self, allocation, allocationMap):
         allocationMatrix = self.computeAllocationMatrix(allocationMap)
+
+        elastic_apps = set()
 
         # mod
         comparison = {}
@@ -683,6 +866,7 @@ class Allocator:
                 if fid > 0:
                     assert not (self.getMinDemand(fid, i) > 1 and fid != allocationMatrix[k, i])
                     if self.getMinDemand(fid, i) == 1:
+                        elastic_apps.add(fid)
                         if fid not in comparison:
                             comparison[fid] = {
                                 'old'   : set(),
@@ -767,16 +951,19 @@ class Allocator:
 
         # print(remaps.keys())
 
-        return (changes, remaps)
+        num_elastic_apps = len(elastic_apps)
+
+        return (changes, remaps, num_elastic_apps)
 
     def applyQueuedAllocation(self):
         if self.queue['fid'] is None:
-            return
+            return False
         self.allocation = copy.deepcopy(self.queue['allocation'])
         self.allocationMap = copy.deepcopy(self.queue['allocationMap'])
         self.revAllocationMap = copy.deepcopy(self.queue['revAllocationMap'])
         self.allocationMatrix = copy.deepcopy(self.queue['allocationMatrix'])
         self.resetQueue()
+        return True
 
     def commitAugmentedAllocation(self, fid):
         if self.FID_AUGMENTATION in self.allocation:
@@ -829,8 +1016,9 @@ class Allocator:
 
     def deallocate(self, fid):
         if fid not in self.activeFuncs:
-            print("[allocator] FID %d not active." % fid)
-            return
+            if self.DEBUG:
+                print("[allocator] FID %d not active." % fid)
+            return False
         for stageId in self.revAllocationMap[fid]:
             isElastic = (self.getMinDemand(fid, stageId) == 1)
             self.allocationMap[stageId].remove(fid)
@@ -845,6 +1033,7 @@ class Allocator:
                 elif self.allocationMatrix[i, stageId] > 0:
                     stageEmpty = False
             if stageEmpty:
+                assert(stageId in self.allocation)
                 self.allocation.remove(stageId)
             if not isElastic:
                 if (lastBlockRemoved + 1) == self.elastic_offset[stageId]:
@@ -860,3 +1049,4 @@ class Allocator:
         self.activeFuncs.pop(fid)
         if self.DEBUG:
             print("[allocator] FID %d deallocated." % fid)
+        return True
