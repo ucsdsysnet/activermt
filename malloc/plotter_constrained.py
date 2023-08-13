@@ -11,7 +11,7 @@ import os
 import sys
 import json
 
-SKIP_SAVING = True
+SKIP_SAVING = False
 
 if len(sys.argv) < 3:
     print("Usage: {} <data_dir> <config_path>".format(sys.argv[0]))

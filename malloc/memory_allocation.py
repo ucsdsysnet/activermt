@@ -147,9 +147,9 @@ class Simulation:
                     program = ActiveFunction(fid, event.program['memidx'], event.program['iglim'] if (constr_type == 'mc') else -1, event.program['length'], event.program['mindemand'], enumerate=True, allow_filling=(constr_type == 'lc'))
                     (allocation, cost, utilization, allocTime, overallAlloc, allocationMap, enumTime, searchTime, ppTime) = self.allocator.computeAllocation(program, online=self.localOptimize)
                     self.events[i][j].allocationTime = allocTime
-                    # self.events[i][j].enumTime = enumTime
-                    # self.events[i][j].searchTime = searchTime
-                    # self.events[i][j].ppTime = ppTime
+                    self.events[i][j].enumTime = enumTime
+                    self.events[i][j].searchTime = searchTime
+                    self.events[i][j].ppTime = ppTime
                     if allocation is not None and cost < Allocator.WT_OVERFLOW:
                         self.events[i][j].allocatedStages = allocation
                         apply_start = time.time()
