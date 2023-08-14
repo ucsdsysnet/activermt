@@ -1,3 +1,5 @@
+-- copy file to plugin directory, e.g. ~/.config/wireshark/plugins/
+
 local proto_activep4 = Proto.new("activep4", "ActiveP4: Initial Header")
 local proto_active_malloc_req = Proto.new("active_malloc_req", "ActiveP4: Malloc Request")
 local proto_active_alloc = Proto.new("active_alloc", "ActiveP4: Memory Allocation")
