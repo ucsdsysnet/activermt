@@ -27,7 +27,7 @@
 #define NUM_SAMPLES_HM  100000
 #define ZIPF_SIZE       100000
 
-#include "../../../../headers/stats.h"
+#include "../../../../include/c/common/stats.h"
 #include "../../../../ref/uthash/include/uthash.h"
 
 typedef uint64_t cache_keysize_t;

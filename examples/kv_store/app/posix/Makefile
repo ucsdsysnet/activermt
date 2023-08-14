@@ -1,7 +1,7 @@
 CC		= gcc
 CCFLAGS	= -g
 
-HEADERS_DIR = ../../../../headers
+HEADERS_DIR = ../../../../include/c/common
 HEADERS = stats.h
 HDR_PATHS = $(addprefix $(HEADERS_DIR)/, $(HEADERS))
 
@@ -10,11 +10,14 @@ all: kvapp
 debug: CCFLAGS = -DDEBUG -g
 debug: kvapp
 
-kvapp		: kvapp.o
-	$(CC) -o kvapp kvapp.o -lpthread
+kvapp		: kvapp.o | build
+	$(CC) -o build/kvapp build/kvapp.o -lpthread
 
-kvapp.o	: kvapp.c $(HDR_PATHS)
-	$(CC) $(CCFLAGS) -c kvapp.c
+kvapp.o	: kvapp.c $(HDR_PATHS) | build
+	$(CC) $(CCFLAGS) -o build/kvapp.o -c kvapp.c
+
+build:
+	@mkdir -p $@
 
 clean:
-	rm kvapp.o kvapp
+	rm build/kvapp.o build/kvapp
