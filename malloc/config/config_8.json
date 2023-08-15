@@ -1,0 +1,41 @@
+{
+    "local"     : true,
+    "epochs"    : 100,
+    "repeats"   : 10,
+    "workload"  : "cacheread",
+    "arrivals"      : {
+        "type"  : "sequential",
+        "rate"  : 1
+    },
+    "departures"    : {
+        "type"  : null,
+        "rate"  : 0
+    },
+    "schemes"   : [
+        {
+            "obj"       : "fit",
+            "fit"       : "wf",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "fit",
+            "fit"       : "wf",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "realloc",
+            "fit"       : "",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "fit",
+            "fit"       : "wf",
+            "constr"    : "lc"
+        },
+        {
+            "obj"       : "realloc",
+            "fit"       : "",
+            "constr"    : "lc"
+        }
+    ]
+}

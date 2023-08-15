@@ -1,6 +1,0 @@
-24576 flows completed / 370349451 flows delayed / 0 flows dropped
-{0: 370217007, 1: 132420, 2: 24}
-
-real    38m20.754s
-user    31m20.059s
-sys     3m1.640s

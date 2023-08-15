@@ -1,0 +1,36 @@
+{
+    "local"     : false,
+    "epochs"    : 100,
+    "repeats"   : 1,
+    "workload"  : "mixed",
+    "arrivals"      : {
+        "type"  : "sequential",
+        "rate"  : 1
+    },
+    "departures"    : {
+        "type"  : null,
+        "rate"  : 0
+    },
+    "schemes"   : [
+        {
+            "obj"       : "fit",
+            "fit"       : "ff",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "fit",
+            "fit"       : "wf",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "fit",
+            "fit"       : "bf",
+            "constr"    : "mc"
+        },
+        {
+            "obj"       : "realloc",
+            "fit"       : "",
+            "constr"    : "mc"
+        }
+    ]
+}

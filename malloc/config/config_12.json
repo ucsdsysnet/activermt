@@ -1,0 +1,40 @@
+{
+    "local"     : true,
+    "epochs"    : 100,
+    "repeats"   : 10,
+    "workload"  : "mixed",
+    "arrivals"      : {
+        "type"  : "sequential",
+        "rate"  : 1
+    },
+    "departures"    : {
+        "type"  : null,
+        "rate"  : 0
+    },
+    "schemes"   : [
+        {
+            "obj"           : "fit",
+            "fit"           : "wf",
+            "constr"        : "mc",
+            "granularity"   : 368
+        },
+        {
+            "obj"           : "fit",
+            "fit"           : "wf",
+            "constr"        : "mc",
+            "granularity"   : 736
+        },
+        {
+            "obj"           : "fit",
+            "fit"           : "wf",
+            "constr"        : "mc",
+            "granularity"   : 1472
+        },
+        {
+            "obj"           : "fit",
+            "fit"           : "wf",
+            "constr"        : "mc",
+            "granularity"   : 2944
+        }
+    ]
+}
