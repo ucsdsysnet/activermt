@@ -7,30 +7,34 @@ ActiveRMT enables running active programs on programmable switches based on the 
 
 ## Getting Started
 ### Minimum Requirements
-At the very least, you would need to obtain the Intel SDK (https://www.intel.com/content/www/us/en/products/details/network-io/intelligent-fabric-processors/p4-studio.html) version 9.7.0 to be able to compile and run P4 dataplane and control plane code. You would also need a Linux (x86) machine to evaluate the system.
+You would need to obtain the Intel SDK (https://www.intel.com/content/www/us/en/products/details/network-io/intelligent-fabric-processors/p4-studio.html) version 9.7.0 to be able to compile and run P4 dataplane and control plane code. You would also need a Linux (x86) machine to evaluate the system.
 
 ### Setting up ActiveRMT
 We will use a default routing configuration to test ActiveRMT on the Tofino model emulator. The routing configurations are located at "config/". Routing tables have the format "ip_config_<id>.csv", where <id> refers to a routing configuration (e.g. model).
 
 Perform the following steps to get ActiveRMT running on the Tofino model:
 1. Install the SDK according to Intel documentation. You should have the *SDE* variable set correctly post installation. You should also have a set of utility scripts installed at the *SDE* location or provided by Intel.
-2. Build the P4 source for ActiveRMT.
+2. Clone this repository. It is recommended to perform a shallow clone:
+```
+git clone --depth 1 git@github.com:dasrajdeep/activermt.git
+```
+3. Build the P4 source for ActiveRMT.
 ```
 cd activermt/dataplane
 $SDE/p4_build.sh active.p4 P4FLAGS="-Xp4c=--traffic-limit=80"
 ```
-3. Run the Tofino model.
+4. Run the Tofino model.
 ```
 cd $SDE
 run_tofino_model.sh -p active
 ```
-4. Run the driver.
+5. Run the driver.
 ```
 cd $SDE
 run_switchd.sh -p active
 ```
-5. Create and edit the necessary configuration files. Copy the "controller.json" file from the "config" folder to *$SDE*. Edit the *BASE_PATH* variable to point to the root directory of this (cloned) repository. The *IPCONFIG* variable is whatever you set it to be (e.g. asic). This variable is used to determine which routing configuration to use. For example, the routing configuration files in the "config" folder are named to "ip_config_model.csv" and "arp_table_model.csv" for *IPCONFIG=model*. Each line in the "ip_config_<IPCONFIG>.csv" file has the format "<ip_address>,<port>". Each line in the "arp_table_<IPCONFIG>.csv" file has the format "<ip_address>,<mac_address>,<port>". Create the corresponding routing configuration files if you change the *IPCONFIG* variable.
-6. Run a PTF test to install a minimal runtime and test the system. The test runs a "NOP" program (activermt/tests/nop/nop.ap4) that runs a dummy program to check execution at the switch. Upon execution of the program, a flag is set in the ActiveRMT Initial Header to indicate the same. The packet is routed according to the default routing table. The test setup configures the runtime to recognize instructions from the active program.
+6. Create and edit the necessary configuration files. Copy the "controller.json" file from the "config" folder to *$SDE*. Edit the *BASE_PATH* variable to point to the root directory of this (cloned) repository. The *IPCONFIG* variable is whatever you set it to be (e.g. asic). This variable is used to determine which routing configuration to use. For example, the routing configuration files in the "config" folder are named to "ip_config_model.csv" and "arp_table_model.csv" for *IPCONFIG=model*. Each line in the "ip_config_<IPCONFIG>.csv" file has the format "<ip_address>,<port>". Each line in the "arp_table_<IPCONFIG>.csv" file has the format "<ip_address>,<mac_address>,<port>". Create the corresponding routing configuration files if you change the *IPCONFIG* variable.
+7. Run a PTF test to install a minimal runtime and test the system. The test runs a "NOP" program (activermt/tests/nop/nop.ap4) that runs a dummy program to check execution at the switch. Upon execution of the program, a flag is set in the ActiveRMT Initial Header to indicate the same. The packet is routed according to the default routing table. The test setup configures the runtime to recognize instructions from the active program.
 ```
 cd <activermt_source_dir>/activermt/tests
 $SDE/run_p4_tests.sh -p active -t nop/
