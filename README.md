@@ -7,16 +7,19 @@ ActiveRMT enables running active programs on programmable switches based on the 
 
 ## Getting Started
 ### Minimum Requirements
-You would need to obtain the Intel SDK (https://www.intel.com/content/www/us/en/products/details/network-io/intelligent-fabric-processors/p4-studio.html) version 9.7.0 to be able to compile and run P4 dataplane and control plane code. You would also need a Linux (x86) machine to evaluate the system.
+The following are the minimum requirements for exercising this system without a Tofino ASIC:
+1. Intel SDK (https://www.intel.com/content/www/us/en/products/details/network-io/intelligent-fabric-processors/p4-studio.html) version 9.7.0.
+2. Linux (x86) machine (Ubuntu focal or higher).
 
 ### Setting up ActiveRMT
 We will use a default routing configuration to test ActiveRMT on the Tofino model emulator. The routing configurations are located at "config/". Routing tables have the format "ip_config_<id>.csv", where <id> refers to a routing configuration (e.g. model).
 
 Perform the following steps to get ActiveRMT running on the Tofino model:
 1. Install the SDK according to Intel documentation. You should have the *SDE* variable set correctly post installation. You should also have a set of utility scripts installed at the *SDE* location or provided by Intel.
-2. Clone this repository. It is recommended to perform a shallow clone:
+2. Perform a shallow clone of this repository and third-party modules:
 ```
 git clone --depth 1 git@github.com:dasrajdeep/activermt.git
+git submodule update --init --recursive
 ```
 3. Build the P4 source for ActiveRMT.
 ```
