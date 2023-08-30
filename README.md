@@ -1,3 +1,4 @@
+<a href="https://zenodo.org/badge/latestdoi/679104428"><img src="https://zenodo.org/badge/679104428.svg" alt="DOI"></a>
 # ActiveRMT: Enabling Active Networking on Programmable Switches
 ActiveRMT enables running active programs on programmable switches based on the Tofino Native Architecture (TNA). This repository contains the tools necessary to write user-defined applications that can take advantage of memory and compute on Tofino switches. This repository contains the following:
 1. Control plane and data plane software to run active programs.
